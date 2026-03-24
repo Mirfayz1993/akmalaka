@@ -373,11 +373,17 @@ export default function WagonsPage() {
         notes: wagonForm.notes.trim() || undefined,
       };
 
+      let wagonId: number;
       if (editingWagonId) {
         await updateWagon(editingWagonId, payload);
+        wagonId = editingWagonId;
       } else {
-        // 1. Create wagon
         const newWagon = await createWagon(payload);
+        wagonId = newWagon.id;
+      }
+
+      {
+        const newWagon = { id: wagonId };
 
         // Kod to'lovlarini hisoblash (tonna × $/t)
         const tonnageNum = parseFloat(wagonForm.tonnage) || 0;
@@ -786,8 +792,7 @@ export default function WagonsPage() {
             </Field>
 
             {/* ===== Section 2: Kodlar ===== */}
-            {!editingWagonId && (
-              <div className="border-t border-slate-200 pt-4 mt-4">
+            <div className="border-t border-slate-200 pt-4 mt-4">
                 <h3 className="text-sm font-semibold text-slate-700 border-b border-slate-200 pb-2 mb-3">Kodlar</h3>
                 <div className="grid grid-cols-2 gap-4">
                   {/* Kod UZ */}
@@ -829,12 +834,10 @@ export default function WagonsPage() {
                     </select>
                   </div>
                 </div>
-              </div>
-            )}
+            </div>
 
             {/* ===== Section 3: Yog'ochlar ===== */}
-            {!editingWagonId && (
-              <div className="border-t border-slate-200 pt-4 mt-4">
+            <div className="border-t border-slate-200 pt-4 mt-4">
                 <h3 className="text-sm font-semibold text-slate-700 border-b border-slate-200 pb-2 mb-3">Yog&apos;ochlar</h3>
 
                 {/* 1 qatorda 4 input + kub — Enter bilan qo'shish */}
@@ -930,12 +933,10 @@ export default function WagonsPage() {
                     </div>
                   </div>
                 )}
-              </div>
-            )}
+            </div>
 
             {/* ===== Section 4: Yog'och xaridi (RUB) ===== */}
-            {!editingWagonId && (
-              <div className="border-t border-slate-200 pt-4 mt-4">
+            <div className="border-t border-slate-200 pt-4 mt-4">
                 <h3 className="text-sm font-semibold text-slate-700 border-b border-slate-200 pb-2 mb-3">Yog&apos;och xaridi (RUB)</h3>
                 <Field label="Narx/m³ (RUB)">
                   <input
@@ -952,11 +953,9 @@ export default function WagonsPage() {
                     Jami summa (RUB): <span className="text-green-600 font-medium">&#8381;{timberTotalRub.toLocaleString("ru-RU", { maximumFractionDigits: 2 })}</span>
                   </div>
                 )}
-              </div>
-            )}
+            </div>
 
             {/* ===== Section 5: Xarajatlar (USD) ===== */}
-            {!editingWagonId && (
               <div className="border-t border-slate-200 pt-4 mt-4">
                 <h3 className="text-sm font-semibold text-slate-700 border-b border-slate-200 pb-2 mb-3">Xarajatlar (USD)</h3>
 
@@ -1037,8 +1036,7 @@ export default function WagonsPage() {
                     + Qo&apos;shimcha xarajat
                   </button>
                 </div>
-              </div>
-            )}
+            </div>
 
             {/* ===== Section 6: Status & Notes ===== */}
             <div className="border-t border-slate-200 pt-4 mt-4">
