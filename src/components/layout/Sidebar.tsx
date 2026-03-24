@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { useI18n } from "@/i18n";
 import {
   Train,
-  MapPin,
   QrCode,
   DollarSign,
   BookOpen,
@@ -20,7 +19,6 @@ import {
 const navItems = [
   { href: "/", icon: Home, key: "dashboard" as const },
   { href: "/wagons", icon: Train, key: "wagons" as const },
-  { href: "/logistics", icon: MapPin, key: "logistics" as const },
   { href: "/codes", icon: QrCode, key: "codes" as const },
   { href: "/sales", icon: TrendingUp, key: "sales" as const },
   { href: "/cash", icon: DollarSign, key: "cash" as const },
