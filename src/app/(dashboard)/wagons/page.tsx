@@ -191,7 +191,6 @@ export default function WagonsPage() {
 
   // Inline timber entries for new wagon creation
   const [wagonTimberEntries, setWagonTimberEntries] = useState<PendingTimber[]>([]);
-  const [showTimberInline, setShowTimberInline] = useState(false);
   const [inlineTimberForm, setInlineTimberForm] = useState<PendingTimber>({ widthMm: "", thicknessMm: "", lengthM: "", quantity: "", pricePerCubicRub: "" });
 
   // ==========================================
@@ -323,7 +322,6 @@ export default function WagonsPage() {
     setEditingWagonId(null);
     setWagonForm({ ...defaultWagonForm });
     setWagonTimberEntries([]);
-    setShowTimberInline(false);
     setWagonModal(true);
   };
 
@@ -345,7 +343,6 @@ export default function WagonsPage() {
       notes: wagon.notes ?? "",
     });
     setWagonTimberEntries([]);
-    setShowTimberInline(false);
     setWagonModal(true);
   };
 
@@ -866,95 +863,80 @@ export default function WagonsPage() {
             {/* ===== Section 3: Yog'ochlar ===== */}
             {!editingWagonId && (
               <div className="border-t border-slate-200 pt-4 mt-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold text-slate-700 border-b border-slate-200 pb-2 flex-1">Yog&apos;ochlar</h3>
-                  <button type="button" onClick={() => setShowTimberInline(true)}
-                    className="text-xs text-blue-600 hover:text-blue-800 font-medium ml-3">
-                    + Yog&apos;och qo&apos;shish
-                  </button>
+                <h3 className="text-sm font-semibold text-slate-700 border-b border-slate-200 pb-2 mb-3">Yog&apos;ochlar</h3>
+
+                {/* 1 qatorda 4 input + kub — Enter bilan qo'shish */}
+                <div className="flex items-end gap-2 mb-3">
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-slate-500 mb-0.5">Qalinligi (mm)</label>
+                    <input type="number" value={inlineTimberForm.thicknessMm}
+                      onChange={e => setInlineTimberForm(f => ({...f, thicknessMm: e.target.value}))}
+                      className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="25" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-slate-500 mb-0.5">Eni (mm)</label>
+                    <input type="number" value={inlineTimberForm.widthMm}
+                      onChange={e => setInlineTimberForm(f => ({...f, widthMm: e.target.value}))}
+                      className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="150" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-slate-500 mb-0.5">Uzunligi (m)</label>
+                    <input type="number" value={inlineTimberForm.lengthM}
+                      onChange={e => setInlineTimberForm(f => ({...f, lengthM: e.target.value}))}
+                      className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="6" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-slate-500 mb-0.5">Soni (dona)</label>
+                    <input type="number" value={inlineTimberForm.quantity}
+                      onChange={e => setInlineTimberForm(f => ({...f, quantity: e.target.value}))}
+                      onKeyDown={e => {
+                        if (e.key === "Enter") {
+                          const f = inlineTimberForm;
+                          if (!f.thicknessMm || !f.widthMm || !f.lengthM || !f.quantity) return;
+                          setWagonTimberEntries(prev => [...prev, {...f}]);
+                          setInlineTimberForm({ widthMm: "", thicknessMm: "", lengthM: "", quantity: "", pricePerCubicRub: "" });
+                        }
+                      }}
+                      className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="200" />
+                  </div>
+                  <div className="flex-shrink-0 pb-0.5 min-w-[90px] text-right">
+                    {Number(inlineTimberForm.thicknessMm) > 0 && Number(inlineTimberForm.widthMm) > 0 && Number(inlineTimberForm.lengthM) > 0 && Number(inlineTimberForm.quantity) > 0 ? (
+                      <span className="text-sm font-semibold text-green-600 whitespace-nowrap">
+                        {((Number(inlineTimberForm.thicknessMm)/1000) * (Number(inlineTimberForm.widthMm)/1000) * Number(inlineTimberForm.lengthM) * Number(inlineTimberForm.quantity)).toFixed(4)} m³
+                      </span>
+                    ) : (
+                      <span className="text-sm text-slate-300 whitespace-nowrap">0.0000 m³</span>
+                    )}
+                  </div>
                 </div>
 
-                {/* List of added timber entries */}
+                {/* Qo'shilgan taxtalar ro'yxati + jami */}
                 {wagonTimberEntries.length > 0 && (
-                  <div className="space-y-2 mb-3">
+                  <div className="space-y-1 mb-3">
                     {wagonTimberEntries.map((t, idx) => {
-                      const cubic = ((Number(t.widthMm)/1000) * (Number(t.thicknessMm)/1000) * Number(t.lengthM) * Number(t.quantity));
+                      const cubic = ((Number(t.thicknessMm)/1000) * (Number(t.widthMm)/1000) * Number(t.lengthM) * Number(t.quantity));
                       return (
-                        <div key={idx} className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                          <span className="text-sm font-medium text-green-700">
-                            {t.thicknessMm}mm &times; {t.widthMm}mm &times; {t.lengthM}m &times; {t.quantity} dona
-                            <span className="text-green-500 ml-2">{cubic.toFixed(4)} m&sup3;</span>
+                        <div key={idx} className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">
+                          <span className="text-sm text-green-700">
+                            {t.thicknessMm}×{t.widthMm}mm × {t.lengthM}m × {t.quantity} dona
                           </span>
-                          <button type="button" onClick={() => setWagonTimberEntries(prev => prev.filter((_, i) => i !== idx))}
-                            className="text-red-400 hover:text-red-600 ml-2">
-                            <X className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm font-semibold text-green-600">{cubic.toFixed(4)} m³</span>
+                            <button type="button" onClick={() => setWagonTimberEntries(prev => prev.filter((_, i) => i !== idx))}
+                              className="text-red-400 hover:text-red-600">
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
                       );
                     })}
-                    <div className="text-sm text-green-600 font-medium">
-                      Jami: {totalCubic.toFixed(4)} m&sup3;
-                    </div>
-                  </div>
-                )}
-
-                {/* Inline timber form */}
-                {showTimberInline && (
-                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2">
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-xs font-medium text-slate-600 mb-0.5">Eni (mm)</label>
-                        <input type="number" value={inlineTimberForm.widthMm}
-                          onChange={e => setInlineTimberForm(f => ({...f, widthMm: e.target.value}))}
-                          className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-slate-600 mb-0.5">Qalinligi (mm)</label>
-                        <input type="number" value={inlineTimberForm.thicknessMm}
-                          onChange={e => setInlineTimberForm(f => ({...f, thicknessMm: e.target.value}))}
-                          className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-xs font-medium text-slate-600 mb-0.5">Uzunligi (m)</label>
-                        <input type="number" value={inlineTimberForm.lengthM}
-                          onChange={e => setInlineTimberForm(f => ({...f, lengthM: e.target.value}))}
-                          className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-slate-600 mb-0.5">Soni (dona)</label>
-                        <input type="number" value={inlineTimberForm.quantity}
-                          onChange={e => setInlineTimberForm(f => ({...f, quantity: e.target.value}))}
-                          className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-600 mb-0.5">Narx (&#8381;/kub)</label>
-                      <input type="number" value={inlineTimberForm.pricePerCubicRub}
-                        onChange={e => setInlineTimberForm(f => ({...f, pricePerCubicRub: e.target.value}))}
-                        className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                    </div>
-                    {/* Cubic preview */}
-                    {Number(inlineTimberForm.widthMm) > 0 && Number(inlineTimberForm.thicknessMm) > 0 && Number(inlineTimberForm.lengthM) > 0 && Number(inlineTimberForm.quantity) > 0 && (
-                      <div className="text-xs text-green-600 font-medium">
-                        Kub: {((Number(inlineTimberForm.widthMm)/1000) * (Number(inlineTimberForm.thicknessMm)/1000) * Number(inlineTimberForm.lengthM) * Number(inlineTimberForm.quantity)).toFixed(4)} m&sup3;
-                      </div>
-                    )}
-                    <div className="flex gap-2">
-                      <button type="button" onClick={() => {
-                        const f = inlineTimberForm;
-                        if (!f.widthMm || !f.thicknessMm || !f.lengthM || !f.quantity || !f.pricePerCubicRub) return;
-                        setWagonTimberEntries(prev => [...prev, {...f}]);
-                        setInlineTimberForm({ widthMm: "", thicknessMm: "", lengthM: "", quantity: "", pricePerCubicRub: "" });
-                        setShowTimberInline(false);
-                      }} className="px-3 py-1.5 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg">
-                        Qo&apos;shish
-                      </button>
-                      <button type="button" onClick={() => setShowTimberInline(false)}
-                        className="px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-700">
-                        Bekor
-                      </button>
+                    <div className="flex items-center justify-between px-3 py-2 bg-slate-100 rounded-lg">
+                      <span className="text-sm font-semibold text-slate-700">Jami kub:</span>
+                      <span className="text-sm font-bold text-green-600">{totalCubic.toFixed(4)} m³</span>
                     </div>
                   </div>
                 )}
