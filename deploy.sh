@@ -57,6 +57,7 @@ echo "✅ Production build tayyor"
 echo ""
 echo "[5/6] PM2 bilan ishga tushirilmoqda..."
 pm2 delete wood-erp 2>/dev/null || true
+cd /var/www/wood-erp
 PORT=3001 pm2 start npm --name "wood-erp" -- start
 pm2 save
 echo "✅ PM2 ishga tushdi (port 3001)"
