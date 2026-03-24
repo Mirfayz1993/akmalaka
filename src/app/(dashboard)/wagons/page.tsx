@@ -896,7 +896,7 @@ export default function WagonsPage() {
                         if (e.key === "Enter") {
                           const f = inlineTimberForm;
                           if (!f.thicknessMm || !f.widthMm || !f.lengthM || !f.quantity) return;
-                          setWagonTimberEntries(prev => [...prev, {...f}]);
+                          setWagonTimberEntries(prev => [{...f}, ...prev]);
                           setInlineTimberForm({ widthMm: "", thicknessMm: "", lengthM: "", quantity: "", pricePerCubicRub: "" });
                         }
                       }}
