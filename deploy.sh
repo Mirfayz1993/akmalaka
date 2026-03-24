@@ -1,8 +1,19 @@
 #!/bin/bash
 set -e
 
+# ======= VPS MA'LUMOTLARI =======
+# IP: 194.163.157.44
+# User: root
+# Port: 3001
+# GitHub: https://github.com/Mirfayz1993/akmalaka.git
+# ESLATMA: VPS'da boshqa loyihalar ham bor!
+#   - Faqat akmalaka.biznesjon.uz nginx blokini o'zgartir
+#   - Faqat wood-erp PM2 processini restart qil
+# ================================
+
 echo "========================================="
 echo "  Wood ERP — Deploy Script"
+echo "  VPS: 194.163.157.44"
 echo "  Domen: akmalaka.biznesjon.uz"
 echo "  Port: 3001"
 echo "========================================="
