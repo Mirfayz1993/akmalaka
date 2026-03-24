@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import {
   Plus,
@@ -192,6 +192,7 @@ export default function WagonsPage() {
   // Inline timber entries for new wagon creation
   const [wagonTimberEntries, setWagonTimberEntries] = useState<PendingTimber[]>([]);
   const [inlineTimberForm, setInlineTimberForm] = useState<PendingTimber>({ widthMm: "", thicknessMm: "", lengthM: "", quantity: "", pricePerCubicRub: "" });
+  const timberFirstInputRef = useRef<HTMLInputElement>(null);
 
   // ==========================================
   // DATA LOADING
@@ -869,7 +870,7 @@ export default function WagonsPage() {
                 <div className="flex items-end gap-2 mb-3">
                   <div className="flex-1">
                     <label className="block text-xs font-medium text-slate-500 mb-0.5">Qalinligi (mm)</label>
-                    <input type="number" value={inlineTimberForm.thicknessMm}
+                    <input ref={timberFirstInputRef} type="number" value={inlineTimberForm.thicknessMm}
                       onChange={e => setInlineTimberForm(f => ({...f, thicknessMm: e.target.value}))}
                       className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="25" />
@@ -898,6 +899,7 @@ export default function WagonsPage() {
                           if (!f.thicknessMm || !f.widthMm || !f.lengthM || !f.quantity) return;
                           setWagonTimberEntries(prev => [{...f}, ...prev]);
                           setInlineTimberForm({ widthMm: "", thicknessMm: "", lengthM: "", quantity: "", pricePerCubicRub: "" });
+                          setTimeout(() => timberFirstInputRef.current?.focus(), 0);
                         }
                       }}
                       className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
