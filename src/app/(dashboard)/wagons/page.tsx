@@ -785,30 +785,6 @@ export default function WagonsPage() {
               />
             </Field>
 
-            <Field label="Rus yetkazib beruvchi">
-              <select
-                value={wagonForm.partnerId}
-                onChange={(e) => setWagonForm({ ...wagonForm, partnerId: e.target.value })}
-                className={inputClass}
-              >
-                <option value="">— Tanlang —</option>
-                {partners.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-            </Field>
-
-            <Field label="Kurs (RUB/USD)">
-              <input
-                type="number"
-                step="0.01"
-                value={wagonForm.rubToUsdRate}
-                onChange={(e) => setWagonForm({ ...wagonForm, rubToUsdRate: e.target.value })}
-                className={inputClass}
-                placeholder="92.5"
-              />
-            </Field>
-
             {/* ===== Section 2: Kodlar ===== */}
             {!editingWagonId && (
               <div className="border-t border-slate-200 pt-4 mt-4">
