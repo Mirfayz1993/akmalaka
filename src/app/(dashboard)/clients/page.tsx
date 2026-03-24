@@ -39,7 +39,7 @@ const PARTNER_TYPES = [
 
 const emptyForm: FormData = {
   name: "",
-  phone: "",
+  phone: "+998",
   address: "",
   type: "client",
   notes: "",
