@@ -920,16 +920,33 @@ export default function WagonsPage() {
                     {wagonTimberEntries.map((t, idx) => {
                       const cubic = ((Number(t.thicknessMm)/1000) * (Number(t.widthMm)/1000) * Number(t.lengthM) * Number(t.quantity));
                       return (
-                        <div key={idx} className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">
-                          <span className="text-sm text-green-700">
-                            {t.thicknessMm}×{t.widthMm}mm × {t.lengthM}m × {t.quantity} dona
-                          </span>
-                          <div className="flex items-center gap-3">
-                            <span className="text-sm font-semibold text-green-600">{cubic.toFixed(4)} m³</span>
-                            <button type="button" onClick={() => setWagonTimberEntries(prev => prev.filter((_, i) => i !== idx))}
-                              className="text-red-400 hover:text-red-600">
-                              <X className="w-4 h-4" />
-                            </button>
+                        <div key={idx} className="flex items-end gap-2">
+                          <div className="flex-1">
+                            <input type="number" value={t.thicknessMm}
+                              onChange={e => setWagonTimberEntries(prev => prev.map((item, i) => i === idx ? {...item, thicknessMm: e.target.value} : item))}
+                              className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="25" />
+                          </div>
+                          <div className="flex-1">
+                            <input type="number" value={t.widthMm}
+                              onChange={e => setWagonTimberEntries(prev => prev.map((item, i) => i === idx ? {...item, widthMm: e.target.value} : item))}
+                              className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="150" />
+                          </div>
+                          <div className="flex-1">
+                            <input type="number" value={t.lengthM}
+                              onChange={e => setWagonTimberEntries(prev => prev.map((item, i) => i === idx ? {...item, lengthM: e.target.value} : item))}
+                              className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="6" />
+                          </div>
+                          <div className="flex-1">
+                            <input type="number" value={t.quantity}
+                              onChange={e => setWagonTimberEntries(prev => prev.map((item, i) => i === idx ? {...item, quantity: e.target.value} : item))}
+                              className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="200" />
+                          </div>
+                          <div className="flex-shrink-0 pb-0.5 min-w-[90px] text-right">
+                            <span className="text-sm font-semibold text-green-600 whitespace-nowrap">{cubic.toFixed(4)} m³</span>
                           </div>
                         </div>
                       );
