@@ -1,8 +1,8 @@
 "use server";
 
 import { db } from "@/db";
-import { wagons, wagonTimber, cashOperations, customsCodes, codeSales, expenses } from "@/db/schema";
-import { eq, desc, sum, count, sql } from "drizzle-orm";
+import { wagons, wagonTimber, cashOperations, customsCodes, codeSales, expenses, sales, debts } from "@/db/schema";
+import { eq, desc, sum, count, sql, inArray } from "drizzle-orm";
 
 // ==========================================
 // TYPES
@@ -192,7 +192,26 @@ export async function deleteWagon(id: number): Promise<void> {
   await db.delete(customsCodes).where(eq(customsCodes.wagonId, id));
   // 3. expenses
   await db.delete(expenses).where(eq(expenses.wagonId, id));
-  // 4. wagonTimber
+  // 4. sales → wagonTimber orqali (va unga bog'liq debts, cashOperations)
+  const timbers = await db.select({ id: wagonTimber.id }).from(wagonTimber).where(eq(wagonTimber.wagonId, id));
+  const timberIds = timbers.map(t => t.id);
+  if (timberIds.length > 0) {
+    const saleRecords = await db.select({ id: sales.id }).from(sales).where(inArray(sales.wagonTimberId, timberIds));
+    const saleIds = saleRecords.map(s => s.id);
+    if (saleIds.length > 0) {
+      // cashOperations → relatedSaleId
+      await db.delete(cashOperations).where(inArray(cashOperations.relatedSaleId, saleIds));
+      // debts → saleId (va debts ga bog'liq cashOperations)
+      const debtRecords = await db.select({ id: debts.id }).from(debts).where(inArray(debts.saleId, saleIds));
+      const debtIds = debtRecords.map(d => d.id);
+      if (debtIds.length > 0) {
+        await db.delete(cashOperations).where(inArray(cashOperations.relatedDebtId, debtIds));
+        await db.delete(debts).where(inArray(debts.id, debtIds));
+      }
+      await db.delete(sales).where(inArray(sales.id, saleIds));
+    }
+  }
+  // 5. wagonTimber
   await db.delete(wagonTimber).where(eq(wagonTimber.wagonId, id));
   // 5. wagon
   await db.delete(wagons).where(eq(wagons.id, id));
