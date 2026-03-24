@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { wagons, wagonTimber, cashOperations, customsCodes, codeSales, expenses, sales, debts } from "@/db/schema";
+import { wagons, wagonTimber, cashOperations, customsCodes, codeSales, expenses, sales, debts, debtPayments } from "@/db/schema";
 import { eq, desc, sum, count, sql, inArray } from "drizzle-orm";
 
 // ==========================================
@@ -183,16 +183,24 @@ export async function updateWagon(
 }
 
 export async function deleteWagon(id: number): Promise<void> {
-  // 1. codeSales → customsCodes orqali (foreign key)
+  // 1. codeSales → customsCodes orqali
   const codes = await db.select({ id: customsCodes.id }).from(customsCodes).where(eq(customsCodes.wagonId, id));
   for (const code of codes) {
     await db.delete(codeSales).where(eq(codeSales.customsCodeId, code.id));
   }
   // 2. customsCodes
   await db.delete(customsCodes).where(eq(customsCodes.wagonId, id));
-  // 3. expenses
+
+  // 3. cashOperations → relatedExpenseId (expenses o'chirishdan oldin)
+  const expenseRecords = await db.select({ id: expenses.id }).from(expenses).where(eq(expenses.wagonId, id));
+  const expenseIds = expenseRecords.map(e => e.id);
+  if (expenseIds.length > 0) {
+    await db.delete(cashOperations).where(inArray(cashOperations.relatedExpenseId, expenseIds));
+  }
+  // 4. expenses
   await db.delete(expenses).where(eq(expenses.wagonId, id));
-  // 4. sales → wagonTimber orqali (va unga bog'liq debts, cashOperations)
+
+  // 5. sales → wagonTimber orqali (va unga bog'liq debts, cashOperations)
   const timbers = await db.select({ id: wagonTimber.id }).from(wagonTimber).where(eq(wagonTimber.wagonId, id));
   const timberIds = timbers.map(t => t.id);
   if (timberIds.length > 0) {
@@ -201,19 +209,22 @@ export async function deleteWagon(id: number): Promise<void> {
     if (saleIds.length > 0) {
       // cashOperations → relatedSaleId
       await db.delete(cashOperations).where(inArray(cashOperations.relatedSaleId, saleIds));
-      // debts → saleId (va debts ga bog'liq cashOperations)
+      // debts → saleId
       const debtRecords = await db.select({ id: debts.id }).from(debts).where(inArray(debts.saleId, saleIds));
       const debtIds = debtRecords.map(d => d.id);
       if (debtIds.length > 0) {
+        // debtPayments → debtId
+        await db.delete(debtPayments).where(inArray(debtPayments.debtId, debtIds));
+        // cashOperations → relatedDebtId
         await db.delete(cashOperations).where(inArray(cashOperations.relatedDebtId, debtIds));
         await db.delete(debts).where(inArray(debts.id, debtIds));
       }
       await db.delete(sales).where(inArray(sales.id, saleIds));
     }
   }
-  // 5. wagonTimber
+  // 6. wagonTimber
   await db.delete(wagonTimber).where(eq(wagonTimber.wagonId, id));
-  // 5. wagon
+  // 7. wagon
   await db.delete(wagons).where(eq(wagons.id, id));
 }
 
