@@ -735,22 +735,10 @@ export default function WagonsPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <Field label="Jo'natilgan sana">
-                <input
-                  type="date"
-                  lang="en-GB"
-                  value={wagonForm.sentDate}
-                  onChange={(e) => setWagonForm({ ...wagonForm, sentDate: e.target.value })}
-                  className={inputClass}
-                />
+                <DatePicker value={wagonForm.sentDate} onChange={v => setWagonForm({ ...wagonForm, sentDate: v })} className={inputClass} />
               </Field>
               <Field label="Yetib kelgan sana">
-                <input
-                  type="date"
-                  lang="en-GB"
-                  value={wagonForm.arrivedDate}
-                  onChange={(e) => setWagonForm({ ...wagonForm, arrivedDate: e.target.value })}
-                  className={inputClass}
-                />
+                <DatePicker value={wagonForm.arrivedDate} onChange={v => setWagonForm({ ...wagonForm, arrivedDate: v })} className={inputClass} />
               </Field>
             </div>
 
@@ -1239,13 +1227,7 @@ export default function WagonsPage() {
             </Field>
 
             <Field label="Sana">
-              <input
-                type="date"
-                lang="en-GB"
-                value={exchangeForm.date}
-                onChange={(e) => setExchangeForm({ ...exchangeForm, date: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-              />
+              <DatePicker value={exchangeForm.date} onChange={v => setExchangeForm({ ...exchangeForm, date: v })} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition" />
             </Field>
 
             <Field label="Izoh">
@@ -1566,6 +1548,83 @@ function WagonTableRow({
 // ==========================================
 // SHARED COMPONENTS
 // ==========================================
+
+function DatePicker({ value, onChange, className }: { value: string; onChange: (v: string) => void; className?: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const today = new Date();
+  const parsed = value ? new Date(value + "T00:00:00") : null;
+  const [viewYear, setViewYear] = useState(parsed?.getFullYear() ?? today.getFullYear());
+  const [viewMonth, setViewMonth] = useState(parsed?.getMonth() ?? today.getMonth());
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const MONTHS = ["Yanvar","Fevral","Mart","Aprel","May","Iyun","Iyul","Avgust","Sentabr","Oktabr","Noyabr","Dekabr"];
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+  const offset = (firstDay + 6) % 7; // Monday=0
+
+  const displayValue = parsed
+    ? `${String(parsed.getDate()).padStart(2,"0")}/${String(parsed.getMonth()+1).padStart(2,"0")}/${parsed.getFullYear()}`
+    : "";
+
+  const prevMonth = () => { if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y-1); } else setViewMonth(m => m-1); };
+  const nextMonth = () => { if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y+1); } else setViewMonth(m => m+1); };
+
+  return (
+    <div ref={ref} className="relative">
+      <input
+        type="text"
+        readOnly
+        value={displayValue}
+        placeholder="KK/OY/YYYY"
+        onClick={() => setOpen(o => !o)}
+        className={`cursor-pointer ${className ?? ""}`}
+      />
+      {open && (
+        <div className="absolute z-50 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg p-3 w-64">
+          <div className="flex items-center justify-between mb-3">
+            <button type="button" onClick={() => setViewYear(y => y-1)} className="w-7 h-7 flex items-center justify-center rounded hover:bg-slate-100 text-slate-500 font-bold text-sm">«</button>
+            <button type="button" onClick={prevMonth} className="w-7 h-7 flex items-center justify-center rounded hover:bg-slate-100 text-slate-500 font-bold text-sm">‹</button>
+            <span className="text-sm font-semibold text-slate-700 flex-1 text-center">{MONTHS[viewMonth]} {viewYear}</span>
+            <button type="button" onClick={nextMonth} className="w-7 h-7 flex items-center justify-center rounded hover:bg-slate-100 text-slate-500 font-bold text-sm">›</button>
+            <button type="button" onClick={() => setViewYear(y => y+1)} className="w-7 h-7 flex items-center justify-center rounded hover:bg-slate-100 text-slate-500 font-bold text-sm">»</button>
+          </div>
+          <div className="grid grid-cols-7 mb-1">
+            {["Du","Se","Ch","Pa","Ju","Sh","Ya"].map(d => (
+              <div key={d} className="text-center text-xs text-slate-400 font-medium py-1">{d}</div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-y-0.5">
+            {Array.from({length: offset}).map((_, i) => <div key={`e${i}`} />)}
+            {Array.from({length: daysInMonth}).map((_, i) => {
+              const day = i + 1;
+              const isSelected = parsed && parsed.getFullYear() === viewYear && parsed.getMonth() === viewMonth && parsed.getDate() === day;
+              const isToday = today.getFullYear() === viewYear && today.getMonth() === viewMonth && today.getDate() === day;
+              return (
+                <button key={day} type="button"
+                  onClick={() => {
+                    const m = String(viewMonth+1).padStart(2,"0");
+                    const d = String(day).padStart(2,"0");
+                    onChange(`${viewYear}-${m}-${d}`);
+                    setOpen(false);
+                  }}
+                  className={`text-center text-sm py-1 rounded-lg transition-colors w-full
+                    ${isSelected ? "bg-blue-600 text-white" : isToday ? "text-blue-600 font-semibold hover:bg-blue-50" : "hover:bg-slate-100 text-slate-700"}`}>
+                  {day}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
