@@ -735,20 +735,10 @@ export default function WagonsPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <Field label="Jo'natilgan sana">
-                <input
-                  type="date"
-                  value={wagonForm.sentDate}
-                  onChange={(e) => setWagonForm({ ...wagonForm, sentDate: e.target.value })}
-                  className={inputClass}
-                />
+                <DateInput value={wagonForm.sentDate} onChange={v => setWagonForm({ ...wagonForm, sentDate: v })} />
               </Field>
               <Field label="Yetib kelgan sana">
-                <input
-                  type="date"
-                  value={wagonForm.arrivedDate}
-                  onChange={(e) => setWagonForm({ ...wagonForm, arrivedDate: e.target.value })}
-                  className={inputClass}
-                />
+                <DateInput value={wagonForm.arrivedDate} onChange={v => setWagonForm({ ...wagonForm, arrivedDate: v })} />
               </Field>
             </div>
 
@@ -1237,12 +1227,7 @@ export default function WagonsPage() {
             </Field>
 
             <Field label="Sana">
-              <input
-                type="date"
-                value={exchangeForm.date}
-                onChange={(e) => setExchangeForm({ ...exchangeForm, date: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-              />
+              <DateInput value={exchangeForm.date} onChange={v => setExchangeForm({ ...exchangeForm, date: v })} />
             </Field>
 
             <Field label="Izoh">
@@ -1580,6 +1565,29 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
         </div>
         <div className="px-6 py-5">{children}</div>
       </div>
+    </div>
+  );
+}
+
+function DateInput({ value, onChange, className }: { value: string; onChange: (v: string) => void; className?: string }) {
+  const [d, m, y] = value ? value.split("-").reverse() : ["", "", ""];
+  const update = (day: string, mon: string, year: string) => {
+    if (day && mon && year && year.length === 4) onChange(`${year}-${mon.padStart(2,"0")}-${day.padStart(2,"0")}`);
+    else onChange("");
+  };
+  return (
+    <div className={`flex items-center gap-1 ${className ?? ""}`}>
+      <input type="number" min={1} max={31} placeholder="KK" value={d}
+        onChange={e => update(e.target.value, m, y)}
+        className="w-12 px-2 py-2 border border-slate-200 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" />
+      <span className="text-slate-400">/</span>
+      <input type="number" min={1} max={12} placeholder="OY" value={m}
+        onChange={e => update(d, e.target.value, y)}
+        className="w-12 px-2 py-2 border border-slate-200 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" />
+      <span className="text-slate-400">/</span>
+      <input type="number" min={2000} max={2100} placeholder="YYYY" value={y}
+        onChange={e => update(d, m, e.target.value)}
+        className="w-20 px-2 py-2 border border-slate-200 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" />
     </div>
   );
 }
