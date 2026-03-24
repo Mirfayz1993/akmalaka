@@ -30,6 +30,7 @@ import {
 import { createCurrencyExchange } from "@/lib/actions/cash";
 import { getExpenses, createExpense, deleteExpense, type ExpenseWithRelations } from "@/lib/actions/expenses";
 import { getPartners } from "@/lib/actions/partners";
+import { getCodeSuppliers } from "@/lib/actions/clients";
 import { createCustomsCode } from "@/lib/actions/customs-codes";
 import { formatTimberDimensions, piecesPerCubicMeter } from "@/lib/utils";
 
@@ -50,10 +51,12 @@ type WagonFormData = {
   kodUzName: string;
   kodUzPricePerTon: string;
   kodUzTotal: string;
+  kodUzSupplierId: string;
   // Kod KZ
   kodKzName: string;
   kodKzPricePerTon: string;
   kodKzTotal: string;
+  kodKzSupplierId: string;
   // Yog'och xaridi (RUB)
   timberPricePerCubicRub: string;
   // Xarajatlar (USD)
@@ -128,6 +131,7 @@ export default function WagonsPage() {
 
   // Partners
   const [partners, setPartners] = useState<{ id: number; name: string }[]>([]);
+  const [codeSuppliers, setCodeSuppliers] = useState<{ id: number; name: string }[]>([]);
 
   // Modals
   const [wagonModal, setWagonModal] = useState(false);
@@ -144,9 +148,11 @@ export default function WagonsPage() {
     kodUzName: "",
     kodUzPricePerTon: "",
     kodUzTotal: "",
+    kodUzSupplierId: "",
     kodKzName: "",
     kodKzPricePerTon: "",
     kodKzTotal: "",
+    kodKzSupplierId: "",
     timberPricePerCubicRub: "",
     expNds: "0",
     expUsluga: "0",
@@ -223,6 +229,7 @@ export default function WagonsPage() {
   useEffect(() => {
     loadWagons();
     getPartners().then((p) => setPartners(p.map((x: any) => ({ id: x.id, name: x.name }))));
+    getCodeSuppliers().then((s) => setCodeSuppliers(s));
   }, [loadWagons]);
 
   // ==========================================
@@ -304,9 +311,11 @@ export default function WagonsPage() {
     kodUzName: "",
     kodUzPricePerTon: "",
     kodUzTotal: "",
+    kodUzSupplierId: "",
     kodKzName: "",
     kodKzPricePerTon: "",
     kodKzTotal: "",
+    kodKzSupplierId: "",
     timberPricePerCubicRub: "",
     expNds: "0",
     expUsluga: "0",
@@ -385,6 +394,7 @@ export default function WagonsPage() {
             usageType: "own",
             tonna: tonnageNum || undefined,
             nomerVagon: wagonForm.wagonNumber.trim(),
+            supplierId: parseInt(wagonForm.kodUzSupplierId) || undefined,
           });
         }
 
@@ -398,6 +408,7 @@ export default function WagonsPage() {
             usageType: "own",
             tonna: tonnageNum || undefined,
             nomerVagon: wagonForm.wagonNumber.trim(),
+            supplierId: parseInt(wagonForm.kodKzSupplierId) || undefined,
           });
         }
 
@@ -802,50 +813,44 @@ export default function WagonsPage() {
             {!editingWagonId && (
               <div className="border-t border-slate-200 pt-4 mt-4">
                 <h3 className="text-sm font-semibold text-slate-700 border-b border-slate-200 pb-2 mb-3">Kodlar</h3>
-
-                {/* Kod UZ row */}
-                <div className="mb-3">
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Kod UZ</label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      placeholder="Kod nomi"
-                      value={wagonForm.kodUzName}
-                      onChange={(e) => setWagonForm({ ...wagonForm, kodUzName: e.target.value })}
-                      className="flex-1 px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <input
-                      type="number"
-                      placeholder="$/t"
-                      step="0.01"
-                      value={wagonForm.kodUzPricePerTon}
-                      onChange={(e) => setWagonForm({ ...wagonForm, kodUzPricePerTon: e.target.value })}
-                      className="w-20 px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-green-600 font-medium whitespace-nowrap">Jami: ${kodUzAutoTotal}</span>
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Kod UZ */}
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Kod UZ</label>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <input type="text" placeholder="Kod nomi" value={wagonForm.kodUzName}
+                        onChange={(e) => setWagonForm({ ...wagonForm, kodUzName: e.target.value })}
+                        className="w-32 px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      <input type="number" placeholder="$/t" step="0.01" value={wagonForm.kodUzPricePerTon}
+                        onChange={(e) => setWagonForm({ ...wagonForm, kodUzPricePerTon: e.target.value })}
+                        className="w-20 px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      <span className="text-sm text-green-600 font-medium whitespace-nowrap">Jami: ${kodUzAutoTotal}</span>
+                    </div>
+                    <select value={wagonForm.kodUzSupplierId}
+                      onChange={(e) => setWagonForm({ ...wagonForm, kodUzSupplierId: e.target.value })}
+                      className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-600">
+                      <option value="">Kimdan olindi...</option>
+                      {codeSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
                   </div>
-                </div>
-
-                {/* Kod KZ row */}
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Kod KZ</label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      placeholder="Kod nomi"
-                      value={wagonForm.kodKzName}
-                      onChange={(e) => setWagonForm({ ...wagonForm, kodKzName: e.target.value })}
-                      className="flex-1 px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <input
-                      type="number"
-                      placeholder="$/t"
-                      step="0.01"
-                      value={wagonForm.kodKzPricePerTon}
-                      onChange={(e) => setWagonForm({ ...wagonForm, kodKzPricePerTon: e.target.value })}
-                      className="w-20 px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-green-600 font-medium whitespace-nowrap">Jami: ${kodKzAutoTotal}</span>
+                  {/* Kod KZ */}
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Kod KZ</label>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <input type="text" placeholder="Kod nomi" value={wagonForm.kodKzName}
+                        onChange={(e) => setWagonForm({ ...wagonForm, kodKzName: e.target.value })}
+                        className="w-32 px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      <input type="number" placeholder="$/t" step="0.01" value={wagonForm.kodKzPricePerTon}
+                        onChange={(e) => setWagonForm({ ...wagonForm, kodKzPricePerTon: e.target.value })}
+                        className="w-20 px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      <span className="text-sm text-green-600 font-medium whitespace-nowrap">Jami: ${kodKzAutoTotal}</span>
+                    </div>
+                    <select value={wagonForm.kodKzSupplierId}
+                      onChange={(e) => setWagonForm({ ...wagonForm, kodKzSupplierId: e.target.value })}
+                      className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-600">
+                      <option value="">Kimdan olindi...</option>
+                      {codeSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
                   </div>
                 </div>
               </div>

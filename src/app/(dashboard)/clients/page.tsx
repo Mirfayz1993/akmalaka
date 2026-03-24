@@ -28,11 +28,20 @@ type FormData = {
   notes: string;
 };
 
+const PARTNER_TYPES = [
+  { value: "client",           label: "Mijozlar" },
+  { value: "russia_supplier",  label: "Rossiyadagi ta'minotchilar" },
+  { value: "partner",          label: "Sheriklar" },
+  { value: "personal",         label: "Shaxsiy tanishlar" },
+  { value: "code_supplier",    label: "Kod sotib oladigan ta'minotchilar" },
+  { value: "code_buyer",       label: "Kod sotiladigan mijozlar" },
+] as const;
+
 const emptyForm: FormData = {
   name: "",
   phone: "",
   address: "",
-  type: "wood_buyer",
+  type: "client",
   notes: "",
 };
 
@@ -47,7 +56,7 @@ export default function ClientsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [typeFilter, setTypeFilter] = useState<string | undefined>(undefined);
+  const [activeTab, setActiveTab] = useState<string>("client");
 
   async function loadClients(type?: string) {
     setIsLoading(true);
@@ -55,19 +64,19 @@ export default function ClientsPage() {
       const data = await getClients(type);
       setClients(data as Client[]);
     } catch (err) {
-      console.error("Mijozlarni yuklashda xatolik:", err);
+      console.error("Yuklanishda xatolik:", err);
     } finally {
       setIsLoading(false);
     }
   }
 
   useEffect(() => {
-    loadClients(typeFilter);
-  }, [typeFilter]);
+    loadClients(activeTab);
+  }, [activeTab]);
 
   function openAddModal() {
     setEditingClient(null);
-    setForm(emptyForm);
+    setForm({ ...emptyForm, type: activeTab });
     setIsModalOpen(true);
   }
 
@@ -77,7 +86,7 @@ export default function ClientsPage() {
       name: client.name,
       phone: client.phone || "",
       address: client.address || "",
-      type: client.type || "wood_buyer",
+      type: client.type || "client",
       notes: client.notes || "",
     });
     setIsModalOpen(true);
@@ -106,7 +115,7 @@ export default function ClientsPage() {
       } else {
         await createClient(payload);
       }
-      await loadClients(typeFilter);
+      await loadClients(activeTab);
       closeModal();
     } catch (err) {
       console.error("Saqlashda xatolik:", err);
@@ -118,7 +127,7 @@ export default function ClientsPage() {
   async function handleDelete(id: number) {
     try {
       await deleteClient(id);
-      await loadClients(typeFilter);
+      await loadClients(activeTab);
     } catch (err) {
       console.error("O'chirishda xatolik:", err);
     } finally {
@@ -132,6 +141,8 @@ export default function ClientsPage() {
       (c.phone || "").includes(searchQuery) ||
       (c.address || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const activeTypeLabel = PARTNER_TYPES.find(t => t.value === activeTab)?.label ?? "";
 
   return (
     <div>
@@ -147,23 +158,19 @@ export default function ClientsPage() {
         </button>
       </div>
 
-      {/* Type filter */}
-      <div className="flex items-center gap-2 mb-4">
-        {[
-          { label: "Hammasi", value: undefined },
-          { label: "Yog'och xaridorlari", value: "wood_buyer" },
-          { label: "Kod xaridorlari", value: "code_buyer" },
-        ].map((filter) => (
+      {/* Tabs */}
+      <div className="flex items-center gap-1 mb-5 border-b border-slate-200 overflow-x-auto">
+        {PARTNER_TYPES.map((pt) => (
           <button
-            key={filter.label}
-            onClick={() => setTypeFilter(filter.value)}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-              typeFilter === filter.value
-                ? "bg-blue-600 text-white"
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            key={pt.value}
+            onClick={() => { setActiveTab(pt.value); setSearchQuery(""); }}
+            className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition-colors ${
+              activeTab === pt.value
+                ? "border-blue-600 text-blue-600"
+                : "border-transparent text-slate-500 hover:text-slate-700"
             }`}
           >
-            {filter.label}
+            {pt.label}
           </button>
         ))}
       </div>
@@ -192,7 +199,6 @@ export default function ClientsPage() {
                 <tr className="border-b border-slate-100 bg-slate-50">
                   <th className="text-left px-4 py-3 font-semibold text-slate-600 w-8">#</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-600">{t.clients.name}</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-600">Turi</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-600">{t.clients.phone}</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-600">{t.clients.address}</th>
                   <th className="text-right px-4 py-3 font-semibold text-slate-600">{t.clients.totalDebt}</th>
@@ -207,17 +213,6 @@ export default function ClientsPage() {
                   >
                     <td className="px-4 py-3 text-slate-400">{index + 1}</td>
                     <td className="px-4 py-3 font-medium text-slate-800">{client.name}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          client.type === "code_buyer"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-blue-100 text-blue-700"
-                        }`}
-                      >
-                        {client.type === "code_buyer" ? "Kod xaridori" : "Yog'och xaridori"}
-                      </span>
-                    </td>
                     <td className="px-4 py-3 text-slate-600">{client.phone || "—"}</td>
                     <td className="px-4 py-3 text-slate-600">{client.address || "—"}</td>
                     <td className="px-4 py-3 text-right">
@@ -292,131 +287,59 @@ export default function ClientsPage() {
       {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={closeModal}
-          />
-
-          {/* Modal card */}
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={closeModal} />
           <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md z-10">
-            {/* Modal header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
               <h2 className="text-lg font-semibold text-slate-800">
-                {editingClient ? t.common.edit : t.common.add} — {t.clients.title}
+                {editingClient ? t.common.edit : t.common.add} — {activeTypeLabel}
               </h2>
-              <button
-                onClick={closeModal}
-                className="text-slate-400 hover:text-slate-600 transition-colors text-xl leading-none"
-              >
-                ×
-              </button>
+              <button onClick={closeModal} className="text-slate-400 hover:text-slate-600 transition-colors text-xl leading-none">×</button>
             </div>
-
-            {/* Modal body */}
             <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
-              {/* Name */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  {t.clients.name} <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={form.name}
+                <label className="block text-sm font-medium text-slate-700 mb-1">{t.clients.name} <span className="text-red-500">*</span></label>
+                <input type="text" required value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                   placeholder={t.clients.name}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                />
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition" />
               </div>
-
-              {/* Phone */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  {t.clients.phone}
-                </label>
-                <input
-                  type="text"
-                  value={form.phone}
+                <label className="block text-sm font-medium text-slate-700 mb-1">{t.clients.phone}</label>
+                <input type="text" value={form.phone}
                   onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
                   placeholder="+998 90 000 00 00"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                />
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition" />
               </div>
-
-              {/* Address */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  {t.clients.address}
-                </label>
-                <input
-                  type="text"
-                  value={form.address}
+                <label className="block text-sm font-medium text-slate-700 mb-1">{t.clients.address}</label>
+                <input type="text" value={form.address}
                   onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
                   placeholder={t.clients.address}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                />
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition" />
               </div>
-
-              {/* Type */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Turi
-                </label>
-                <div className="flex items-center gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="clientType"
-                      value="wood_buyer"
-                      checked={form.type === "wood_buyer"}
-                      onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
-                      className="text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-slate-700">Yog&apos;och xaridori</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="clientType"
-                      value="code_buyer"
-                      checked={form.type === "code_buyer"}
-                      onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
-                      className="text-green-600 focus:ring-green-500"
-                    />
-                    <span className="text-sm text-slate-700">Kod xaridori</span>
-                  </label>
-                </div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Turi</label>
+                <select value={form.type} onChange={(e) => setForm(f => ({ ...f, type: e.target.value }))}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                  {PARTNER_TYPES.map(pt => (
+                    <option key={pt.value} value={pt.value}>{pt.label}</option>
+                  ))}
+                </select>
               </div>
-
-              {/* Notes */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  {t.common.notes}
-                </label>
-                <textarea
-                  rows={3}
-                  value={form.notes}
+                <label className="block text-sm font-medium text-slate-700 mb-1">{t.common.notes}</label>
+                <textarea rows={3} value={form.notes}
                   onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
                   placeholder={t.common.notes}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none"
-                />
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none" />
               </div>
-
-              {/* Buttons */}
               <div className="flex items-center justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-                >
+                <button type="button" onClick={closeModal}
+                  className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
                   {t.common.cancel}
                 </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting || !form.name.trim()}
-                  className="px-5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
-                >
+                <button type="submit" disabled={isSubmitting || !form.name.trim()}
+                  className="px-5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors">
                   {isSubmitting ? t.common.loading : t.common.save}
                 </button>
               </div>

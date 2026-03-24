@@ -18,6 +18,13 @@ export async function getClients(type?: string) {
   return allClients.map(c => ({ ...c, totalDebt: debtMap[c.id] ?? 0 }));
 }
 
+export async function getCodeSuppliers() {
+  return await db.select({ id: clients.id, name: clients.name })
+    .from(clients)
+    .where(eq(clients.type, "code_supplier"))
+    .orderBy(clients.name);
+}
+
 export async function getClient(id: number) {
   return await db.select().from(clients).where(eq(clients.id, id)).then((r) => r[0]);
 }

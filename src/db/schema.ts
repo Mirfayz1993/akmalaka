@@ -127,6 +127,7 @@ export const customsCodes = pgTable("customs_codes", {
   // Bog'lanishlar
   wagonId: integer("wagon_id").references(() => wagons.id),  // o'z vagonimiz (nullable)
   clientId: integer("client_id").references(() => clients.id), // kod xaridori (nullable)
+  supplierId: integer("supplier_id").references(() => clients.id), // kimdan olindi (nullable)
   usageType: text("usage_type").default("own"),          // own | sold
   status: text("status").default("active"),              // active | used | sold
   notes: text("notes"),

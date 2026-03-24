@@ -28,7 +28,7 @@ export const uz = {
     sales: "Sotish",
     cash: "Kassa",
     debts: "Qarz daftar",
-    clients: "Mijozlar",
+    clients: "Hamkorlar",
     currency: "Valyuta",
     reports: "Hisobotlar",
     partners: "Sheriklar",
@@ -126,7 +126,7 @@ export const uz = {
     },
   },
   clients: {
-    title: "Mijozlar",
+    title: "Hamkorlar",
     name: "Ism",
     phone: "Telefon",
     address: "Manzil",

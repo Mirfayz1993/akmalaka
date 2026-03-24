@@ -112,6 +112,7 @@ export type CreateCustomsCodeData = {
   tolov?: number;
   wagonId?: number;
   clientId?: number;
+  supplierId?: number;
   usageType?: UsageType;
   status?: CustomsCodeStatus;
   notes?: string;
