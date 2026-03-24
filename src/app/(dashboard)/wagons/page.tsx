@@ -246,8 +246,7 @@ export default function WagonsPage() {
       setShowExpenseForm(false);
     } else {
       setExpandedWagonId(wagonId);
-      await loadTimber(wagonId);
-      await loadExpensesForWagon(wagonId);
+      await Promise.all([loadTimber(wagonId), loadExpensesForWagon(wagonId)]);
     }
   };
 

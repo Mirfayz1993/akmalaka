@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { wagons, wagonTimber, cashOperations, customsCodes, codeSales, expenses } from "@/db/schema";
-import { eq, desc, sum, count } from "drizzle-orm";
+import { eq, desc, sum, count, sql } from "drizzle-orm";
 
 // ==========================================
 // TYPES
@@ -89,8 +89,7 @@ async function recalcWagonCubic(wagonId: number): Promise<void> {
 // ==========================================
 
 export async function getWagons(): Promise<WagonRow[]> {
-  // Barcha vagonlarni olish
-  const allWagons = await db
+  const result = await db
     .select({
       id: wagons.id,
       shipmentId: wagons.shipmentId,
@@ -109,23 +108,12 @@ export async function getWagons(): Promise<WagonRow[]> {
       status: wagons.status,
       notes: wagons.notes,
       createdAt: wagons.createdAt,
+      timberCount: sql<number>`cast(count(${wagonTimber.id}) as int)`,
     })
     .from(wagons)
+    .leftJoin(wagonTimber, eq(wagonTimber.wagonId, wagons.id))
+    .groupBy(wagons.id)
     .orderBy(desc(wagons.createdAt));
-
-  // Har vagon uchun timber soni
-  const result: WagonRow[] = await Promise.all(
-    allWagons.map(async (w) => {
-        const timberCountResult = await db
-          .select({ count: count() })
-          .from(wagonTimber)
-          .where(eq(wagonTimber.wagonId, w.id));
-        return {
-          ...w,
-          timberCount: Number(timberCountResult[0]?.count ?? 0),
-        };
-      })
-  );
 
   return result;
 }
