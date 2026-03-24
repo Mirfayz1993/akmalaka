@@ -34,7 +34,7 @@ echo "✅ Node.js tayyor"
 # ======= 3. LOYIHANI TAYYORLASH =======
 echo ""
 echo "[3/6] Loyiha tayyorlanmoqda..."
-cd /root/wood-erp
+cd /var/www/wood-erp
 
 # .env yaratish
 cat > .env << 'ENVEOF'
