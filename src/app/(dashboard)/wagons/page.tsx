@@ -936,21 +936,31 @@ export default function WagonsPage() {
             {/* ===== Section 4: Yog'och xaridi (RUB) ===== */}
             <div className="border-t border-slate-200 pt-4 mt-4">
                 <h3 className="text-sm font-semibold text-slate-700 border-b border-slate-200 pb-2 mb-3">Yog&apos;och xaridi (RUB)</h3>
-                <Field label="Narx/m³ (RUB)">
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={wagonForm.timberPricePerCubicRub}
-                    onChange={(e) => setWagonForm({ ...wagonForm, timberPricePerCubicRub: e.target.value })}
-                    className={inputClass}
-                    placeholder="8500"
-                  />
-                </Field>
-                {totalCubic > 0 && parseFloat(wagonForm.timberPricePerCubicRub) > 0 && (
-                  <div className="mt-2 text-sm">
-                    Jami summa (RUB): <span className="text-green-600 font-medium">&#8381;{timberTotalRub.toLocaleString("ru-RU", { maximumFractionDigits: 2 })}</span>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-lg">
+                    <TreePine className="h-4 w-4 text-green-500 flex-shrink-0" />
+                    <span className="text-sm font-semibold text-slate-700 whitespace-nowrap">{totalCubic.toFixed(4)} m³</span>
                   </div>
-                )}
+                  <span className="text-slate-400 text-sm">×</span>
+                  <div className="w-36">
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={wagonForm.timberPricePerCubicRub}
+                      onChange={(e) => setWagonForm({ ...wagonForm, timberPricePerCubicRub: e.target.value })}
+                      className={inputClass}
+                      placeholder="Narx/m³ (₽)"
+                    />
+                  </div>
+                  <span className="text-slate-400 text-sm">=</span>
+                  <div className="flex items-center px-3 py-2 bg-green-50 border border-green-200 rounded-lg min-w-[120px]">
+                    <span className="text-sm font-bold text-green-700 whitespace-nowrap">
+                      {parseFloat(wagonForm.timberPricePerCubicRub) > 0
+                        ? `₽${timberTotalRub.toLocaleString("ru-RU", { maximumFractionDigits: 0 })}`
+                        : "₽—"}
+                    </span>
+                  </div>
+                </div>
             </div>
 
             {/* ===== Section 5: Xarajatlar (USD) ===== */}
