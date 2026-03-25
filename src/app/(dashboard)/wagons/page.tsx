@@ -693,13 +693,10 @@ export default function WagonsPage() {
                   isExpanded={expandedWagonId === w.id}
                   timber={expandedWagonId === w.id ? expandedTimber : []}
                   expenses={expandedWagonId === w.id ? wagonExpenses : []}
-                  showExpenseForm={showExpenseForm && expenseWagonId === w.id}
-                  expenseForm={expenseForm}
                   onToggle={() => toggleExpand(w.id)}
                   onEditWagon={() => openEditWagon(w.id)}
                   onDeleteWagon={() => setDeleteModal({ type: "wagon", id: w.id, name: w.wagonNumber })}
                   onExchange={() => openExchangeModal(w)}
-                  onAddTimber={() => openCreateTimber(w.id)}
                   onEditTimber={(t) => openEditTimber(t)}
                   onDeleteTimber={(t) =>
                     setDeleteModal({
@@ -708,11 +705,12 @@ export default function WagonsPage() {
                       name: formatTimberDimensions(t.thicknessMm, t.widthMm, t.lengthM, t.quantity),
                     })
                   }
-                  onOpenExpenseForm={() => openExpenseForm(w.id)}
-                  onExpenseFormChange={(field, value) => setExpenseForm(prev => ({ ...prev, [field]: value }))}
-                  onSaveExpense={handleSaveExpense}
-                  onCancelExpenseForm={() => setShowExpenseForm(false)}
                   onDeleteExpense={handleDeleteExpense}
+                  onRefresh={async () => {
+                    await loadWagons();
+                    await loadTimber(w.id);
+                    await loadExpensesForWagon(w.id);
+                  }}
                 />
               ))}
             </tbody>
@@ -1277,45 +1275,111 @@ function WagonTableRow({
   isExpanded,
   timber,
   expenses,
-  showExpenseForm,
-  expenseForm,
   onToggle,
   onEditWagon,
   onDeleteWagon,
   onExchange,
-  onAddTimber,
   onEditTimber,
   onDeleteTimber,
-  onOpenExpenseForm,
-  onExpenseFormChange,
-  onSaveExpense,
-  onCancelExpenseForm,
   onDeleteExpense,
+  onRefresh,
 }: {
   wagon: WagonRow;
   index: number;
   isExpanded: boolean;
   timber: TimberRow[];
   expenses: ExpenseWithRelations[];
-  showExpenseForm: boolean;
-  expenseForm: { category: string; amount: string; description: string };
   onToggle: () => void;
   onEditWagon: () => void;
   onDeleteWagon: () => void;
   onExchange: () => void;
-  onAddTimber: () => void;
   onEditTimber: (t: TimberRow) => void;
   onDeleteTimber: (t: TimberRow) => void;
-  onOpenExpenseForm: () => void;
-  onExpenseFormChange: (field: string, value: string) => void;
-  onSaveExpense: () => void;
-  onCancelExpenseForm: () => void;
   onDeleteExpense: (id: number) => void;
+  onRefresh: () => Promise<void>;
 }) {
   const route =
     wagon.fromLocation || wagon.toLocation
       ? `${wagon.fromLocation ?? "?"} → ${wagon.toLocation ?? "?"}`
       : "—";
+
+  // Inline timber form state
+  const [rowTimberForm, setRowTimberForm] = useState({ thicknessMm: "", widthMm: "", lengthM: "", quantity: "" });
+  const [timberPrice, setTimberPrice] = useState("");
+  const [addingTimber, setAddingTimber] = useState(false);
+  const firstInputRef = useRef<HTMLInputElement>(null);
+
+  // Expense form state
+  const [expFields, setExpFields] = useState({ nds: "", usluga: "", tupik: "", xrannei: "", klentgaOrtish: "", yergaTushurish: "" });
+  const [extraExps, setExtraExps] = useState<{ name: string; amount: string }[]>([]);
+  const [savingExp, setSavingExp] = useState(false);
+
+  const cubicPreview = (() => {
+    const th = Number(rowTimberForm.thicknessMm);
+    const w = Number(rowTimberForm.widthMm);
+    const l = Number(rowTimberForm.lengthM);
+    const q = Number(rowTimberForm.quantity);
+    if (th > 0 && w > 0 && l > 0 && q > 0) {
+      return ((th / 1000) * (w / 1000) * l * q).toFixed(4);
+    }
+    return null;
+  })();
+
+  const totalCubic = timber.reduce((s, t) => s + t.cubicMeters, 0);
+  const timberTotalRub = totalCubic * (parseFloat(timberPrice) || 0);
+
+  const handleAddTimber = async () => {
+    const th = Number(rowTimberForm.thicknessMm);
+    const w = Number(rowTimberForm.widthMm);
+    const l = Number(rowTimberForm.lengthM);
+    const q = Number(rowTimberForm.quantity);
+    const p = parseFloat(timberPrice) || 0;
+    if (!th || !w || !l || !q) return;
+    setAddingTimber(true);
+    try {
+      await addTimber(wagon.id, { thicknessMm: th, widthMm: w, lengthM: l, quantity: q, pricePerCubicRub: p });
+      setRowTimberForm({ thicknessMm: "", widthMm: "", lengthM: "", quantity: "" });
+      await onRefresh();
+      setTimeout(() => firstInputRef.current?.focus(), 0);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setAddingTimber(false);
+    }
+  };
+
+  const handleSaveExpenses = async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const toSave = [
+      { cat: "nds", desc: "NDS", val: expFields.nds },
+      { cat: "usluga", desc: "Usluga", val: expFields.usluga },
+      { cat: "tupik", desc: "Tupik", val: expFields.tupik },
+      { cat: "xrannei", desc: "Xrannei", val: expFields.xrannei },
+      { cat: "klentga_ortish", desc: "Klentga ortish", val: expFields.klentgaOrtish },
+      { cat: "yerga_tushurish", desc: "Yerga tushurish", val: expFields.yergaTushurish },
+    ].filter(e => parseFloat(e.val) > 0);
+    const extraToSave = extraExps.filter(e => e.name && parseFloat(e.amount) > 0);
+    if (toSave.length === 0 && extraToSave.length === 0) return;
+    setSavingExp(true);
+    try {
+      for (const s of toSave) {
+        await createExpense({ wagonId: wagon.id, category: s.cat as any, description: s.desc, amountUsd: parseFloat(s.val), date: today });
+      }
+      for (const e of extraToSave) {
+        await createExpense({ wagonId: wagon.id, category: "other", description: e.name, amountUsd: parseFloat(e.amount), date: today });
+      }
+      setExpFields({ nds: "", usluga: "", tupik: "", xrannei: "", klentgaOrtish: "", yergaTushurish: "" });
+      setExtraExps([]);
+      await onRefresh();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSavingExp(false);
+    }
+  };
+
+  const rowInputClass = "w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500";
+  const expInputClass = "w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400";
 
   return (
     <>
@@ -1385,138 +1449,243 @@ function WagonTableRow({
         </td>
       </tr>
 
-      {/* Expanded timber rows */}
+      {/* Expanded section */}
       {isExpanded && (
         <tr>
           <td colSpan={8} className="p-0">
-            <div className="border-l-2 border-green-300 pl-3 ml-4 space-y-1.5 py-3 px-3">
-              {timber.length === 0 ? (
-                <p className="text-slate-400 text-sm py-2">Taxtalar mavjud emas</p>
-              ) : (
-                <div className="space-y-1.5">
-                  {timber.map((t, tIdx) => {
-                    const ppm = piecesPerCubicMeter(t.widthMm, t.thicknessMm, t.lengthM);
-                    return (
-                      <div
-                        key={t.id}
-                        className="flex items-center justify-between py-1 px-3 rounded-md hover:bg-white/60 transition-colors group"
-                      >
-                        <div className="flex items-center gap-3 text-sm">
-                          <span className="text-slate-400 w-5 text-right">{tIdx + 1}.</span>
-                          <span className="font-bold text-green-700 text-base">
-                            {formatTimberDimensions(t.thicknessMm, t.widthMm, t.lengthM, t.quantity)}
-                          </span>
-                          <span className="text-slate-500">{ppm} dona/m³</span>
-                          <span className="text-slate-600">
-                            ₽{t.pricePerCubicRub.toLocaleString("ru-RU")}
-                          </span>
-                          <span className="font-medium text-slate-800">{t.cubicMeters.toFixed(4)} m³</span>
+            <div className="bg-slate-50 border-t border-slate-200 px-6 py-5 space-y-5">
+
+              {/* ===== Yog'ochlar ===== */}
+              <div>
+                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Yog&apos;ochlar</h4>
+
+                {/* Inline add form */}
+                <div className="flex items-end gap-2 mb-3">
+                  <div className="flex-1">
+                    <label className="block text-xs text-slate-400 mb-0.5">Qalinligi (mm)</label>
+                    <input
+                      ref={firstInputRef}
+                      type="number"
+                      value={rowTimberForm.thicknessMm}
+                      onChange={e => setRowTimberForm(f => ({ ...f, thicknessMm: e.target.value }))}
+                      className={rowInputClass}
+                      placeholder="25"
+                      disabled={addingTimber}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs text-slate-400 mb-0.5">Eni (mm)</label>
+                    <input
+                      type="number"
+                      value={rowTimberForm.widthMm}
+                      onChange={e => setRowTimberForm(f => ({ ...f, widthMm: e.target.value }))}
+                      className={rowInputClass}
+                      placeholder="150"
+                      disabled={addingTimber}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs text-slate-400 mb-0.5">Uzunligi (m)</label>
+                    <input
+                      type="number"
+                      value={rowTimberForm.lengthM}
+                      onChange={e => setRowTimberForm(f => ({ ...f, lengthM: e.target.value }))}
+                      className={rowInputClass}
+                      placeholder="6"
+                      disabled={addingTimber}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs text-slate-400 mb-0.5">Soni (dona)</label>
+                    <input
+                      type="number"
+                      value={rowTimberForm.quantity}
+                      onChange={e => setRowTimberForm(f => ({ ...f, quantity: e.target.value }))}
+                      onKeyDown={e => { if (e.key === "Enter") handleAddTimber(); }}
+                      className={rowInputClass}
+                      placeholder="200"
+                      disabled={addingTimber}
+                    />
+                  </div>
+                  <div className="flex-shrink-0 min-w-[100px] text-right pb-0.5">
+                    {cubicPreview ? (
+                      <span className="text-sm font-semibold text-green-600 whitespace-nowrap">{cubicPreview} m³</span>
+                    ) : (
+                      <span className="text-sm text-slate-300 whitespace-nowrap">0.0000 m³</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Existing timber list */}
+                {timber.length > 0 && (
+                  <div className="space-y-1">
+                    {timber.map((t, tIdx) => {
+                      const ppm = piecesPerCubicMeter(t.widthMm, t.thicknessMm, t.lengthM);
+                      return (
+                        <div
+                          key={t.id}
+                          className="flex items-center justify-between py-1.5 px-3 bg-white rounded-lg border border-slate-100 group"
+                        >
+                          <div className="flex items-center gap-3 text-sm">
+                            <span className="text-slate-400 w-5 text-right">{tIdx + 1}.</span>
+                            <span className="font-bold text-green-700">
+                              {formatTimberDimensions(t.thicknessMm, t.widthMm, t.lengthM, t.quantity)}
+                            </span>
+                            <span className="text-slate-400 text-xs">{ppm} dona/m³</span>
+                            {t.pricePerCubicRub > 0 && (
+                              <span className="text-slate-500 text-xs">₽{t.pricePerCubicRub.toLocaleString("ru-RU")}</span>
+                            )}
+                            <span className="font-medium text-slate-700">{t.cubicMeters.toFixed(4)} m³</span>
+                          </div>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => onEditTimber(t)}
+                              className="text-blue-600 hover:bg-blue-50 p-1.5 rounded-md transition-colors"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={() => onDeleteTimber(t)}
+                              className="text-red-500 hover:bg-red-50 p-1.5 rounded-md transition-colors"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => onEditTimber(t)}
-                            className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2.5 py-1.5 rounded-md text-xs transition-colors"
-                            title="Tahrirlash"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            onClick={() => onDeleteTimber(t)}
-                            className="text-red-500 hover:text-red-700 hover:bg-red-50 px-2.5 py-1.5 rounded-md text-xs transition-colors"
-                            title="O'chirish"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
+                      );
+                    })}
+                    <div className="flex items-center justify-between px-3 py-2 bg-white rounded-lg border border-slate-200">
+                      <span className="text-sm font-semibold text-slate-600">Jami kub:</span>
+                      <span className="text-sm font-bold text-green-600">{totalCubic.toFixed(4)} m³</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* ===== Yog'och xaridi (RUB) ===== */}
+              <div className="border-t border-slate-200 pt-4">
+                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Yog&apos;och xaridi (RUB)</h4>
+                <div className="flex items-center gap-4">
+                  <div className="w-52">
+                    <label className="block text-xs text-slate-400 mb-0.5">Narx/m³ (RUB)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={timberPrice}
+                      onChange={e => setTimberPrice(e.target.value)}
+                      className={rowInputClass}
+                      placeholder="8500"
+                    />
+                  </div>
+                  {totalCubic > 0 && parseFloat(timberPrice) > 0 && (
+                    <div className="text-sm text-slate-600 pt-4">
+                      Jami: <span className="font-semibold text-green-600">&#8381;{timberTotalRub.toLocaleString("ru-RU", { maximumFractionDigits: 2 })}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ===== Xarajatlar (USD) ===== */}
+              <div className="border-t border-slate-200 pt-4">
+                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Xarajatlar (USD)</h4>
+
+                {/* Existing expenses list */}
+                {expenses.length > 0 && (
+                  <div className="mb-4 space-y-1">
+                    {expenses.map(exp => (
+                      <div key={exp.id} className="flex items-center justify-between py-1.5 px-3 bg-white rounded-lg border border-slate-100 text-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700">{exp.category}</span>
+                          <span className="text-slate-600">{exp.description}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="font-medium text-slate-800">${exp.amountUsd}</span>
+                          <button onClick={() => onDeleteExpense(exp.id)} className="text-red-400 hover:text-red-600">
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-              <button
-                onClick={onAddTimber}
-                className="mt-2 flex items-center gap-1.5 text-sm text-green-600 hover:text-green-700 font-medium"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Taxta qo&apos;shish
-              </button>
-            </div>
-
-            {/* Xarajatlar bo'limi */}
-            <div className="border-l-2 border-orange-300 pl-3 ml-4 mt-4">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-sm font-semibold text-orange-700">Xarajatlar</h4>
-                <button type="button" onClick={onOpenExpenseForm}
-                  className="text-xs text-orange-600 hover:text-orange-800 font-medium">
-                  + Xarajat qo&apos;shish
-                </button>
-              </div>
-
-              {/* Expense list */}
-              {expenses.map((exp) => (
-                <div key={exp.id} className="flex items-center justify-between py-1.5 text-sm">
-                  <div className="flex items-center gap-3">
-                    <span className="px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-700">
-                      {exp.category}
-                    </span>
-                    <span className="text-slate-700">{exp.description}</span>
+                    ))}
+                    <div className="flex justify-between px-3 py-2 bg-orange-50 rounded-lg text-sm font-semibold text-orange-700">
+                      <span>Jami xarajat:</span>
+                      <span>${expenses.reduce((s, e) => s + e.amountUsd, 0).toFixed(2)}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-medium text-slate-800">${exp.amountUsd}</span>
-                    <button onClick={() => onDeleteExpense(exp.id)} className="text-red-400 hover:text-red-600">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                )}
 
-              {/* Total */}
-              {expenses.length > 0 && (
-                <div className="flex justify-between pt-2 border-t border-orange-200 mt-2 text-sm font-semibold text-orange-800">
-                  <span>Jami xarajat:</span>
-                  <span>${expenses.reduce((s, e) => s + e.amountUsd, 0).toFixed(2)}</span>
+                {/* New expense fields */}
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { key: "nds", label: "NDS" },
+                    { key: "usluga", label: "Usluga" },
+                    { key: "tupik", label: "Tupik" },
+                    { key: "xrannei", label: "Xrannei" },
+                    { key: "klentgaOrtish", label: "Klentga ortish" },
+                    { key: "yergaTushurish", label: "Yerga tushurish" },
+                  ].map(({ key, label }) => (
+                    <div key={key}>
+                      <label className="block text-xs text-slate-400 mb-0.5">{label}</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={expFields[key as keyof typeof expFields]}
+                        onChange={e => setExpFields(f => ({ ...f, [key]: e.target.value }))}
+                        className={expInputClass}
+                        placeholder="0"
+                      />
+                    </div>
+                  ))}
                 </div>
-              )}
-            </div>
 
-            {/* Inline expense form */}
-            {showExpenseForm && (
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mt-2 ml-4 space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-600 mb-0.5">Kategoriya</label>
-                    <select value={expenseForm.category} onChange={(e) => onExpenseFormChange("category", e.target.value)}
-                      className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm">
-                      <option value="transport">Transport</option>
-                      <option value="unloading">Tushirish</option>
-                      <option value="broker">Broker</option>
-                      <option value="customs">Bojxona</option>
-                      <option value="other">Boshqa</option>
-                    </select>
+                {/* Extra expenses */}
+                {extraExps.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {extraExps.map((exp, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          placeholder="Nomi"
+                          value={exp.name}
+                          onChange={e => setExtraExps(prev => prev.map((item, i) => i === idx ? { ...item, name: e.target.value } : item))}
+                          className="flex-1 px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                        />
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="Summa ($)"
+                          value={exp.amount}
+                          onChange={e => setExtraExps(prev => prev.map((item, i) => i === idx ? { ...item, amount: e.target.value } : item))}
+                          className="w-28 px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                        />
+                        <button
+                          onClick={() => setExtraExps(prev => prev.filter((_, i) => i !== idx))}
+                          className="text-red-400 hover:text-red-600"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-600 mb-0.5">Summa ($)</label>
-                    <input type="number" step="0.01" value={expenseForm.amount}
-                      onChange={(e) => onExpenseFormChange("amount", e.target.value)}
-                      className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-0.5">Izoh</label>
-                  <input type="text" value={expenseForm.description}
-                    onChange={(e) => onExpenseFormChange("description", e.target.value)}
-                    className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={onSaveExpense} className="px-3 py-1.5 text-xs font-medium text-white bg-orange-600 hover:bg-orange-700 rounded-lg">
-                    Qo&apos;shish
+                )}
+
+                <div className="mt-3 flex items-center gap-3">
+                  <button
+                    onClick={() => setExtraExps(prev => [...prev, { name: "", amount: "" }])}
+                    className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    + Qo&apos;shimcha xarajat
                   </button>
-                  <button onClick={onCancelExpenseForm} className="px-3 py-1.5 text-xs text-slate-500">
-                    Bekor
+                  <button
+                    onClick={handleSaveExpenses}
+                    disabled={savingExp}
+                    className="px-4 py-1.5 text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 disabled:opacity-50 rounded-lg transition-colors"
+                  >
+                    {savingExp ? "Saqlanmoqda..." : "Saqlash"}
                   </button>
                 </div>
               </div>
-            )}
+
+            </div>
           </td>
         </tr>
       )}
