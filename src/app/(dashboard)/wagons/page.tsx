@@ -335,6 +335,7 @@ export default function WagonsPage() {
     setEditingWagonId(null);
     setWagonForm({ ...defaultWagonForm });
     setWagonTimberEntries([]);
+    setEditTimberList([]);
     setWagonModal(true);
   };
 
