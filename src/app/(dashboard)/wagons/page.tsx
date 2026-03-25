@@ -197,6 +197,9 @@ export default function WagonsPage() {
 
   // Inline timber entries for new wagon creation
   const [wagonTimberEntries, setWagonTimberEntries] = useState<PendingTimber[]>([]);
+
+  // Existing timbers shown in edit modal
+  const [editTimberList, setEditTimberList] = useState<TimberRow[]>([]);
   const [inlineTimberForm, setInlineTimberForm] = useState<PendingTimber>({ widthMm: "", thicknessMm: "", lengthM: "", quantity: "", pricePerCubicRub: "" });
   const timberFirstInputRef = useRef<HTMLInputElement>(null);
 
@@ -352,6 +355,7 @@ export default function WagonsPage() {
       status: wagon.status ?? "in_transit",
       notes: wagon.notes ?? "",
     });
+    setEditTimberList(wagon.timber as TimberRow[]);
     setWagonTimberEntries([]);
     setWagonModal(true);
   };
@@ -833,6 +837,53 @@ export default function WagonsPage() {
                   </div>
                 </div>
             </div>
+
+            {/* ===== Mavjud taxtalar (faqat tahrirlashda) ===== */}
+            {editingWagonId && editTimberList.length > 0 && (
+              <div className="border-t border-slate-200 pt-4 mt-4">
+                <h3 className="text-sm font-semibold text-slate-700 border-b border-slate-200 pb-2 mb-3">Mavjud taxtalar</h3>
+                <div className="space-y-2">
+                  {editTimberList.map((t) => (
+                    <div key={t.id} className="flex items-center gap-3 py-2 px-3 bg-slate-50 rounded-lg border border-slate-100">
+                      <span className="text-sm font-medium text-slate-700 min-w-[120px]">
+                        {t.thicknessMm}×{t.widthMm}×{t.lengthM}m
+                      </span>
+                      <span className="text-xs text-slate-500 min-w-[80px]">
+                        Rossiya: <span className="font-semibold text-slate-700">{t.quantity}</span>
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <label className="text-xs text-slate-400 whitespace-nowrap">Toshkent:</label>
+                        <input
+                          type="number"
+                          defaultValue={t.tashkentCount ?? ""}
+                          placeholder="—"
+                          className="w-20 px-2 py-1 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"
+                          onBlur={async (e) => {
+                            const val = e.target.value === "" ? null : parseInt(e.target.value);
+                            await updateTimber(t.id, { tashkentCount: val });
+                            setEditTimberList(prev => prev.map(x => x.id === t.id ? { ...x, tashkentCount: val } : x));
+                          }}
+                        />
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <label className="text-xs text-slate-400 whitespace-nowrap">Mijoz:</label>
+                        <input
+                          type="number"
+                          defaultValue={t.customerCount ?? ""}
+                          placeholder="—"
+                          className="w-20 px-2 py-1 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"
+                          onBlur={async (e) => {
+                            const val = e.target.value === "" ? null : parseInt(e.target.value);
+                            await updateTimber(t.id, { customerCount: val });
+                            setEditTimberList(prev => prev.map(x => x.id === t.id ? { ...x, customerCount: val } : x));
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* ===== Section 3: Yog'ochlar ===== */}
             <div className="border-t border-slate-200 pt-4 mt-4">

@@ -89,6 +89,8 @@ export const wagonTimber = pgTable("wagon_timber", {
   pricePerCubicRub: doublePrecision("price_per_cubic_rub").notNull(), // rubl/kub narx
   pricePerCubicUsd: doublePrecision("price_per_cubic_usd"), // dollar/kub (kurs bo'yicha)
   remainingQuantity: integer("remaining_quantity"), // omborda qolgan
+  tashkentCount: integer("tashkent_count"),          // Toshkentda sanangan
+  customerCount: integer("customer_count"),           // Mijoz sanagan
   notes: text("notes"),
 });
 

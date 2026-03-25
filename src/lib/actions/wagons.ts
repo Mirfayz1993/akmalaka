@@ -42,6 +42,8 @@ export type TimberRow = {
   pricePerCubicRub: number;
   pricePerCubicUsd: number | null;
   remainingQuantity: number | null;
+  tashkentCount: number | null;
+  customerCount: number | null;
   notes: string | null;
 };
 
@@ -304,6 +306,8 @@ export async function updateTimber(
     lengthM?: number;
     quantity?: number;
     pricePerCubicRub?: number;
+    tashkentCount?: number | null;
+    customerCount?: number | null;
     notes?: string | null;
   }
 ) {
@@ -348,6 +352,8 @@ export async function updateTimber(
       pricePerCubicRub,
       pricePerCubicUsd,
       notes: data.notes !== undefined ? data.notes : existing.notes,
+      tashkentCount: data.tashkentCount !== undefined ? data.tashkentCount : existing.tashkentCount,
+      customerCount: data.customerCount !== undefined ? data.customerCount : existing.customerCount,
     })
     .where(eq(wagonTimber.id, id))
     .returning();
