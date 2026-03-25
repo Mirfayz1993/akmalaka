@@ -1565,23 +1565,30 @@ function WagonTableRow({
               {/* ===== Yog'och xaridi (RUB) ===== */}
               <div className="border-t border-slate-200 pt-4">
                 <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Yog&apos;och xaridi (RUB)</h4>
-                <div className="flex items-center gap-4">
-                  <div className="w-52">
-                    <label className="block text-xs text-slate-400 mb-0.5">Narx/m³ (RUB)</label>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-lg">
+                    <TreePine className="h-4 w-4 text-green-500 flex-shrink-0" />
+                    <span className="text-sm font-semibold text-slate-700 whitespace-nowrap">{totalCubic.toFixed(4)} m³</span>
+                  </div>
+                  <span className="text-slate-400 text-sm">×</span>
+                  <div className="w-36">
                     <input
                       type="number"
                       step="0.01"
                       value={timberPrice}
                       onChange={e => setTimberPrice(e.target.value)}
                       className={rowInputClass}
-                      placeholder="8500"
+                      placeholder="Narx/m³ (₽)"
                     />
                   </div>
-                  {totalCubic > 0 && parseFloat(timberPrice) > 0 && (
-                    <div className="text-sm text-slate-600 pt-4">
-                      Jami: <span className="font-semibold text-green-600">&#8381;{timberTotalRub.toLocaleString("ru-RU", { maximumFractionDigits: 2 })}</span>
-                    </div>
-                  )}
+                  <span className="text-slate-400 text-sm">=</span>
+                  <div className="flex items-center gap-1.5 px-3 py-2 bg-green-50 border border-green-200 rounded-lg min-w-[120px]">
+                    <span className="text-sm font-bold text-green-700 whitespace-nowrap">
+                      {parseFloat(timberPrice) > 0
+                        ? `₽${timberTotalRub.toLocaleString("ru-RU", { maximumFractionDigits: 0 })}`
+                        : <span className="text-slate-300">₽—</span>}
+                    </span>
+                  </div>
                 </div>
               </div>
 
