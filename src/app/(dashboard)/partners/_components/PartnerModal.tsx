@@ -100,10 +100,23 @@ export default function PartnerModal({
             Telefon
           </label>
           <input
-            type="text"
+            type="tel"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="+998 90 000 00 00"
+            onChange={(e) => {
+              let val = e.target.value;
+              // Faqat raqam va + belgisini qoldirish
+              const digits = val.replace(/[^\d+]/g, "");
+              // +998 XX XXX XX XX formatiga moslashtirish
+              const nums = digits.replace(/^\+998/, "");
+              let formatted = "+998";
+              if (nums.length > 0) formatted += " " + nums.slice(0, 2);
+              if (nums.length > 2) formatted += " " + nums.slice(2, 5);
+              if (nums.length > 5) formatted += " " + nums.slice(5, 7);
+              if (nums.length > 7) formatted += " " + nums.slice(7, 9);
+              setPhone(formatted);
+            }}
+            placeholder="+998 90 123 45 67"
+            maxLength={17}
             className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
           />
         </div>
@@ -115,7 +128,7 @@ export default function PartnerModal({
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Qo\u2018shimcha ma\u2019lumot..."
+            placeholder="Qo'shimcha ma'lumot..."
             rows={3}
             className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
           />
