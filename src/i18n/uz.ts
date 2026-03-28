@@ -1,0 +1,93 @@
+export const t = {
+  common: {
+    save: "Saqlash",
+    cancel: "Bekor qilish",
+    delete: "O'chirish",
+    edit: "Tahrirlash",
+    create: "Yaratish",
+    confirm: "Tasdiqlash",
+    loading: "Yuklanmoqda...",
+  },
+  wagons: {
+    title: "Vagonlar",
+    createWagon: "Vagon yaratish",
+    createTruck: "Yuk mashinasi",
+    wagonNumber: "Vagon raqami",
+    from: "Qayerdan",
+    to: "Qayerga",
+    sentAt: "Jo'natilgan sana",
+    arrivedAt: "Yetib kelgan sana",
+    tonnage: "Tonnaj (t)",
+    supplier: "Rossiya ta'minotchisi",
+    // kodlar
+    codeUz: "Kod UZ",
+    codeKz: "Kod KZ",
+    pricePerTon: "$/t",
+    total: "Jami",
+    codeSupplier: "Kod ta'minotchisi",
+    // yog'ochlar
+    timbers: "Yog'ochlar",
+    thickness: "Qalinligi (mm)",
+    width: "Eni (mm)",
+    length: "Uzunligi (m)",
+    russiaCount: "Rossiya",
+    tashkentCount: "Toshkent",
+    customerCount: "Mijoz",
+    cubicMeters: "Kub m\u00b3",
+    totalCubRussia: "Jami kub (Rossiya)",
+    totalCubTashkent: "Jami kub (Toshkent)",
+    totalCubCustomer: "Jami kub (Mijoz)",
+    // yog'och narxi
+    rubPerCubic: "RUB/m\u00b3",
+    totalRub: "Jami RUB",
+    // xarajatlar
+    expenses: "Xarajatlar (USD)",
+    nds: "NDS",
+    usluga: "Usluga",
+    tupik: "Tupik",
+    xrannei: "Xrannei",
+    ortish: "Klentga ortish",
+    tushurish: "Yerga tushurish",
+    additionalExpense: "+ Qo'shimcha xarajat",
+    partner: "Hamkor",
+    // jadval
+    status: "Status",
+    timbersCount: "Taxtalar soni",
+    actions: "Amallar",
+    close: "Yopish",
+    // statuslar
+    in_transit: "Yo'lda",
+    at_border: "Chegara",
+    arrived: "Yetib keldi",
+    unloaded: "Tushirildi",
+    closed: "Yopildi",
+    // umumiy
+    newWagon: "Yangi vagon",
+    newTruck: "Yangi yuk mashinasi",
+    deleteConfirmTitle: "Transportni o'chirish",
+    deleteConfirmMessage: "Haqiqatan ham bu transportni o'chirmoqchimisiz?",
+    closeConfirmTitle: "Transportni yopish",
+    closeConfirmMessage: "Transportni yopish amali kassa balansini o'zgartiradi. Davom etasizmi?",
+    basicInfo: "Asosiy ma'lumotlar",
+    codes: "Kodlar",
+    timberPurchase: "Yog'och xaridi (RUB)",
+  },
+  codes: {
+    title: "Kodlar",
+  },
+  partners: {
+    title: "Hamkorlar",
+  },
+  cash: {
+    title: "Kassa",
+  },
+  sales: {
+    title: "Savdo",
+  },
+  warehouse: {
+    title: "Ombor",
+  },
+  reports: {
+    title: "Hisobotlar",
+  },
+};
