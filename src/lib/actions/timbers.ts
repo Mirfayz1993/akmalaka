@@ -7,12 +7,12 @@ import { revalidatePath } from "next/cache";
 
 // ─── CALC CUBIC METERS ────────────────────────────────────────────────────────
 
-export function calcCubicMeters(
+export async function calcCubicMeters(
   thicknessMm: number,
   widthMm: number,
   lengthM: number,
   count: number
-): number {
+): Promise<number> {
   return (thicknessMm / 1000) * (widthMm / 1000) * lengthM * count;
 }
 
