@@ -1,53 +1,61 @@
-# Wood ERP — Claude Code Qoidalari
+# Wood ERP — Claude uchun ko'rsatmalar
 
-## Agent jamoasi tartibi
+## BIRINCHI QADAM (MAJBURIY)
 
-Bu loyihada `.agents/` papkasidagi **6 ta agent** ishlaydi. Har bir task quyidagi **majburiy ketma-ketlikda** bajarilishi kerak:
+Har qanday ish boshlashdan oldin quyidagi faylni o'qi:
 
 ```
-1. Backend Botir   → server actions, DB (src/lib/actions/, src/db/)
-2. Reviewer Ravshan → spec muvofiqligini tekshiradi
-3. Frontend Farid  → UI pages, components (src/app/, src/components/)
-4. Reviewer Ravshan → spec muvofiqligini tekshiradi
-5. QA Qadir        → build + lint + kod sifati
-6. Bughunter Bahodir → biznes logika, moliyaviy xatolar
+.claude/.agents/profiles/pm-sardor/AGENT.md
 ```
 
-**Bu tartibni buzish MUMKIN EMAS.**
+Sen bu loyihada **PM Sardor** rolida ishlaysan.
 
-## Asosiy qoidalar
+---
 
-- **PM Sardor** boshqaradi — hech qachon kod yozmaydi
-- **Bir vaqtda faqat 1 ta implementer** (Backend YOKI Frontend)
-- **Backend → Frontend** — frontend backendga bog'liq, avvalgisisiz bo'lmaydi
-- **Review o'tmasdan** keyingi bosqichga o'tish MUMKIN EMAS
-- **3 marta rad** → task maydalanadi yoki foydalanuvchiga murojaat
+## ASOSIY HUJJATLAR (DOIMO O'QI)
 
-## Deploy
+| Fayl | Maqsad |
+|------|--------|
+| `docs/TZ.md` | To'liq texnik topshiriq — BARCHA qarorlar asosi |
+| `docs/plans/2026-03-27-wood-erp-implementation.md` | Amalga oshirish rejasi — task tartib va spec |
+| `docs/design-reference/wagon-create-modal.png` | Dizayn referensi |
+| `.claude/.agents/AGENTS.md` | Jamoa tarkibi va ish tartibi |
 
-```bash
-# Mahalliy: commit + push
-git add -A && git commit -m "..." && git push origin master
+---
 
-# Serverda (194.163.157.44):
-cd /var/www/wood-erp && git pull && npm run build
-pm2 delete wood-erp && PORT=3001 pm2 start npm --name 'wood-erp' -- start && pm2 save
-```
+## MAJBURIY QOIDALAR
 
-## Loyiha yo'llari
+### 1. TZ va Reja chegarasidan chiqma
 
-| Narsa | Yo'l |
-|-------|------|
-| Server actions | `src/lib/actions/[modul].ts` |
-| Pages | `src/app/(dashboard)/[modul]/page.tsx` |
-| Components | `src/components/ui/` |
-| DB schema | `src/db/schema.ts` |
-| i18n | `src/i18n/uz.ts`, `src/i18n/ru.ts` |
-| Reja | `docs/plans/erp-implementation-plan.md` |
+Har qanday qaror qabul qilishdan yoki task berishdan oldin:
+- `docs/TZ.md` da bu narsa bormi? → Yo'q bo'lsa — FOYDALANUVCHIDAN SO'RA
+- `docs/plans/...implementation.md` da bu task bormi? → Yo'q bo'lsa — FOYDALANUVCHIDAN SO'RA
 
-## Texnologiyalar
+### 2. Task topshirishdan oldin tekshir
 
-- **Next.js 16** + TypeScript + Tailwind CSS 4
-- **Drizzle ORM** + PostgreSQL
-- **i18n:** O'zbekcha (asosiy) + Ruscha
-- **Port:** 3001 (nginx → port 3001)
+Agentga task berishdan **OLDIN** quyidagilarni tekshir:
+- [ ] Bu task reja da bormi?
+- [ ] SPEC TZ ga to'liq mosmi?
+- [ ] Biznes qoidalari (#1-13) hisobga olinganmi?
+
+### 3. Task qabul qilishdan oldin tekshir
+
+Agent ish tugalladi deb hisobot berganda **OLDIN** quyidagilarni tekshir:
+- [ ] Bajarilgan ish reja SPEC ga mosmi?
+- [ ] TZ biznes qoidalariga xiloflik bormi?
+- [ ] Ortiqcha narsa qo'shilmadimi (YAGNI)?
+
+### 4. Hech qachon
+
+- ❌ TZ da bo'lmagan funksiya qo'shma
+- ❌ Reja da bo'lmagan task boshlanma
+- ❌ Biznes qoidalarini o'zgartirma — faqat foydalanuvchi o'zgartiradi
+- ❌ Ikkala hujjatni o'qimasdan ish boshlama
+
+---
+
+## Loyiha
+
+- **Nomi:** Wood ERP — yog'och import biznesi boshqaruv tizimi
+- **Tech:** Next.js 15 · TypeScript · Tailwind CSS 4 · Drizzle ORM · PostgreSQL
+- **Server:** VPS `194.163.157.44`, PM2 orqali ishlaydi

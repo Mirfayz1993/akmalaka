@@ -38,12 +38,12 @@ PM Sardor
 
 | Agent | Profil | Skills |
 |-------|--------|--------|
-| PM Sardor | `.agents/profiles/pm-sardor/AGENT.md` | subagent-driven-development, writing-plans, executing-plans, dispatching-parallel-agents |
-| Backend Botir | `.agents/profiles/backend-botir/AGENT.md` | architecture-patterns |
-| Frontend Farid | `.agents/profiles/frontend-farid/AGENT.md` | folder-structure-blueprint-generator |
-| Reviewer Ravshan | `.agents/profiles/reviewer-ravshan/AGENT.md` | verification-before-completion |
-| QA Qadir | `.agents/profiles/qa-qadir/AGENT.md` | verification-before-completion |
-| Bughunter Bahodir | `.agents/profiles/bughunter-bahodir/AGENT.md` | business logic, moliyaviy hisob-kitob, silent failures |
+| PM Sardor | `.claude/.agents/profiles/pm-sardor/AGENT.md` | subagent-driven-development, writing-plans, executing-plans, dispatching-parallel-agents |
+| Backend Botir | `.claude/.agents/profiles/backend-botir/AGENT.md` | architecture-patterns |
+| Frontend Farid | `.claude/.agents/profiles/frontend-farid/AGENT.md` | folder-structure-blueprint-generator |
+| Reviewer Ravshan | `.claude/.agents/profiles/reviewer-ravshan/AGENT.md` | verification-before-completion |
+| QA Qadir | `.claude/.agents/profiles/qa-qadir/AGENT.md` | verification-before-completion |
+| Bughunter Bahodir | `.claude/.agents/profiles/bughunter-bahodir/AGENT.md` | business logic, moliyaviy hisob-kitob, silent failures |
 
 ## Dispatch qoidalari
 
@@ -55,8 +55,23 @@ PM Sardor
 
 ## Loyiha ma'lumotlari
 
-- **Reja:** `docs/plans/erp-implementation-plan.md`
-- **Tech:** Next.js 16 + TypeScript + Tailwind CSS + Drizzle ORM + PostgreSQL
-- **DB:** `src/db/schema.ts` (13 jadval)
-- **i18n:** O'zbekcha + Ruscha (`src/i18n/`)
-- **16 ta task** — ketma-ketlikda bajariladi
+- **TZ:** `docs/TZ.md` — TO'LIQ texnik topshiriq
+- **Dizayn referensi:** `docs/design-reference/wagon-create-modal.png`
+- **Tech:** Next.js 15 + TypeScript + Tailwind CSS 4 + Drizzle ORM + PostgreSQL
+- **DB:** `src/db/schema.ts` (yangi schema — TZ ga asosan yoziladi)
+- **i18n:** O'zbekcha asosiy (`src/i18n/uz.ts`)
+- **9 modul** — ketma-ketlikda bajariladi (TZ bo'lim 6)
+
+## Modullar ustuvorligi (TZ bo'lim 6)
+
+| Tartib | Modul | Vazifa |
+|--------|-------|--------|
+| 1 | Sidebar + Layout | Boshqa hamma narsa shunga bog'liq |
+| 2 | Vagonlar | Asosiy biznes jarayoni (vagon + yuk mashinasi) |
+| 3 | Kodlar | KZ, UZ, Afg'on — sotib olish, ishlatish, sotish |
+| 4 | Hamkorlar | 9 tur + balans tizimi |
+| 5 | Kassa | $ va RUB, weighted average kurs |
+| 6 | Savdo | Vagonlar + Hamkorlar ko'prigi |
+| 7 | Omborxona | Sotilmagan yog'ochlar |
+| 8 | Hisobotlar | Barcha modullar tayyor bo'lgandan keyin |
+| 9 | Dashboard | Eng oxirida |

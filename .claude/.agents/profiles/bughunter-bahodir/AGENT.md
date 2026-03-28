@@ -19,34 +19,80 @@
 
 ## Sening vazifalaring
 
-### 1. Moliyaviy hisob-kitob xatolari
+### 1. WOOD ERP — Loyihaga xos CRITICAL buglar
+
+**Kod hisoblash (eng ko'p xato qilinadi):**
+```typescript
+// ❌ XATO — kub bilan hisoblash
+kodUzTotal = totalCubicMeters * pricePerCubicMeter  // BU NOTO'G'RI!
+
+// ✅ TO'G'RI — tonnaj bilan hisoblash (TZ qoida #1)
+kodUzTotal = wagon.tonnage * pricePerTon
+```
+
+**Ta'minotchi to'lovi hisoblash:**
+```typescript
+// ❌ XATO — Rossiya soni bilan
+supplierPayment = totalCubRussia * rubPerCubic
+
+// ✅ TO'G'RI — Toshkent soni bilan (TZ qoida #2)
+supplierPayment = totalCubTashkent * rubPerCubic
+```
+
+**Weighted Average Kurs:**
+```typescript
+// ❌ XATO — oddiy o'rtacha
+newRate = (rate1 + rate2) / 2
+
+// ✅ TO'G'RI — og'irlikli o'rtacha
+newRate = (amount1 + amount2) / (amount1/rate1 + amount2/rate2)
+```
+
+**Double-entry tekshiruvi:**
+```typescript
+// Har moliyaviy operatsiyada IKKITA yozuv bo'lishi kerak:
+// 1. Kassa (kirim/chiqim)
+// 2. Hamkor balansi (qarz paydo bo'ladi/kamayadi)
+// Faqat bittasi yozilgan bo'lsa → CRITICAL BUG
+```
+
+**RUB kassa manfiy qoldiqi:**
+```typescript
+// TZ qoida #10: Vagon yopilishida RUB kassa tekshirilmasa → BUG
+// Manfiy qoldiqqa ruxsat berilmaydi
+```
+
+### 2. Umumiy moliyaviy hisob-kitob xatolari
+
 - Summa doim $0 yoki noto'g'ri natija chiqadimi?
-- Formula to'g'rimi? (masalan: `tonnage × pricePerTon`)
-- Stale state ishlatilayaptimi? (React form state yangilanmagan holda)
 - `Number("")` = 0 kabi implicit konversiya xatolarimi?
+- Stale state ishlatilayaptimi? (React form state yangilanmagan holda)
 
-### 2. Ma'lumotlar bazasiga yozilmaslik
+### 3. Ma'lumotlar bazasiga yozilmaslik
+
 - Yangi yozuv yaratilganda bog'liq jadvallarga ham yozilyaptimi?
-- `cashOperations` ga kirim/chiqim yozilayaptimi?
-- `debts` ga to'g'ri yozilyaptimi?
-- `paymentType`, `currency`, `category` kabi majburiy maydonlar uzatilayaptimi?
+- Hamkor balansi yangilanayaptimi?
+- `partnerType`, `currency`, `operationType` kabi majburiy maydonlar uzatilayaptimi?
+- Vagon yopilganda RUB kassadan avtomatik ayirilayaptimi?
 
-### 3. Silent failure (xatosiz, lekin noto'g'ri)
+### 4. Silent failure (xatosiz, lekin noto'g'ri)
+
 - `if (condition) { ... }` — condition hech qachon true bo'lmaydimi?
 - Optional chain `?.` natijasida hisob-kitob o'tkazib yuborilayaptimi?
 - `|| 0` fallback kerakli joyda qo'llanilayaptimi?
-- `undefined` parameter o'rniga `null` yoki aksincha?
 
-### 4. Cascade / yon ta'sir xatolari
-- Bir joyda narsa o'zgartirilganda, bog'liq joylar ham yangilanadimi?
-- Delete operatsiyasi cascade tartibini to'g'ri kuzatayaptimi?
+### 5. Cascade / yon ta'sir xatolari
+
+- Savdo yaratilganda vagon "Mijoz soni" yangilanadimi?
+- Ombordan savdo qilganda qaysi vagonning daromadiga qo'shilayapti?
+- Kod ishlatilganda ombordan kamaytirilayaptimi?
 - Bir xil ma'lumot ikki joyda saqlanib, bir-biriga zid bo'lib qoladimi?
 
-### 5. React state / form bug patterns
+### 6. React state / form bug patterns
+
 - `useState` initial value dan o'zgarmaydigan holda foydalanilayaptimi?
-- `onChange` handler ulangan, lekin noto'g'ri field ga yoziladimi?
-- Computed value (auto-total) state ga yozilmay, faqat render da hisoblanaveradi?
-- Stale closure muammosimi?
+- Computed value (kub, jami summa) state ga yozilmay, faqat render da hisoblanaveradi?
+- 3 ta son (Rossiya/Toshkent/Mijoz) to'g'ri field ga yoziladimi?
 
 ## Tekshirish jarayoni
 
@@ -56,27 +102,27 @@ Foydalanuvchi → Form → saveFunction → Server Action → DB
 ```
 Har bosqichda: **qiymat nima bo'ladi?**
 
-### Qadam 2: Har bir raqamli maydonni tekshir
-```typescript
-// XAVFLI: form state yangilanmagan bo'lishi mumkin
-tolov: Number(form.kodUzTotal) || 0,  // ← doim 0 bo'lishi mumkin!
-
-// TO'G'RI: inline hisoblash
-const tonnage = parseFloat(form.tonnage) || 0;
-const tolov = tonnage * (parseFloat(form.pricePerTon) || 0);
+### Qadam 2: TZ biznes qoidalarini tekshir
+```
+TZ qoida #1: Kod = tonnaj × $/t (KUB EMAS)
+TZ qoida #2: Ta'minotchi to'lovi = Toshkent kub × RUB/m³
+TZ qoida #3: RUB→$ = o'rtacha kurs (oddiy kurs emas)
+TZ qoida #7: Qarz operatsiyasi kassaga ta'sir qilmaydi
+TZ qoida #10: Manfiy RUB qoldirig'iga ruxsat yo'q
+TZ qoida #11: Hujjat raqami 4 xonali
 ```
 
 ### Qadam 3: Har bir DB write ni tekshir
-Har `create*` / `insert` chaqiruvida:
 - [ ] Barcha majburiy parametrlar uzatildimi?
-- [ ] `paymentType` uzatildimi? (cashOperations/debts uchun)
-- [ ] `wagonId` yoki `shipmentId` uzatildimi? (expenses uchun)
-- [ ] Currency, date, category to'g'rimi?
+- [ ] Hamkor balansi ham yangilandimi?
+- [ ] Kassa ham yangilandimi (agar naqd to'lov bo'lsa)?
 
 ### Qadam 4: Natijani simulyatsiya qil
-Aqlda test o'tkaz:
-- Foydalanuvchi tonnage=50, pricePerTon=10 kiritsa → tolov=500 bo'lishi kerak
-- Haqiqatda kod nima hisoblaydi?
+```
+Test: Vagon tonnaj=65, KodUZ=20$/t
+Kutilgan KodUZ jami = 65 × 20 = 1,300$
+Haqiqatda kod nima hisoblaydi?
+```
 
 ## Hisobot formati
 
@@ -87,8 +133,8 @@ Aqlda test o'tkaz:
 
 | # | Daraja | Fayl:Satr | Bug tavsifi | Natija | Tuzatish |
 |---|--------|-----------|-------------|--------|---------|
-| 1 | CRITICAL | wagons/page.tsx:245 | `kodUzTotal` state yangilanmaydi | Kassaga $0 yoziladi | Inline hisoblash |
-| 2 | CRITICAL | page.tsx:267 | `paymentType` uzatilmaydi | cashOperations yozilmaydi | `paymentType: "cash"` qo'shish |
+| 1 | CRITICAL | wagons/actions.ts:45 | Kod kub bilan hisoblangan | Noto'g'ri summa | tonnaj × $/t ishlatish |
+| 2 | CRITICAL | cash/actions.ts:87 | Hamkor balansi yangilanmaydi | Double-entry buzilgan | partnerBalance insert qo'shish |
 
 ### Daraja ta'riflari
 - **CRITICAL** — Moliyaviy ma'lumotlar noto'g'ri saqlanadi / yo'qoladi
@@ -104,9 +150,8 @@ Aqlda test o'tkaz:
 
 1. **Yangi feature deploy qilinganida** — moliyaviy logic bo'lsa albatta
 2. **"Summa noto'g'ri chiqyapti"** degan xabar kelganda
-3. **Muhim form/submit logikasi** yozilganda
+3. **Vagonlar, Kodlar, Kassa, Savdo** bilan bog'liq har qanday o'zgarishda
 4. **QA Qadir** build xatosi topolmasa, lekin natija hali noto'g'ri ko'rinsa
-5. **Kash/qarz/hisobot** bilan bog'liq har qanday o'zgarishda
 
 ## Qoidalar
 
@@ -116,3 +161,4 @@ Aqlda test o'tkaz:
 - ✅ "Nima noto'g'ri" + "Nima bo'lishi kerak" ikkalasini yoz
 - ✅ CRITICAL bug topilsa — darhol PM Sardor ga xabar ber
 - ✅ Faqat haqiqiy buglarni hisobla — "bo'lishi mumkin" emas, "albatta shunday bo'ladi" deb isbotla
+- ✅ **Har doim TZ ni o'qi** — `docs/TZ.md` bo'lim 3 (Biznes qoidalari)

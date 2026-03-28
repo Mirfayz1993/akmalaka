@@ -16,7 +16,8 @@ Faqat PM Sardor bergan taskni bajara olasan. O'zing task tanlamagin.
 
 - Next.js Server Actions yozish (`"use server"`)
 - Drizzle ORM orqali PostgreSQL CRUD operatsiyalari
-- Business logic (kub hisoblash, valyuta konvertatsiya, qarz hisob-kitob)
+- Business logic (kub hisoblash, weighted average kurs, double-entry accounting)
+- DB schema yozish (`src/db/schema.ts`)
 - Ma'lumotlar validatsiyasi
 
 ### 2. Texnologiyalar
@@ -41,16 +42,8 @@ import { eq } from "drizzle-orm";
 // GET — ro'yxat olish
 export async function getItems() {
   return await db.query.jadvalNomi.findMany({
-    with: { relatedTable: true }, // kerak bo'lsa
-    orderBy: (t, { desc }) => [desc(t.createdAt)],
-  });
-}
-
-// GET — bitta element
-export async function getItem(id: number) {
-  return await db.query.jadvalNomi.findFirst({
-    where: eq(jadvalNomi.id, id),
     with: { relatedTable: true },
+    orderBy: (t, { desc }) => [desc(t.createdAt)],
   });
 }
 
@@ -77,38 +70,103 @@ export async function deleteItem(id: number) {
 
 ### 4. Fayllar joylashuvi
 
-- Barcha server actions: `src/lib/actions/[modul].ts`
-- Utility funksiyalar: `src/lib/utils.ts`
-- DB schema: `src/db/schema.ts` (O'ZGARTIRMA — tayyor)
-- DB connection: `src/db/index.ts` (O'ZGARTIRMA — tayyor)
-
-### 5. Business Logic qoidalari
-
-**Kub hisoblash:**
-```typescript
-cubicMeters = (widthMm / 1000) * (thicknessMm / 1000) * lengthM * quantity
+```
+src/
+├── db/
+│   ├── index.ts          ← DB connection
+│   └── schema.ts         ← BARCHA jadvallar (TZ ga asosan)
+├── lib/
+│   ├── actions/
+│   │   ├── wagons.ts     ← Vagonlar + Yuk mashinasi
+│   │   ├── timbers.ts    ← Yog'ochlar
+│   │   ├── codes.ts      ← Kodlar (KZ, UZ, Afg'on)
+│   │   ├── partners.ts   ← Hamkorlar (9 tur)
+│   │   ├── cash.ts       ← Kassa ($ va RUB)
+│   │   ├── sales.ts      ← Savdo
+│   │   ├── warehouse.ts  ← Omborxona
+│   │   ├── reports.ts    ← Hisobotlar
+│   │   └── dashboard.ts  ← Dashboard
+│   └── utils.ts          ← Utility funksiyalar
 ```
 
-**Dollar narx hisoblash:**
+### 5. WOOD ERP — Biznes Logic qoidalari (TZ dan)
+
+**Kub hisoblash (3 xil son uchun):**
 ```typescript
-pricePerCubicUsd = pricePerCubicRub / rubToUsdRate
+// qalinlik(mm)/1000 × en(mm)/1000 × uzunlik(m) × son
+cubicMeters = (thicknessMm / 1000) * (widthMm / 1000) * lengthM * quantity
+
+// 3 ta jami kub:
+totalCubRussia   = Σ (t/1000 × w/1000 × l × russiaCount)
+totalCubTashkent = Σ (t/1000 × w/1000 × l × tashkentCount)
+totalCubCustomer = Σ (t/1000 × w/1000 × l × customerCount)
 ```
 
-**Qarz to'lovi:**
+**Kod to'lovi (TONNAJ bilan, KUB EMAS):**
 ```typescript
-// UZS da to'lansa:
-amountInUsd = amount / exchangeRate
-// Qarz yangilash:
-paidAmountUsd += amountInUsd
-remainingAmountUsd = totalAmountUsd - paidAmountUsd
-status = remainingAmountUsd === 0 ? "paid" : "partially_paid"
+// TZ qoida #1: Kod hisoblash — vagon tonnaji × $/t
+kodUzTotal = wagon.tonnage * kodUzPricePerTon
+kodKzTotal = wagon.tonnage * kodKzPricePerTon
+// Afg'on tarif — fixed summa, tonnajga bog'liq EMAS
 ```
 
-**Sotuv + Ombor:**
+**Rossiya ta'minotchi to'lovi (TOSHKENT soni, ROSSIYA emas):**
 ```typescript
-// Sotuv yaratilganda:
-wagonTimber.remainingQuantity -= soldQuantity
-// Agar remainingQuantity < 0 → xatolik!
+// TZ qoida #2
+totalRub = totalCubTashkent * rubPerCubicMeter
+// Keyin o'rtacha kurs bilan $ ga:
+totalUsd = totalRub / rubCashWeightedAverageRate
+```
+
+**RUB Kassasi — Weighted Average Kurs:**
+```typescript
+// TZ: Yangi pul qo'shilganda o'rtacha kurs qayta hisoblanadi
+// Misol: 800,000 RUB @ 80 kurs va 900,000 RUB @ 90 kurs
+// Yangi o'rtacha = (800,000 + 900,000) / (800,000/80 + 900,000/90)
+//               = 1,700,000 / (10,000 + 10,000) = 85
+
+function calculateWeightedAverage(
+  existingAmount: number, existingRate: number,
+  newAmount: number, newRate: number
+): number {
+  const existingUsd = existingAmount / existingRate;
+  const newUsd = newAmount / newRate;
+  return (existingAmount + newAmount) / (existingUsd + newUsd);
+}
+```
+
+**Double-entry accounting (Hamkor balansi):**
+```typescript
+// Har bir moliyaviy operatsiya 2 joyda aks etadi:
+// 1. Kassada (kirim/chiqim)
+// 2. Hamkor balansida (qarz paydo bo'ladi/kamayadi)
+
+// Misol: Xarajat kiritilganda
+await db.insert(expenses).values({ wagonId, type, amount, partnerId });
+// Hamkor balansida qarz paydo bo'ladi:
+await db.insert(partnerBalances).values({
+  partnerId, amount, type: 'we_owe', description: 'Vagon xarajati'
+});
+```
+
+**Vagon yopish tekshiruvi:**
+```typescript
+// TZ qoida #10: RUB kassa manfiy bo'lsa — yopish MUMKIN EMAS
+const rubBalance = await getRubCashBalance();
+const paymentAmount = totalCubTashkent * rubPerCubicMeter;
+if (rubBalance < paymentAmount) {
+  throw new Error("RUB kassada yetarli pul yo'q");
+}
+```
+
+**Hujjat raqami (4 xonali):**
+```typescript
+// TZ qoida #11: 0001 dan 9999 gacha
+const lastDoc = await db.query.documents.findFirst({
+  orderBy: (d, { desc }) => [desc(d.docNumber)]
+});
+const nextNumber = ((lastDoc?.docNumber ?? 0) + 1) % 10000;
+const docNumber = String(nextNumber).padStart(4, '0');
 ```
 
 ### 6. Ishni boshlashdan oldin
@@ -117,6 +175,7 @@ wagonTimber.remainingQuantity -= soldQuantity
 - Agar arxitektura tushunarsiz → **SAVOL BER**
 - Agar task juda katta → **AYTIB BER** (BLOCKED)
 - Hech qachon taxmin qilib ishlaMA
+- **Har doim TZ ni o'qi** — `docs/TZ.md`
 
 ### 7. Ishni tugatganda — Hisobot
 
@@ -132,6 +191,7 @@ wagonTimber.remainingQuantity -= soldQuantity
 - ❌ Frontend kod yozma (React komponent, sahifa)
 - ❌ UI bilan bog'liq narsa qilma
 - ❌ CSS/Tailwind yozma
-- ❌ DB schema ni o'zgartirma
 - ❌ Boshqa fayllarni "yaxshilashga" urinma — faqat spec dagi narsani qil
 - ❌ Over-engineering qilma — YAGNI
+- ❌ Kub bilan Kod hisoblashni aralashtirib yuborma (TZ qoida #1)
+- ❌ Rossiya soni bilan ta'minotchi to'lovini hisoblama (TZ qoida #2)
