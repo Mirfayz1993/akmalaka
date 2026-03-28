@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { transports, codes, cashOperations, saleItems, timbers } from "@/db/schema";
+import { transports, codes, cashOperations, saleItems, timbers, partners, partnerBalances } from "@/db/schema";
 import { and, eq, gte, lte, sql, inArray } from "drizzle-orm";
 
 // ─── WAGON REPORT ─────────────────────────────────────────────────────────────
@@ -190,6 +190,29 @@ export async function getCashReport(dateFrom?: string, dateTo?: string) {
       net: rubIncome - rubExpense,
     },
   };
+}
+
+// ─── PARTNER REPORT ───────────────────────────────────────────────────────────
+
+export async function getPartnerReport() {
+  const allPartners = await db.query.partners.findMany({
+    with: { balances: true },
+    orderBy: (p, { asc }) => [asc(p.name)],
+  });
+
+  return allPartners.map((p) => {
+    const totalBalance = p.balances.reduce(
+      (sum, b) => sum + parseFloat(b.amount),
+      0
+    );
+    return {
+      partnerId: p.id,
+      name: p.name,
+      type: p.type,
+      balance: totalBalance, // musbat = ular bizga qarz, manfiy = biz ularga qarz
+      operationsCount: p.balances.length,
+    };
+  });
 }
 
 // ─── OVERALL REPORT ───────────────────────────────────────────────────────────

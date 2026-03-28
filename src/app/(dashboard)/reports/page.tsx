@@ -8,6 +8,7 @@ import {
   getCodeReport,
   getCashReport,
   getOverallReport,
+  getPartnerReport,
 } from "@/lib/actions/reports";
 
 type WagonReportItem = {
@@ -40,12 +41,21 @@ type OverallReport = {
   total: number;
 };
 
-type TabId = "wagons" | "codes" | "cash" | "overall";
+type PartnerReportItem = {
+  partnerId: number;
+  name: string;
+  type: string;
+  balance: number;
+  operationsCount: number;
+};
+
+type TabId = "wagons" | "codes" | "cash" | "partners" | "overall";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "wagons", label: "Vagonlar" },
   { id: "codes", label: "Kodlar" },
   { id: "cash", label: "Kassa" },
+  { id: "partners", label: "Hamkorlar" },
   { id: "overall", label: "Umumiy" },
 ];
 
@@ -92,6 +102,7 @@ export default function ReportsPage() {
   const [wagonData, setWagonData] = useState<WagonReportItem[]>([]);
   const [codeData, setCodeData] = useState<CodeReportItem[]>([]);
   const [cashData, setCashData] = useState<CashReportData>(defaultCash);
+  const [partnerData, setPartnerData] = useState<PartnerReportItem[]>([]);
   const [overallData, setOverallData] = useState<OverallReport>(defaultOverall);
   const [loading, setLoading] = useState(false);
 
@@ -108,6 +119,9 @@ export default function ReportsPage() {
         } else if (activeTab === "cash") {
           const data = await getCashReport(from, to);
           setCashData(data);
+        } else if (activeTab === "partners") {
+          const data = await getPartnerReport();
+          setPartnerData(data);
         } else if (activeTab === "overall") {
           const data = await getOverallReport(from, to);
           setOverallData(data);
@@ -273,6 +287,45 @@ export default function ReportsPage() {
               dateTo={dateTo}
               onDateChange={handleDateChange}
             />
+          )}
+
+          {/* Hamkorlar tab */}
+          {activeTab === "partners" && (
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Hamkor</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Tur</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Operatsiyalar</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Balans $</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {partnerData.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="text-center py-10 text-slate-400 text-sm">
+                        Ma&apos;lumot topilmadi
+                      </td>
+                    </tr>
+                  ) : (
+                    partnerData.map((p) => (
+                      <tr key={p.partnerId} className="border-b border-slate-100 hover:bg-slate-50">
+                        <td className="px-4 py-3 font-medium text-slate-800">{p.name}</td>
+                        <td className="px-4 py-3 text-slate-500 text-xs">{p.type}</td>
+                        <td className="px-4 py-3 text-right text-slate-600">{p.operationsCount}</td>
+                        <td className={`px-4 py-3 text-right font-semibold ${p.balance > 0 ? "text-green-600" : p.balance < 0 ? "text-red-600" : "text-slate-500"}`}>
+                          {p.balance > 0 ? "+" : ""}{fmtUsd(p.balance)}
+                          <span className="ml-1 text-xs font-normal text-slate-400">
+                            {p.balance > 0 ? "(ular bizga qarz)" : p.balance < 0 ? "(biz ularga qarz)" : ""}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           )}
 
           {/* Umumiy tab */}
