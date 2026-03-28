@@ -49,11 +49,37 @@ export async function getTransport(id: number) {
 
 // ─── CREATE TRANSPORT ──────────────────────────────────────────────────────────
 
+type TimberInput = {
+  thicknessMm: number;
+  widthMm: number;
+  lengthM: number;
+  russiaCount: number;
+};
+
 export async function createTransport(
-  data: typeof transports.$inferInsert
+  data: typeof transports.$inferInsert,
+  timberRows?: TimberInput[]
 ) {
   const transport = await db.transaction(async (tx) => {
     const [transport] = await tx.insert(transports).values(data).returning();
+
+    // Timber qatorlarini saqlash
+    if (timberRows && timberRows.length > 0) {
+      const validTimbers = timberRows.filter(
+        (r) => r.thicknessMm > 0 && r.widthMm > 0 && r.lengthM > 0 && r.russiaCount > 0
+      );
+      if (validTimbers.length > 0) {
+        await tx.insert(timbers).values(
+          validTimbers.map((r) => ({
+            transportId: transport.id,
+            thicknessMm: r.thicknessMm,
+            widthMm: r.widthMm,
+            lengthM: String(r.lengthM),
+            russiaCount: r.russiaCount,
+          }))
+        );
+      }
+    }
 
     // Log yozish
     await tx.insert(transportLogs).values({

@@ -30,14 +30,14 @@ export default function PartnerModal({
 }: PartnerModalProps) {
   const [name, setName] = useState("");
   const [type, setType] = useState<Partner["type"]>("russia_supplier");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState("+998");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
 
   function handleClose() {
     setName("");
     setType("russia_supplier");
-    setPhone("");
+    setPhone("+998");
     setNotes("");
     onClose();
   }
@@ -51,7 +51,7 @@ export default function PartnerModal({
       await createPartner({
         name: name.trim(),
         type,
-        phone: phone.trim() || undefined,
+        phone: phone.trim() && phone.trim() !== "+998" ? phone.trim() : undefined,
         notes: notes.trim() || undefined,
       });
       handleClose();

@@ -202,7 +202,16 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
         expenseOrtishPartnerId: expenseOrtishPartnerId ? parseInt(expenseOrtishPartnerId) : undefined,
         expenseTushurish: expenseTushurish || "0",
         expenseTushirishPartnerId: expenseTushirishPartnerId ? parseInt(expenseTushirishPartnerId) : undefined,
-      });
+      },
+      timberRows
+        .filter((r) => r.thicknessMm !== "" && r.widthMm !== "" && r.lengthM !== "" && r.russiaCount !== "")
+        .map((r) => ({
+          thicknessMm: parseInt(r.thicknessMm),
+          widthMm: parseInt(r.widthMm),
+          lengthM: parseFloat(r.lengthM),
+          russiaCount: parseInt(r.russiaCount),
+        }))
+      );
       resetForm();
       onSuccess?.();
       onClose();
