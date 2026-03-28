@@ -33,12 +33,14 @@ export default function PartnerModal({
   const [phone, setPhone] = useState("+998");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   function handleClose() {
     setName("");
     setType("russia_supplier");
     setPhone("+998");
     setNotes("");
+    setError("");
     onClose();
   }
 
@@ -47,6 +49,7 @@ export default function PartnerModal({
     if (!name.trim()) return;
 
     setLoading(true);
+    setError("");
     try {
       await createPartner({
         name: name.trim(),
@@ -56,6 +59,8 @@ export default function PartnerModal({
       });
       handleClose();
       onSuccess();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Xatolik yuz berdi");
     } finally {
       setLoading(false);
     }
@@ -103,16 +108,21 @@ export default function PartnerModal({
             type="tel"
             value={phone}
             onChange={(e) => {
-              let val = e.target.value;
-              // Faqat raqam va + belgisini qoldirish
-              const digits = val.replace(/[^\d+]/g, "");
-              // +998 XX XXX XX XX formatiga moslashtirish
-              const nums = digits.replace(/^\+998/, "");
+              const val = e.target.value;
+              if (!val.startsWith("+998")) {
+                setPhone("+998");
+                return;
+              }
+              setPhone(val);
+            }}
+            onBlur={(e) => {
+              // Blur da format: +998 XX XXX XX XX
+              const rest = e.target.value.slice(4).replace(/\D/g, "").slice(0, 9);
               let formatted = "+998";
-              if (nums.length > 0) formatted += " " + nums.slice(0, 2);
-              if (nums.length > 2) formatted += " " + nums.slice(2, 5);
-              if (nums.length > 5) formatted += " " + nums.slice(5, 7);
-              if (nums.length > 7) formatted += " " + nums.slice(7, 9);
+              if (rest.length > 0) formatted += " " + rest.slice(0, 2);
+              if (rest.length > 2) formatted += " " + rest.slice(2, 5);
+              if (rest.length > 5) formatted += " " + rest.slice(5, 7);
+              if (rest.length > 7) formatted += " " + rest.slice(7, 9);
               setPhone(formatted);
             }}
             placeholder="+998 90 123 45 67"
@@ -133,6 +143,12 @@ export default function PartnerModal({
             className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
           />
         </div>
+
+        {error && (
+          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            {error}
+          </p>
+        )}
 
         <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
           <button
