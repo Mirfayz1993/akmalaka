@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Modal from "@/components/ui/Modal";
+import NumberInput from "@/components/ui/NumberInput";
 import { recordPayment } from "@/lib/actions/partners";
 
 interface PaymentModalProps {
@@ -17,6 +18,7 @@ export default function PaymentModal({
   onSuccess,
   partner,
 }: PaymentModalProps) {
+  const [direction, setDirection] = useState<"pay" | "receive">("pay");
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState<"usd" | "rub">("usd");
   const [description, setDescription] = useState("");
@@ -24,6 +26,7 @@ export default function PaymentModal({
   const [loading, setLoading] = useState(false);
 
   function handleClose() {
+    setDirection("pay");
     setAmount("");
     setCurrency("usd");
     setDescription("");
@@ -37,11 +40,12 @@ export default function PaymentModal({
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount === 0) return;
 
+    const signedAmount = direction === "pay" ? -numAmount : numAmount;
     setLoading(true);
     try {
       await recordPayment({
         partnerId: partner.id,
-        amount: numAmount,
+        amount: signedAmount,
         currency,
         description: description.trim() || undefined,
         docNumber: docNumber.trim() || undefined,
@@ -57,7 +61,7 @@ export default function PaymentModal({
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title="To\u2018lov qilish"
+      title="To'lov qilish"
       size="md"
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -74,23 +78,51 @@ export default function PaymentModal({
           />
         </div>
 
+        {/* Direction buttons */}
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">
+            To&apos;lov yo&apos;nalishi <span className="text-red-500">*</span>
+          </label>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setDirection("pay")}
+              className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                direction === "pay"
+                  ? "bg-red-50 border-red-500 text-red-700"
+                  : "border-slate-300 text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              ↑ Biz to&apos;ladik
+            </button>
+            <button
+              type="button"
+              onClick={() => setDirection("receive")}
+              className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                direction === "receive"
+                  ? "bg-green-50 border-green-500 text-green-700"
+                  : "border-slate-300 text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              ↓ Ular to&apos;ladi
+            </button>
+          </div>
+        </div>
+
         {/* Amount */}
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
             Summa <span className="text-red-500">*</span>
           </label>
-          <input
-            type="number"
+          <NumberInput
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0.00"
             step="0.01"
+            min="0"
             required
             className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
           />
-          <p className="text-xs text-slate-400 mt-1">
-            Musbat (+) = ular bizga to\u2018ladi. Manfiy (-) = biz ularga to\u2018ladik
-          </p>
         </div>
 
         {/* Currency */}
@@ -117,7 +149,7 @@ export default function PaymentModal({
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="To\u2018lov sababi..."
+            placeholder="To'lov sababi..."
             className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
           />
         </div>

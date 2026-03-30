@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Modal from "@/components/ui/Modal";
+import NumberInput from "@/components/ui/NumberInput";
 import { sellCode, type CodeWithSupplier } from "@/lib/actions/codes";
 import type { Partner } from "@/lib/actions/partners";
 
@@ -167,8 +168,7 @@ export default function CodeSellModal({
           <label className="block text-sm font-medium text-slate-700 mb-1.5">
             Tonnaj (t)
           </label>
-          <input
-            type="number"
+          <NumberInput
             min={0}
             step="0.01"
             placeholder="0.00"
@@ -184,8 +184,7 @@ export default function CodeSellModal({
             <label className="block text-sm font-medium text-slate-700 mb-1.5">
               Sotib olish narxi ($/t)
             </label>
-            <input
-              type="number"
+            <NumberInput
               min={0}
               step="0.01"
               placeholder="0.00"
@@ -200,8 +199,7 @@ export default function CodeSellModal({
             <label className="block text-sm font-medium text-slate-700 mb-1.5">
               Sotish narxi ($/t)
             </label>
-            <input
-              type="number"
+            <NumberInput
               min={0}
               step="0.01"
               placeholder="0.00"

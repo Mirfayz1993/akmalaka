@@ -78,6 +78,7 @@ export const partnerBalances = pgTable("partner_balances", {
   description: text("description"),
   notes: text("notes"),
   docNumber: varchar("doc_number", { length: 4 }),
+  transportId: integer("transport_id").references(() => transports.id),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -240,6 +241,7 @@ export const saleItems = pgTable("sale_items", {
     .notNull(),
   timberId: integer("timber_id").references(() => timbers.id),
   warehouseId: integer("warehouse_id").references(() => warehouse.id),
+  transportId: integer("transport_id").references(() => transports.id),
   thicknessMm: integer("thickness_mm"),
   widthMm: integer("width_mm"),
   lengthM: numeric("length_m"),
@@ -298,6 +300,10 @@ export const partnerBalancesRelations = relations(
     partner: one(partners, {
       fields: [partnerBalances.partnerId],
       references: [partners.id],
+    }),
+    transport: one(transports, {
+      fields: [partnerBalances.transportId],
+      references: [transports.id],
     }),
   })
 );
@@ -359,6 +365,7 @@ export const transportsRelations = relations(transports, ({ one, many }) => ({
   codes: many(codes),
   cashOperations: many(cashOperations),
   warehouseItems: many(warehouse),
+  saleItems: many(saleItems),
 }));
 
 export const transportExpensesRelations = relations(
@@ -439,6 +446,10 @@ export const saleItemsRelations = relations(saleItems, ({ one }) => ({
   warehouse: one(warehouse, {
     fields: [saleItems.warehouseId],
     references: [warehouse.id],
+  }),
+  transport: one(transports, {
+    fields: [saleItems.transportId],
+    references: [transports.id],
   }),
 }));
 

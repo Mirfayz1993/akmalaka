@@ -19,6 +19,7 @@ export async function getWagonReport(dateFrom?: string, dateTo?: string) {
 
   const closedTransports = await db.query.transports.findMany({
     where: and(...conditions),
+    with: { timbers: true },
     orderBy: (t, { desc }) => [desc(t.closedAt)],
   });
 
@@ -44,7 +45,6 @@ export async function getWagonReport(dateFrom?: string, dateTo?: string) {
   }
 
   return closedTransports.map((t) => {
-    // Standart xarajatlar yig'indisi
     const expenses =
       parseFloat(t.expenseNds ?? "0") +
       parseFloat(t.expenseUsluga ?? "0") +
@@ -53,14 +53,34 @@ export async function getWagonReport(dateFrom?: string, dateTo?: string) {
       parseFloat(t.expenseOrtish ?? "0") +
       parseFloat(t.expenseTushurish ?? "0");
 
-    // Kod xarajati: codeUzPricePerTon × tonnage + codeKzPricePerTon × tonnage
     const tonnage = parseFloat(t.tonnage ?? "0");
     const codeExpense =
       parseFloat(t.codeUzPricePerTon ?? "0") * tonnage +
       parseFloat(t.codeKzPricePerTon ?? "0") * tonnage;
 
+    // RUB xarid narxi USD da
+    const rubPricePerCubic = parseFloat(t.rubPricePerCubic ?? "0");
+    const rubExchangeRate = parseFloat(t.rubExchangeRate ?? "0");
+    const totalTashkentCub = t.timbers.reduce((sum, tb) => {
+      const tashkentCount = tb.tashkentCount ?? 0;
+      return (
+        sum +
+        (tb.thicknessMm / 1000) *
+          (tb.widthMm / 1000) *
+          parseFloat(tb.lengthM) *
+          tashkentCount
+      );
+    }, 0);
+    const rubCostUsd =
+      rubExchangeRate > 0
+        ? (rubPricePerCubic * totalTashkentCub) / rubExchangeRate
+        : 0;
+
+    // Truck to'lovi (wagon uchun 0)
+    const truckCost = parseFloat(t.truckOwnerPayment ?? "0");
+
     const revenue = revenueMap.get(t.id) ?? 0;
-    const profit = revenue - expenses - codeExpense;
+    const profit = revenue - expenses - codeExpense - rubCostUsd - truckCost;
 
     return {
       wagonId: t.id,
@@ -69,6 +89,8 @@ export async function getWagonReport(dateFrom?: string, dateTo?: string) {
       revenue,
       expenses,
       codeExpense,
+      rubCostUsd,
+      truckCost,
       profit,
     };
   });

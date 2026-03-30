@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import NumberInput from "@/components/ui/NumberInput";
-import { createTransport } from "@/lib/actions/wagons";
+import { updateTransport, addTransportExpense, deleteTransportExpense } from "@/lib/actions/wagons";
+import { createTimber, updateTimber, deleteTimber } from "@/lib/actions/timbers";
 import { t } from "@/i18n/uz";
 
 interface Partner {
@@ -13,37 +14,76 @@ interface Partner {
   type: string;
 }
 
-interface TimberRow {
-  thicknessMm: string;
-  widthMm: string;
-  lengthM: string;
-  russiaCount: string;
-}
-
-interface AdditionalExpense {
+interface ExpenseItem {
+  id: number;
   name: string;
   amount: string;
-  partnerId: string;
+  partnerId: number | null;
 }
 
-interface WagonModalProps {
+interface TimberItem {
+  id: number;
+  thicknessMm: number;
+  widthMm: number;
+  lengthM: string;
+  russiaCount: number;
+  tashkentCount: number | null;
+  customerCount: number | null;
+}
+
+interface FullTransport {
+  id: number;
+  type: string;
+  number: string | null;
+  sentAt: string | null;
+  arrivedAt: string | null;
+  fromLocation: string | null;
+  toLocation: string | null;
+  tonnage: string | null;
+  supplierId: number | null;
+  codeUzPricePerTon: string | null;
+  codeUzSupplierId: number | null;
+  codeKzPricePerTon: string | null;
+  codeKzSupplierId: number | null;
+  rubPricePerCubic: string | null;
+  expenseNds: string | null;
+  expenseNdsPartnerId: number | null;
+  expenseUsluga: string | null;
+  expenseUslugaPartnerId: number | null;
+  expenseTupik: string | null;
+  expenseTupikPartnerId: number | null;
+  expenseXrannei: string | null;
+  expenseXranneiPartnerId: number | null;
+  expenseOrtish: string | null;
+  expenseOrtishPartnerId: number | null;
+  expenseTushurish: string | null;
+  expenseTushirishPartnerId: number | null;
+  truckOwnerId: number | null;
+  truckOwnerPayment: string | null;
+  expenses: ExpenseItem[];
+  timbers: TimberItem[];
+}
+
+interface WagonEditModalProps {
   isOpen: boolean;
   onClose: () => void;
-  type: "wagon" | "truck";
+  transport: FullTransport | null;
   partners: Partner[];
-  onSuccess?: () => void;
+  onSuccess: () => void;
 }
 
-function calcCub(thicknessMm: string, widthMm: string, lengthM: string, count: string): number {
-  const t = parseFloat(thicknessMm) || 0;
-  const w = parseFloat(widthMm) || 0;
-  const l = parseFloat(lengthM) || 0;
-  const c = parseFloat(count) || 0;
-  return (t / 1000) * (w / 1000) * l * c;
+function calcCub(thicknessMm: number, widthMm: number, lengthM: string, count: number): number {
+  return (thicknessMm / 1000) * (widthMm / 1000) * (parseFloat(lengthM) || 0) * count;
 }
 
-export default function WagonModal({ isOpen, onClose, type, partners, onSuccess }: WagonModalProps) {
-  // Section 1 — Asosiy ma'lumotlar
+export default function WagonEditModal({
+  isOpen,
+  onClose,
+  transport,
+  partners,
+  onSuccess,
+}: WagonEditModalProps) {
+  // Section 1 state
   const [number, setNumber] = useState("");
   const [sentAt, setSentAt] = useState("");
   const [arrivedAt, setArrivedAt] = useState("");
@@ -52,18 +92,22 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
   const [tonnage, setTonnage] = useState("");
   const [supplierId, setSupplierId] = useState("");
 
-  // Section 2 — Kodlar (faqat wagon)
+  // Section 2 state (kodlar)
   const [codeUzPricePerTon, setCodeUzPricePerTon] = useState("");
   const [codeUzSupplierId, setCodeUzSupplierId] = useState("");
   const [codeKzPricePerTon, setCodeKzPricePerTon] = useState("");
   const [codeKzSupplierId, setCodeKzSupplierId] = useState("");
 
-  // Section 3 — Yog'ochlar
-  const [timberRows, setTimberRows] = useState<TimberRow[]>([
-    { thicknessMm: "", widthMm: "", lengthM: "", russiaCount: "" },
-  ]);
+  // Section 3 — taxtalar
+  const [timberList, setTimberList] = useState<TimberItem[]>([]);
+  const [newTimber, setNewTimber] = useState({
+    thicknessMm: "",
+    widthMm: "",
+    lengthM: "",
+    russiaCount: "",
+  });
 
-  // Section 4 — RUB narxi
+  // Section 4 — RUB
   const [rubPricePerCubic, setRubPricePerCubic] = useState("");
 
   // Section 5 — Xarajatlar
@@ -80,12 +124,76 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
   const [expenseTushurish, setExpenseTushurish] = useState("");
   const [expenseTushirishPartnerId, setExpenseTushirishPartnerId] = useState("");
 
-  const [additionalExpenses, setAdditionalExpenses] = useState<AdditionalExpense[]>([]);
-
+  // Truck fields
   const [truckOwnerId, setTruckOwnerId] = useState("");
   const [truckOwnerPayment, setTruckOwnerPayment] = useState("");
 
+  // Dynamic expenses
+  const [expenses, setExpenses] = useState<ExpenseItem[]>([]);
+  const [newExpenseName, setNewExpenseName] = useState("");
+  const [newExpenseAmount, setNewExpenseAmount] = useState("");
+  const [newExpensePartnerId, setNewExpensePartnerId] = useState("");
+
   const [isLoading, setIsLoading] = useState(false);
+
+  // Transport o'zgarganda state larni to'ldirish
+  useEffect(() => {
+    if (!transport) return;
+    setNumber(transport.number ?? "");
+    setSentAt(transport.sentAt ?? "");
+    setArrivedAt(transport.arrivedAt ?? "");
+    setFromLocation(transport.fromLocation ?? "");
+    setToLocation(transport.toLocation ?? "");
+    setTonnage(transport.tonnage ?? "");
+    setSupplierId(transport.supplierId ? String(transport.supplierId) : "");
+    setCodeUzPricePerTon(transport.codeUzPricePerTon ?? "");
+    setCodeUzSupplierId(
+      transport.codeUzSupplierId ? String(transport.codeUzSupplierId) : ""
+    );
+    setCodeKzPricePerTon(transport.codeKzPricePerTon ?? "");
+    setCodeKzSupplierId(
+      transport.codeKzSupplierId ? String(transport.codeKzSupplierId) : ""
+    );
+    setTimberList(transport.timbers ?? []);
+    setRubPricePerCubic(transport.rubPricePerCubic ?? "");
+    setExpenseNds(transport.expenseNds ?? "");
+    setExpenseNdsPartnerId(
+      transport.expenseNdsPartnerId ? String(transport.expenseNdsPartnerId) : ""
+    );
+    setExpenseUsluga(transport.expenseUsluga ?? "");
+    setExpenseUslugaPartnerId(
+      transport.expenseUslugaPartnerId
+        ? String(transport.expenseUslugaPartnerId)
+        : ""
+    );
+    setExpenseTupik(transport.expenseTupik ?? "");
+    setExpenseTupikPartnerId(
+      transport.expenseTupikPartnerId
+        ? String(transport.expenseTupikPartnerId)
+        : ""
+    );
+    setExpenseXrannei(transport.expenseXrannei ?? "");
+    setExpenseXranneiPartnerId(
+      transport.expenseXranneiPartnerId
+        ? String(transport.expenseXranneiPartnerId)
+        : ""
+    );
+    setExpenseOrtish(transport.expenseOrtish ?? "");
+    setExpenseOrtishPartnerId(
+      transport.expenseOrtishPartnerId
+        ? String(transport.expenseOrtishPartnerId)
+        : ""
+    );
+    setExpenseTushurish(transport.expenseTushurish ?? "");
+    setExpenseTushirishPartnerId(
+      transport.expenseTushirishPartnerId
+        ? String(transport.expenseTushirishPartnerId)
+        : ""
+    );
+    setTruckOwnerId(transport.truckOwnerId ? String(transport.truckOwnerId) : "");
+    setTruckOwnerPayment(transport.truckOwnerPayment ?? "");
+    setExpenses(transport.expenses ?? []);
+  }, [transport]);
 
   const russiaSuppliers = partners.filter((p) => p.type === "russia_supplier");
   const codeSuppliers = partners.filter((p) => p.type === "code_supplier");
@@ -97,132 +205,115 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
   const codeUzTotal = tonnageNum * (parseFloat(codeUzPricePerTon) || 0);
   const codeKzTotal = tonnageNum * (parseFloat(codeKzPricePerTon) || 0);
 
-  const totalCubRussia = timberRows.reduce(
-    (sum, row) => sum + calcCub(row.thicknessMm, row.widthMm, row.lengthM, row.russiaCount),
+  const totalCubRussia = timberList.reduce(
+    (sum, t) => sum + calcCub(t.thicknessMm, t.widthMm, t.lengthM, t.russiaCount),
     0
   );
-
+  const totalCubTashkent = timberList.reduce(
+    (sum, t) =>
+      sum + calcCub(t.thicknessMm, t.widthMm, t.lengthM, t.tashkentCount ?? 0),
+    0
+  );
   const rubPriceNum = parseFloat(rubPricePerCubic) || 0;
-  const totalRub = totalCubRussia * rubPriceNum;
+  const totalRub = totalCubTashkent * rubPriceNum;
 
-  function handleAddTimberRow() {
-    setTimberRows((prev) => [
+  async function handleTashkentBlur(timberId: number, value: string) {
+    const num = value === "" ? null : parseInt(value, 10);
+    const val = num !== null && isNaN(num) ? null : num;
+    await updateTimber(timberId, { tashkentCount: val ?? undefined });
+    setTimberList((prev) =>
+      prev.map((item) =>
+        item.id === timberId ? { ...item, tashkentCount: val } : item
+      )
+    );
+  }
+
+  async function handleAddTimber() {
+    if (!transport) return;
+    const nt = newTimber;
+    if (!nt.thicknessMm || !nt.widthMm || !nt.lengthM || !nt.russiaCount) return;
+    const created = await createTimber({
+      transportId: transport.id,
+      thicknessMm: parseInt(nt.thicknessMm),
+      widthMm: parseInt(nt.widthMm),
+      lengthM: parseFloat(nt.lengthM),
+      russiaCount: parseInt(nt.russiaCount),
+    });
+    setTimberList((prev) => [
       ...prev,
-      { thicknessMm: "", widthMm: "", lengthM: "", russiaCount: "" },
+      { ...created, tashkentCount: null, customerCount: null },
     ]);
+    setNewTimber({ thicknessMm: "", widthMm: "", lengthM: "", russiaCount: "" });
   }
 
-  function handleRemoveTimberRow(idx: number) {
-    setTimberRows((prev) => prev.filter((_, i) => i !== idx));
+  async function handleDeleteTimber(id: number) {
+    await deleteTimber(id);
+    setTimberList((prev) => prev.filter((item) => item.id !== id));
   }
 
-  function handleTimberChange(idx: number, field: keyof TimberRow, value: string) {
-    setTimberRows((prev) =>
-      prev.map((row, i) => (i === idx ? { ...row, [field]: value } : row))
-    );
+  async function handleAddExpense() {
+    if (!transport || !newExpenseName.trim() || !newExpenseAmount) return;
+    const expense = await addTransportExpense(transport.id, {
+      name: newExpenseName.trim(),
+      amount: newExpenseAmount,
+      partnerId: newExpensePartnerId ? parseInt(newExpensePartnerId) : undefined,
+    });
+    setExpenses((prev) => [...prev, expense]);
+    setNewExpenseName("");
+    setNewExpenseAmount("");
+    setNewExpensePartnerId("");
   }
 
-  function handleAddAdditionalExpense() {
-    setAdditionalExpenses((prev) => [...prev, { name: "", amount: "", partnerId: "" }]);
+  async function handleDeleteExpense(id: number) {
+    await deleteTransportExpense(id);
+    setExpenses((prev) => prev.filter((e) => e.id !== id));
   }
 
-  function handleRemoveAdditionalExpense(idx: number) {
-    setAdditionalExpenses((prev) => prev.filter((_, i) => i !== idx));
-  }
-
-  function handleAdditionalExpenseChange(
-    idx: number,
-    field: keyof AdditionalExpense,
-    value: string
-  ) {
-    setAdditionalExpenses((prev) =>
-      prev.map((exp, i) => (i === idx ? { ...exp, [field]: value } : exp))
-    );
-  }
-
-  function resetForm() {
-    setNumber("");
-    setSentAt("");
-    setArrivedAt("");
-    setFromLocation("");
-    setToLocation("");
-    setTonnage("");
-    setSupplierId("");
-    setCodeUzPricePerTon("");
-    setCodeUzSupplierId("");
-    setCodeKzPricePerTon("");
-    setCodeKzSupplierId("");
-    setTimberRows([{ thicknessMm: "", widthMm: "", lengthM: "", russiaCount: "" }]);
-    setRubPricePerCubic("");
-    setExpenseNds("");
-    setExpenseNdsPartnerId("");
-    setExpenseUsluga("");
-    setExpenseUslugaPartnerId("");
-    setExpenseTupik("");
-    setExpenseTupikPartnerId("");
-    setExpenseXrannei("");
-    setExpenseXranneiPartnerId("");
-    setExpenseOrtish("");
-    setExpenseOrtishPartnerId("");
-    setExpenseTushurish("");
-    setExpenseTushirishPartnerId("");
-    setAdditionalExpenses([]);
-    setTruckOwnerId("");
-    setTruckOwnerPayment("");
-    setIsLoading(false);
-  }
-
-  function handleClose() {
-    resetForm();
-    onClose();
-  }
-
-  async function handleSubmit() {
+  async function handleSave() {
+    if (!transport) return;
     setIsLoading(true);
     try {
-      await createTransport({
-        type,
+      await updateTransport(transport.id, {
         number: number || undefined,
         sentAt: sentAt || undefined,
         arrivedAt: arrivedAt || undefined,
         fromLocation: fromLocation || undefined,
         toLocation: toLocation || undefined,
-        tonnage: type === "wagon" && tonnage ? tonnage : undefined,
-        truckOwnerId: type === "truck" && truckOwnerId ? parseInt(truckOwnerId) : undefined,
-        truckOwnerPayment: type === "truck" && truckOwnerPayment ? truckOwnerPayment : undefined,
+        tonnage: tonnage || undefined,
         supplierId: supplierId ? parseInt(supplierId) : undefined,
-        // Kodlar (faqat wagon)
         codeUzPricePerTon: codeUzPricePerTon || undefined,
         codeUzSupplierId: codeUzSupplierId ? parseInt(codeUzSupplierId) : undefined,
         codeKzPricePerTon: codeKzPricePerTon || undefined,
         codeKzSupplierId: codeKzSupplierId ? parseInt(codeKzSupplierId) : undefined,
-        // RUB
         rubPricePerCubic: rubPricePerCubic || undefined,
-        // Xarajatlar
         expenseNds: expenseNds || "0",
-        expenseNdsPartnerId: expenseNdsPartnerId ? parseInt(expenseNdsPartnerId) : undefined,
+        expenseNdsPartnerId: expenseNdsPartnerId
+          ? parseInt(expenseNdsPartnerId)
+          : undefined,
         expenseUsluga: expenseUsluga || "0",
-        expenseUslugaPartnerId: expenseUslugaPartnerId ? parseInt(expenseUslugaPartnerId) : undefined,
+        expenseUslugaPartnerId: expenseUslugaPartnerId
+          ? parseInt(expenseUslugaPartnerId)
+          : undefined,
         expenseTupik: expenseTupik || "0",
-        expenseTupikPartnerId: expenseTupikPartnerId ? parseInt(expenseTupikPartnerId) : undefined,
+        expenseTupikPartnerId: expenseTupikPartnerId
+          ? parseInt(expenseTupikPartnerId)
+          : undefined,
         expenseXrannei: expenseXrannei || "0",
-        expenseXranneiPartnerId: expenseXranneiPartnerId ? parseInt(expenseXranneiPartnerId) : undefined,
+        expenseXranneiPartnerId: expenseXranneiPartnerId
+          ? parseInt(expenseXranneiPartnerId)
+          : undefined,
         expenseOrtish: expenseOrtish || "0",
-        expenseOrtishPartnerId: expenseOrtishPartnerId ? parseInt(expenseOrtishPartnerId) : undefined,
+        expenseOrtishPartnerId: expenseOrtishPartnerId
+          ? parseInt(expenseOrtishPartnerId)
+          : undefined,
         expenseTushurish: expenseTushurish || "0",
-        expenseTushirishPartnerId: expenseTushirishPartnerId ? parseInt(expenseTushirishPartnerId) : undefined,
-      },
-      timberRows
-        .filter((r) => r.thicknessMm !== "" && r.widthMm !== "" && r.lengthM !== "" && r.russiaCount !== "")
-        .map((r) => ({
-          thicknessMm: parseInt(r.thicknessMm),
-          widthMm: parseInt(r.widthMm),
-          lengthM: parseFloat(r.lengthM),
-          russiaCount: parseInt(r.russiaCount),
-        }))
-      );
-      resetForm();
-      onSuccess?.();
+        expenseTushirishPartnerId: expenseTushirishPartnerId
+          ? parseInt(expenseTushirishPartnerId)
+          : undefined,
+        truckOwnerId: truckOwnerId ? parseInt(truckOwnerId) : undefined,
+        truckOwnerPayment: truckOwnerPayment || undefined,
+      });
+      onSuccess();
       onClose();
     } catch (err) {
       console.error(err);
@@ -236,12 +327,11 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
   const selectClass =
     "w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white";
   const labelClass = "block text-xs text-slate-600 mb-1";
-  const sectionTitleClass = "text-sm font-semibold text-slate-700 mb-3 pb-2 border-b border-slate-200";
-
-  const modalTitle = type === "wagon" ? t.wagons.newWagon : t.wagons.newTruck;
+  const sectionTitleClass =
+    "text-sm font-semibold text-slate-700 mb-3 pb-2 border-b border-slate-200";
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title={modalTitle} size="xl">
+    <Modal isOpen={isOpen} onClose={onClose} title="Vagonni tahrirlash" size="xl">
       <div className="space-y-6">
         {/* ── Section 1: Asosiy ma'lumotlar ── */}
         <section>
@@ -249,7 +339,7 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
           <div className="space-y-4">
             {/* Vagon raqami */}
             <div>
-              <label className={labelClass}>{type === "wagon" ? t.wagons.wagonNumber : "Yuk mashina raqami"} *</label>
+              <label className={labelClass}>{t.wagons.wagonNumber}</label>
               <input
                 className={inputClass}
                 placeholder="58374291"
@@ -283,7 +373,7 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
             {/* Qayerdan / Qayerga */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={labelClass}>{t.wagons.from} *</label>
+                <label className={labelClass}>{t.wagons.from}</label>
                 <input
                   className={inputClass}
                   placeholder="Krasnoyarsk"
@@ -292,7 +382,7 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
                 />
               </div>
               <div>
-                <label className={labelClass}>{t.wagons.to} *</label>
+                <label className={labelClass}>{t.wagons.to}</label>
                 <input
                   className={inputClass}
                   placeholder="Toshkent"
@@ -302,8 +392,8 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
               </div>
             </div>
 
-            {/* Vagon uchun tonnaj, truck uchun egasi va to'lov */}
-            {type === "wagon" ? (
+            {/* Tonnaj — faqat wagon */}
+            {transport?.type === "wagon" && (
               <div>
                 <label className={labelClass}>{t.wagons.tonnage}</label>
                 <NumberInput
@@ -313,7 +403,10 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
                   onChange={(e) => setTonnage(e.target.value)}
                 />
               </div>
-            ) : (
+            )}
+
+            {/* Truck uchun: egasi va to'lov */}
+            {transport?.type === "truck" && (
               <div>
                 <label className={labelClass}>Yuk mashina egasiga beriladigan pul</label>
                 <div className="flex items-center gap-2">
@@ -358,13 +451,15 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
         </section>
 
         {/* ── Section 2: Kodlar (faqat wagon) ── */}
-        {type === "wagon" && (
+        {transport?.type === "wagon" && (
           <section>
             <h3 className={sectionTitleClass}>{t.wagons.codes}</h3>
             <div className="space-y-3">
               {/* Kod UZ */}
               <div>
-                <span className="text-xs font-medium text-blue-600 mb-2 block">{t.wagons.codeUz}</span>
+                <span className="text-xs font-medium text-blue-600 mb-2 block">
+                  {t.wagons.codeUz}
+                </span>
                 <div className="flex items-center gap-2">
                   <div className="flex-1">
                     <NumberInput
@@ -397,7 +492,9 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
 
               {/* Kod KZ */}
               <div>
-                <span className="text-xs font-medium text-blue-600 mb-2 block">{t.wagons.codeKz}</span>
+                <span className="text-xs font-medium text-blue-600 mb-2 block">
+                  {t.wagons.codeKz}
+                </span>
                 <div className="flex items-center gap-2">
                   <div className="flex-1">
                     <NumberInput
@@ -434,74 +531,111 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
         {/* ── Section 3: Yog'ochlar ── */}
         <section>
           <h3 className={sectionTitleClass}>{t.wagons.timbers}</h3>
-          <div className="space-y-2">
-            {/* Header */}
-            <div className="grid grid-cols-6 gap-2 text-xs text-slate-500 font-medium px-1">
-              <span>{t.wagons.thickness}</span>
-              <span>{t.wagons.width}</span>
-              <span>{t.wagons.length}</span>
-              <span>{t.wagons.russiaCount}</span>
-              <span>{t.wagons.cubicMeters}</span>
-              <span></span>
-            </div>
 
-            {timberRows.map((row, idx) => {
-              const cub = calcCub(row.thicknessMm, row.widthMm, row.lengthM, row.russiaCount);
-              return (
-                <div key={idx} className="grid grid-cols-6 gap-2 items-center">
+          {/* Mavjud taxtalar jadvali */}
+          {timberList.length > 0 && (
+            <div className="space-y-1 mb-4">
+              {/* Header */}
+              <div className="grid grid-cols-[1fr_80px_80px_80px_36px] gap-2 text-xs text-slate-500 font-medium px-1">
+                <span>O&apos;lcham</span>
+                <span className="text-center">{t.wagons.russiaCount}</span>
+                <span className="text-center">{t.wagons.tashkentCount}</span>
+                <span className="text-center">{t.wagons.customerCount}</span>
+                <span></span>
+              </div>
+              {timberList.map((timber) => (
+                <div
+                  key={timber.id}
+                  className="grid grid-cols-[1fr_80px_80px_80px_36px] gap-2 items-center bg-slate-50 rounded-lg px-3 py-2"
+                >
+                  <span className="text-sm font-medium text-slate-700">
+                    {timber.thicknessMm}×{timber.widthMm}×{timber.lengthM}m
+                  </span>
+                  <span className="text-sm text-center text-slate-600">
+                    {timber.russiaCount}
+                  </span>
                   <NumberInput
-                    className={inputClass}
-                    placeholder="50"
-                    value={row.thicknessMm}
-                    onChange={(e) => handleTimberChange(idx, "thicknessMm", e.target.value)}
+                    defaultValue={timber.tashkentCount ?? ""}
+                    placeholder="—"
+                    min={0}
+                    className="w-full border border-slate-300 rounded px-2 py-1 text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    onBlur={(e) => handleTashkentBlur(timber.id, e.target.value)}
                   />
-                  <NumberInput
-                    className={inputClass}
-                    placeholder="100"
-                    value={row.widthMm}
-                    onChange={(e) => handleTimberChange(idx, "widthMm", e.target.value)}
-                  />
-                  <NumberInput
-                    className={inputClass}
-                    placeholder="6"
-                    value={row.lengthM}
-                    onChange={(e) => handleTimberChange(idx, "lengthM", e.target.value)}
-                  />
-                  <NumberInput
-                    className={inputClass}
-                    placeholder="100"
-                    value={row.russiaCount}
-                    onChange={(e) => handleTimberChange(idx, "russiaCount", e.target.value)}
-                  />
-                  <span className="text-sm text-slate-700 font-medium">
-                    {cub.toFixed(3)}
+                  <span className="text-sm text-center text-slate-500">
+                    {timber.customerCount ?? 0}
                   </span>
                   <button
-                    onClick={() => handleRemoveTimberRow(idx)}
-                    disabled={timberRows.length === 1}
-                    className="p-1.5 text-red-400 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                    onClick={() => handleDeleteTimber(timber.id)}
+                    className="p-1 text-red-400 hover:text-red-600"
                   >
-                    <Trash2 size={15} />
+                    <Trash2 size={14} />
                   </button>
                 </div>
-              );
-            })}
-
-            <button
-              onClick={handleAddTimberRow}
-              className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 mt-2"
-            >
-              <Plus size={15} />
-              {"Qator qo'shish"}
-            </button>
-
-            {/* Jami kub */}
-            <div className="pt-2 border-t border-slate-100">
-              <span className="text-sm text-slate-600">
-                {t.wagons.totalCubRussia}:{" "}
-                <span className="font-semibold text-slate-800">{totalCubRussia.toFixed(3)} m³</span>
-              </span>
+              ))}
             </div>
+          )}
+
+          {/* Yangi taxta qo'shish */}
+          <div className="border border-dashed border-slate-300 rounded-lg p-3">
+            <p className="text-xs text-slate-500 mb-2 font-medium">
+              Yangi taxta qo&apos;shish:
+            </p>
+            <div className="grid grid-cols-5 gap-2 items-center">
+              <NumberInput
+                placeholder="Qalinlik (mm)"
+                className={inputClass}
+                value={newTimber.thicknessMm}
+                onChange={(e) =>
+                  setNewTimber((prev) => ({ ...prev, thicknessMm: e.target.value }))
+                }
+              />
+              <NumberInput
+                placeholder="Eni (mm)"
+                className={inputClass}
+                value={newTimber.widthMm}
+                onChange={(e) =>
+                  setNewTimber((prev) => ({ ...prev, widthMm: e.target.value }))
+                }
+              />
+              <NumberInput
+                placeholder="Uzunlik (m)"
+                className={inputClass}
+                value={newTimber.lengthM}
+                onChange={(e) =>
+                  setNewTimber((prev) => ({ ...prev, lengthM: e.target.value }))
+                }
+              />
+              <NumberInput
+                placeholder="Rossiya soni"
+                className={inputClass}
+                value={newTimber.russiaCount}
+                onChange={(e) =>
+                  setNewTimber((prev) => ({ ...prev, russiaCount: e.target.value }))
+                }
+              />
+              <button
+                onClick={handleAddTimber}
+                className="flex items-center justify-center gap-1 text-sm text-blue-600 hover:text-blue-700 border border-blue-300 rounded-lg py-2 hover:bg-blue-50"
+              >
+                <Plus size={14} /> Qo&apos;shish
+              </button>
+            </div>
+          </div>
+
+          {/* Jami kub */}
+          <div className="pt-2 border-t border-slate-100 mt-3 space-y-1">
+            <p className="text-sm text-slate-600">
+              {t.wagons.totalCubRussia}:{" "}
+              <span className="font-semibold text-slate-800">
+                {totalCubRussia.toFixed(3)} m³
+              </span>
+            </p>
+            <p className="text-sm text-slate-600">
+              {t.wagons.totalCubTashkent}:{" "}
+              <span className="font-semibold text-slate-800">
+                {totalCubTashkent.toFixed(3)} m³
+              </span>
+            </p>
           </div>
         </section>
 
@@ -548,7 +682,9 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
                 >
                   <option value="">— {t.wagons.partner} —</option>
                   {serviceProviders.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -567,7 +703,9 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
                 >
                   <option value="">— {t.wagons.partner} —</option>
                   {serviceProviders.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -590,7 +728,9 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
                 >
                   <option value="">— {t.wagons.partner} —</option>
                   {serviceProviders.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -609,7 +749,9 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
                 >
                   <option value="">— {t.wagons.partner} —</option>
                   {serviceProviders.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -632,7 +774,9 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
                 >
                   <option value="">— {t.wagons.partner} —</option>
                   {serviceProviders.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -651,56 +795,64 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
                 >
                   <option value="">— {t.wagons.partner} —</option>
                   {serviceProviders.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
                   ))}
                 </select>
               </div>
             </div>
 
-            {/* Qo'shimcha xarajatlar */}
-            {additionalExpenses.map((exp, idx) => (
-              <div key={idx} className="border border-slate-200 rounded-lg p-3 space-y-2">
+            {/* Mavjud qo'shimcha xarajatlar */}
+            {expenses.map((exp) => (
+              <div key={exp.id} className="border border-slate-200 rounded-lg p-3 space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-slate-600">{"Qo'shimcha"} #{idx + 1}</span>
+                  <span className="text-xs font-medium text-slate-600">{exp.name}</span>
                   <button
-                    onClick={() => handleRemoveAdditionalExpense(idx)}
+                    onClick={() => handleDeleteExpense(exp.id)}
                     className="p-1 text-red-400 hover:text-red-600"
                   >
                     <Trash2 size={14} />
                   </button>
                 </div>
-                <input
-                  className={inputClass}
-                  placeholder="Nomi"
-                  value={exp.name}
-                  onChange={(e) => handleAdditionalExpenseChange(idx, "name", e.target.value)}
-                />
-                <NumberInput
-                  className={inputClass}
-                  placeholder="Summa ($)"
-                  value={exp.amount}
-                  onChange={(e) => handleAdditionalExpenseChange(idx, "amount", e.target.value)}
-                />
-                <select
-                  className={selectClass}
-                  value={exp.partnerId}
-                  onChange={(e) => handleAdditionalExpenseChange(idx, "partnerId", e.target.value)}
-                >
-                  <option value="">— {t.wagons.partner} —</option>
-                  {serviceProviders.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
+                <p className="text-sm text-slate-700">${Number(exp.amount).toFixed(2)}</p>
               </div>
             ))}
 
-            <button
-              onClick={handleAddAdditionalExpense}
-              className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700"
-            >
-              <Plus size={15} />
-              {t.wagons.additionalExpense}
-            </button>
+            {/* Yangi qo'shimcha xarajat qo'shish */}
+            <div className="border border-dashed border-slate-300 rounded-lg p-3 space-y-2">
+              <p className="text-xs font-medium text-slate-500">Qo&apos;shimcha xarajat qo&apos;shish</p>
+              <input
+                className={inputClass}
+                placeholder="Nomi"
+                value={newExpenseName}
+                onChange={(e) => setNewExpenseName(e.target.value)}
+              />
+              <NumberInput
+                className={inputClass}
+                placeholder="Summa ($)"
+                value={newExpenseAmount}
+                onChange={(e) => setNewExpenseAmount(e.target.value)}
+              />
+              <select
+                className={selectClass}
+                value={newExpensePartnerId}
+                onChange={(e) => setNewExpensePartnerId(e.target.value)}
+              >
+                <option value="">— {t.wagons.partner} —</option>
+                {serviceProviders.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+              <button
+                onClick={handleAddExpense}
+                disabled={!newExpenseName.trim() || !newExpenseAmount}
+                className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Plus size={15} />
+                Qo&apos;shish
+              </button>
+            </div>
           </div>
         </section>
       </div>
@@ -708,18 +860,18 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
       {/* Footer */}
       <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-200">
         <button
-          onClick={handleClose}
+          onClick={onClose}
           disabled={isLoading}
           className="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 text-slate-700 disabled:opacity-50"
         >
           {t.common.cancel}
         </button>
         <button
-          onClick={handleSubmit}
+          onClick={handleSave}
           disabled={isLoading}
           className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isLoading ? t.common.loading : t.common.create}
+          {isLoading ? "Saqlanmoqda..." : t.common.save}
         </button>
       </div>
     </Modal>

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { t } from "@/i18n/uz";
 
 interface Timber {
@@ -15,7 +14,6 @@ interface Timber {
 
 interface TimberTableProps {
   timbers: Timber[];
-  onUpdate: (id: number, data: { tashkentCount?: number; customerCount?: number }) => void;
 }
 
 function calcCub(
@@ -28,28 +26,7 @@ function calcCub(
   return (thicknessMm / 1000) * (widthMm / 1000) * l * count;
 }
 
-export default function TimberTable({ timbers, onUpdate }: TimberTableProps) {
-  // Local editing state: { [timberId]: value }
-  const [tashkentEdits, setTashkentEdits] = useState<Record<number, string>>({});
-
-  function handleTashkentChange(id: number, value: string) {
-    setTashkentEdits((prev) => ({ ...prev, [id]: value }));
-  }
-
-  function handleTashkentBlur(timber: Timber) {
-    const raw = tashkentEdits[timber.id];
-    if (raw === undefined) return;
-    const val = parseInt(raw, 10);
-    if (!isNaN(val) && val !== timber.tashkentCount) {
-      onUpdate(timber.id, { tashkentCount: val });
-    }
-    setTashkentEdits((prev) => {
-      const next = { ...prev };
-      delete next[timber.id];
-      return next;
-    });
-  }
-
+export default function TimberTable({ timbers }: TimberTableProps) {
   const totalCubRussia = timbers.reduce(
     (sum, timber) => sum + calcCub(timber.thicknessMm, timber.widthMm, timber.lengthM, timber.russiaCount),
     0
@@ -67,9 +44,6 @@ export default function TimberTable({ timbers, onUpdate }: TimberTableProps) {
     return <p className="text-xs text-slate-400 py-2">{"Yog'ochlar yo'q"}</p>;
   }
 
-  const inputClass =
-    "w-20 border border-slate-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none";
-
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
@@ -85,27 +59,13 @@ export default function TimberTable({ timbers, onUpdate }: TimberTableProps) {
         </thead>
         <tbody>
           {timbers.map((timber) => {
-            const tashkentVal =
-              tashkentEdits[timber.id] !== undefined
-                ? tashkentEdits[timber.id]
-                : String(timber.tashkentCount ?? 0);
-
             return (
               <tr key={timber.id} className="border-b border-slate-100">
                 <td className="py-2 px-2 text-slate-700">{timber.thicknessMm} mm</td>
                 <td className="py-2 px-2 text-slate-700">{timber.widthMm} mm</td>
                 <td className="py-2 px-2 text-slate-700">{timber.lengthM} m</td>
                 <td className="py-2 px-2 text-slate-700">{timber.russiaCount}</td>
-                <td className="py-2 px-2">
-                  {/* Inline edit — Toshkent soni */}
-                  <input
-                    type="number"
-                    className={inputClass}
-                    value={tashkentVal}
-                    onChange={(e) => handleTashkentChange(timber.id, e.target.value)}
-                    onBlur={() => handleTashkentBlur(timber)}
-                  />
-                </td>
+                <td className="py-2 px-2 text-slate-700">{timber.tashkentCount ?? 0}</td>
                 <td className="py-2 px-2 text-slate-700">{timber.customerCount ?? 0}</td>
               </tr>
             );

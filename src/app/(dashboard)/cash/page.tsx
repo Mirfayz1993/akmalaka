@@ -9,10 +9,12 @@ import {
   getExchangeHistory,
   recordUsdOperation,
   recordExchange,
+  deleteCashOperation,
 } from "@/lib/actions/cash";
 import { getPartners } from "@/lib/actions/partners";
 import type { Partner } from "@/lib/actions/partners";
 import Modal from "@/components/ui/Modal";
+import NumberInput from "@/components/ui/NumberInput";
 import UsdTab from "./_components/UsdTab";
 import RubTab from "./_components/RubTab";
 import ExchangeTab from "./_components/ExchangeTab";
@@ -103,6 +105,13 @@ export default function CashPage() {
     setRubOperations(rubOps as RubOperation[]);
     setExchangeHistory(exchHist as ExchangeItem[]);
     setPartners(pts);
+  }
+
+  // ─── USD Delete handler ───────────────────────────────────────────────────────
+
+  async function handleDeleteUsd(id: number) {
+    await deleteCashOperation(id);
+    await loadData();
   }
 
   // ─── USD Modal handlers ──────────────────────────────────────────────────────
@@ -217,6 +226,7 @@ export default function CashPage() {
           balance={usdBalance}
           operations={usdOperations}
           onAddOperation={openUsdModal}
+          onDelete={handleDeleteUsd}
         />
       )}
       {activeTab === "rub" && (
@@ -272,8 +282,7 @@ export default function CashPage() {
             <label className="block text-sm font-medium text-slate-700 mb-1">
               Summa ($)
             </label>
-            <input
-              type="number"
+            <NumberInput
               min="0"
               step="0.01"
               value={usdForm.amount}
@@ -361,8 +370,7 @@ export default function CashPage() {
             <label className="block text-sm font-medium text-slate-700 mb-1">
               $ miqdori (beriladigan)
             </label>
-            <input
-              type="number"
+            <NumberInput
               min="0"
               step="0.01"
               value={exchForm.usdAmount}
@@ -379,8 +387,7 @@ export default function CashPage() {
             <label className="block text-sm font-medium text-slate-700 mb-1">
               RUB miqdori (olinadigan)
             </label>
-            <input
-              type="number"
+            <NumberInput
               min="0"
               step="0.01"
               value={exchForm.rubAmount}

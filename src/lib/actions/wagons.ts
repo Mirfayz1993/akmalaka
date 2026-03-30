@@ -7,9 +7,11 @@ import {
   partnerBalances,
   cashOperations,
   timbers,
+  transportExpenses,
 } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { addToWarehouse } from "./warehouse";
 
 // ─── GET TRANSPORTS ────────────────────────────────────────────────────────────
 
@@ -99,6 +101,7 @@ export async function createTransport(
         amount: String(amount),
         currency: "usd",
         description: "Kod UZ xarajati",
+        transportId: transport.id,
       });
     }
 
@@ -112,6 +115,7 @@ export async function createTransport(
         amount: String(amount),
         currency: "usd",
         description: "Kod KZ xarajati",
+        transportId: transport.id,
       });
     }
 
@@ -164,6 +168,7 @@ export async function createTransport(
           amount: String(amount),
           currency: "usd",
           description: expense.description,
+          transportId: transport.id,
         });
       }
     }
@@ -221,62 +226,40 @@ export async function updateTransportStatus(id: number, status: TransportStatus)
   return transport;
 }
 
-// ─── CLOSE TRANSPORT ───────────────────────────────────────────────────────────
+// ─── UNLOAD TRANSPORT ──────────────────────────────────────────────────────────
 
-export async function closeTransport(id: number) {
-  // Transport ma'lumotlarini timbers bilan ol
+export async function unloadTransport(id: number) {
   const transport = await db.query.transports.findFirst({
     where: eq(transports.id, id),
-    with: {
-      timbers: true,
-    },
+    with: { timbers: true },
   });
 
-  if (!transport) {
-    throw new Error("Transport topilmadi");
-  }
+  if (!transport) throw new Error("Transport topilmadi");
 
-  // TZ qoida #2: Toshkent soni bo'yicha jami kub hisoblash
   let totalCubTashkent = 0;
   for (const timber of transport.timbers) {
     const tashkentCount = timber.tashkentCount ?? 0;
-    const cub =
-      (timber.thicknessMm / 1000) *
-      (timber.widthMm / 1000) *
-      Number(timber.lengthM) *
-      tashkentCount;
+    const cub = (timber.thicknessMm / 1000) * (timber.widthMm / 1000) * Number(timber.lengthM) * tashkentCount;
     totalCubTashkent += cub;
   }
 
   const rubPricePerCubic = Number(transport.rubPricePerCubic ?? 0);
   const totalRub = totalCubTashkent * rubPricePerCubic;
 
-  // TZ qoida #10: RUB kassa balansini tekshirish
   const rubOpsResult = await db
     .select({ totalAmount: sql<string>`COALESCE(SUM(${cashOperations.amount}), 0)` })
     .from(cashOperations)
     .where(eq(cashOperations.currency, "rub"));
-
   const rubBalance = Number(rubOpsResult[0]?.totalAmount ?? 0);
+  if (rubBalance < totalRub) throw new Error("RUB kassada yetarli mablag' yo'q");
 
-  if (rubBalance < totalRub) {
-    throw new Error("RUB kassada yetarli mablag' yo'q");
-  }
-
-  // TZ qoida #3: Weighted average kurs hisoblash
-  // Barcha RUB income operatsiyalaridan o'rtacha kurs topamiz
-  // avgRate = Σ(amount) / Σ(amount/exchangeRate) — faqat income va ijobiy amount uchun
   const rubIncomeOps = await db
-    .select({
-      amount: cashOperations.amount,
-      exchangeRate: cashOperations.exchangeRate,
-    })
+    .select({ amount: cashOperations.amount, exchangeRate: cashOperations.exchangeRate })
     .from(cashOperations)
     .where(eq(cashOperations.currency, "rub"));
 
   let totalRubAmount = 0;
   let totalUsdEquivalent = 0;
-
   for (const op of rubIncomeOps) {
     const opAmount = Number(op.amount);
     const opRate = Number(op.exchangeRate ?? 0);
@@ -287,54 +270,57 @@ export async function closeTransport(id: number) {
   }
 
   let avgRate = totalUsdEquivalent > 0 ? totalRubAmount / totalUsdEquivalent : 1;
-
-  // Agar kurs topilmasa, xato
-  if (avgRate <= 0) {
-    throw new Error("RUB kassada kurs ma'lumoti topilmadi");
-  }
-
+  if (avgRate <= 0) throw new Error("RUB kassada kurs ma'lumoti topilmadi");
   const totalUsd = totalRub / avgRate;
 
   await db.transaction(async (tx) => {
-    // RUB kassasidan chiqim yozish
     await tx.insert(cashOperations).values({
       currency: "rub",
       type: "expense",
       amount: String(-totalRub),
+      exchangeRate: String(avgRate),
       transportId: id,
-      description: `Vagon yopildi — Rossiya ta'minotchisi to'lovi`,
+      description: `Vagon tushirildi #${transport.number ?? id}`,
     });
 
-    // Rossiya ta'minotchisi partner_balances da qarzni yopish
-    if (transport.supplierId) {
-      // musbat — ular bizga qarz emas endi (qarzni yopamiz)
+    if (transport.supplierId && totalRub > 0) {
       await tx.insert(partnerBalances).values({
         partnerId: transport.supplierId,
-        amount: String(totalUsd),
+        amount: String(-totalUsd),
         currency: "usd",
-        description: `Vagon yopildi — to'lov amalga oshirildi`,
+        transportId: id,
+        description: `Yog'och to'lovi — vagon ${transport.number ?? id}`,
       });
     }
 
-    // Transport ni yangilash
     await tx
       .update(transports)
-      .set({
-        status: "closed",
-        closedAt: new Date().toISOString().split("T")[0],
-        rubExchangeRate: String(avgRate),
-      })
+      .set({ status: "unloaded" })
       .where(eq(transports.id, id));
 
-    // Log yozish
     await tx.insert(transportLogs).values({
       transportId: id,
-      action: `Vagon yopildi. RUB: ${totalRub.toFixed(2)}, $: ${totalUsd.toFixed(2)}, Kurs: ${avgRate.toFixed(2)}`,
+      action: "Vagon tushirildi (unloaded)",
     });
   });
 
   revalidatePath("/wagons");
-  return { totalRub, totalUsd, avgRate };
+}
+
+// ─── CLOSE TRANSPORT ───────────────────────────────────────────────────────────
+
+export async function closeTransport(id: number) {
+  await db
+    .update(transports)
+    .set({ status: "closed" })
+    .where(eq(transports.id, id));
+
+  await db.insert(transportLogs).values({
+    transportId: id,
+    action: "Vagon yopildi (closed)",
+  });
+
+  revalidatePath("/wagons");
 }
 
 // ─── DELETE TRANSPORT ──────────────────────────────────────────────────────────
@@ -353,5 +339,31 @@ export async function deleteTransport(id: number) {
   }
 
   await db.delete(transports).where(eq(transports.id, id));
+  revalidatePath("/wagons");
+}
+
+// ─── ADD TRANSPORT EXPENSE ─────────────────────────────────────────────────────
+
+export async function addTransportExpense(
+  transportId: number,
+  data: { name: string; amount: string; partnerId?: number }
+) {
+  const [expense] = await db
+    .insert(transportExpenses)
+    .values({
+      transportId,
+      name: data.name,
+      amount: data.amount,
+      partnerId: data.partnerId,
+    })
+    .returning();
+  revalidatePath("/wagons");
+  return expense;
+}
+
+// ─── DELETE TRANSPORT EXPENSE ──────────────────────────────────────────────────
+
+export async function deleteTransportExpense(id: number) {
+  await db.delete(transportExpenses).where(eq(transportExpenses.id, id));
   revalidatePath("/wagons");
 }

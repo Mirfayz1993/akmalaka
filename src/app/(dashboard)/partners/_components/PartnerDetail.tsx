@@ -12,6 +12,7 @@ type PartnerWithBalance = {
     currency: string | null;
     description: string | null;
     createdAt: Date | string | null;
+    transport: { id: number; number: string | null; type: string } | null;
   }>;
   currentBalance: number;
 };
@@ -23,11 +24,11 @@ interface PartnerDetailProps {
 }
 
 const partnerTypeLabels: Record<string, string> = {
-  russia_supplier: "Rossiya ta\u2019minotchisi",
-  code_supplier: "Kod ta\u2019minotchisi",
+  russia_supplier: "Rossiya ta'minotchisi",
+  code_supplier: "Kod ta'minotchisi",
   code_buyer: "Kod xaridor",
-  wood_buyer: "Yog\u2018och xaridor",
-  service_provider: "Xizmat ko\u2018rsatuvchi",
+  wood_buyer: "Yog'och xaridor",
+  service_provider: "Xizmat ko'rsatuvchi",
   truck_owner: "Yuk mashinasi egasi",
   personal: "Shaxsiy",
   exchanger: "Ayrboshlovchi",
@@ -109,7 +110,7 @@ export default function PartnerDetail({
             onClick={onPayment}
             className="mt-2 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
-            To\u2018lov qilish
+            To&apos;lov qilish
           </button>
         </div>
       </div>
@@ -122,7 +123,7 @@ export default function PartnerDetail({
 
         {sortedBalances.length === 0 ? (
           <p className="text-sm text-slate-400 text-center py-6">
-            Operatsiyalar yo\u2018q
+            Operatsiyalar yo&apos;q
           </p>
         ) : (
           <div className="flex flex-col gap-1">
@@ -135,9 +136,16 @@ export default function PartnerDetail({
                   <span className="text-slate-400 text-xs whitespace-nowrap">
                     {formatDate(b.createdAt)}
                   </span>
-                  <span className="text-slate-600">
-                    {b.description ?? "—"}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-600">
+                      {b.description ?? "—"}
+                    </span>
+                    {b.transport?.number && (
+                      <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded font-mono">
+                        {b.transport.number}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <span
                   className={`font-semibold whitespace-nowrap ${amountColorClass(b.amount)}`}

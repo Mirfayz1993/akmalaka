@@ -12,11 +12,11 @@ interface PartnerModalProps {
 }
 
 const partnerTypes: { value: Partner["type"]; label: string }[] = [
-  { value: "russia_supplier", label: "Rossiya ta\u2019minotchisi" },
-  { value: "code_supplier", label: "Kod ta\u2019minotchisi" },
+  { value: "russia_supplier", label: "Rossiya ta'minotchisi" },
+  { value: "code_supplier", label: "Kod ta'minotchisi" },
   { value: "code_buyer", label: "Kod xaridor" },
-  { value: "wood_buyer", label: "Yog\u2018och xaridor" },
-  { value: "service_provider", label: "Xizmat ko\u2018rsatuvchi" },
+  { value: "wood_buyer", label: "Yog'och xaridor" },
+  { value: "service_provider", label: "Xizmat ko'rsatuvchi" },
   { value: "truck_owner", label: "Yuk mashinasi egasi" },
   { value: "personal", label: "Shaxsiy" },
   { value: "exchanger", label: "Ayrboshlovchi" },

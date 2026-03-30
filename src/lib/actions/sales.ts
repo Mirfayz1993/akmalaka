@@ -17,6 +17,7 @@ import { revalidatePath } from "next/cache";
 type SaleItemInput = {
   timberId?: number;
   warehouseId?: number;
+  transportId?: number;
   thicknessMm: number;
   widthMm: number;
   lengthM: number;
@@ -105,6 +106,7 @@ export async function createSale(data: {
         saleId: newSale.id,
         timberId: item.timberId ?? null,
         warehouseId: item.warehouseId ?? null,
+        transportId: item.transportId ?? null,
         thicknessMm: item.thicknessMm,
         widthMm: item.widthMm,
         lengthM: String(item.lengthM),
@@ -122,7 +124,8 @@ export async function createSale(data: {
 
 export async function receiveSale(
   saleId: number,
-  items: { itemId: number; receivedCount: number }[]
+  items: { itemId: number; receivedCount: number }[],
+  newItems?: SaleItemInput[]
 ) {
   await db.transaction(async (tx) => {
     // Bug 1: Idempotentlik tekshiruvi — transaksiya ichida qayta o'qish
@@ -173,6 +176,46 @@ export async function receiveSale(
       }
     }
 
+    // Yangi items qo'shish (qabul paytida qo'shilgan)
+    if (newItems && newItems.length > 0) {
+      for (const newItem of newItems) {
+        const kub =
+          (newItem.thicknessMm / 1000) *
+          (newItem.widthMm / 1000) *
+          newItem.lengthM *
+          newItem.sentCount;
+        const itemTotalUsd = kub * newItem.pricePerCubicUsd;
+
+        // saleItems ga insert (sentCount = receivedCount — darhol qabul)
+        await tx.insert(saleItems).values({
+          saleId,
+          timberId: newItem.timberId ?? null,
+          warehouseId: newItem.warehouseId ?? null,
+          thicknessMm: newItem.thicknessMm,
+          widthMm: newItem.widthMm,
+          lengthM: String(newItem.lengthM),
+          sentCount: newItem.sentCount,
+          receivedCount: newItem.sentCount,
+          pricePerCubicUsd: String(newItem.pricePerCubicUsd),
+          totalUsd: String(itemTotalUsd),
+        });
+
+        // warehouseId bo'lsa → warehouse.quantity -= sentCount
+        if (newItem.warehouseId) {
+          const warehouseItem = await tx.query.warehouse.findFirst({
+            where: eq(warehouse.id, newItem.warehouseId),
+          });
+          if (!warehouseItem || warehouseItem.quantity < newItem.sentCount) {
+            throw new Error("Omborda yetarli miqdor yo'q");
+          }
+          await tx
+            .update(warehouse)
+            .set({ quantity: sql`${warehouse.quantity} - ${newItem.sentCount}` })
+            .where(eq(warehouse.id, newItem.warehouseId));
+        }
+      }
+    }
+
     // totalReceivedUsd hisoblash
     // Yangilangan receivedCount lardan hisoblash
     const itemsMap = new Map(items.map((i) => [i.itemId, i.receivedCount]));
@@ -192,6 +235,18 @@ export async function receiveSale(
           parseFloat(saleItem.lengthM) *
           receivedCount;
         totalReceivedUsd += kub * parseFloat(saleItem.pricePerCubicUsd);
+      }
+    }
+
+    // Yangi items ni totalReceivedUsd ga qo'shish
+    if (newItems && newItems.length > 0) {
+      for (const newItem of newItems) {
+        const kub =
+          (newItem.thicknessMm / 1000) *
+          (newItem.widthMm / 1000) *
+          newItem.lengthM *
+          newItem.sentCount;
+        totalReceivedUsd += kub * newItem.pricePerCubicUsd;
       }
     }
 

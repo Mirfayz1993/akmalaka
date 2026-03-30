@@ -2,7 +2,25 @@
 
 import { useState, useEffect } from "react";
 import Modal from "@/components/ui/Modal";
+import NumberInput from "@/components/ui/NumberInput";
 import { receiveSale } from "@/lib/actions/sales";
+
+type WarehouseItem = {
+  id: number;
+  thicknessMm: number;
+  widthMm: number;
+  lengthM: string;
+  quantity: number;
+};
+
+type NewReceiveItem = {
+  warehouseId: number;
+  thicknessMm: number;
+  widthMm: number;
+  lengthM: number;
+  sentCount: number;
+  pricePerCubicUsd: number;
+};
 
 type SaleDetail = {
   id: number;
@@ -24,6 +42,7 @@ interface SaleReceiveModalProps {
   onClose: () => void;
   onSuccess: () => void;
   sale: SaleDetail | null;
+  warehouseItems: WarehouseItem[];
 }
 
 export default function SaleReceiveModal({
@@ -31,10 +50,15 @@ export default function SaleReceiveModal({
   onClose,
   onSuccess,
   sale,
+  warehouseItems,
 }: SaleReceiveModalProps) {
   const [receivedCounts, setReceivedCounts] = useState<Record<number, number>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [newItems, setNewItems] = useState<NewReceiveItem[]>([]);
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<number | "">("");
+  const [newItemCount, setNewItemCount] = useState(1);
+  const [newItemPrice, setNewItemPrice] = useState(0);
 
   useEffect(() => {
     if (sale) {
@@ -53,6 +77,25 @@ export default function SaleReceiveModal({
     setReceivedCounts((prev) => ({ ...prev, [itemId]: clamped }));
   }
 
+  function handleAddNewItem() {
+    const wItem = warehouseItems.find((w) => w.id === selectedWarehouseId);
+    if (!wItem || newItemCount < 1 || newItemCount > wItem.quantity || newItemPrice <= 0) return;
+    setNewItems((prev) => [
+      ...prev,
+      {
+        warehouseId: wItem.id,
+        thicknessMm: wItem.thicknessMm,
+        widthMm: wItem.widthMm,
+        lengthM: parseFloat(wItem.lengthM),
+        sentCount: newItemCount,
+        pricePerCubicUsd: newItemPrice,
+      },
+    ]);
+    setSelectedWarehouseId("");
+    setNewItemCount(1);
+    setNewItemPrice(0);
+  }
+
   async function handleSubmit() {
     if (!sale) return;
     setSaving(true);
@@ -63,7 +106,8 @@ export default function SaleReceiveModal({
         sale.items.map((item) => ({
           itemId: item.id,
           receivedCount: receivedCounts[item.id] ?? 0,
-        }))
+        })),
+        newItems.length > 0 ? newItems : undefined
       );
       handleClose();
       onSuccess();
@@ -77,6 +121,10 @@ export default function SaleReceiveModal({
   function handleClose() {
     setReceivedCounts({});
     setError(null);
+    setNewItems([]);
+    setSelectedWarehouseId("");
+    setNewItemCount(1);
+    setNewItemPrice(0);
     onClose();
   }
 
@@ -118,8 +166,7 @@ export default function SaleReceiveModal({
                     {item.sentCount ?? 0} dona
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <input
-                      type="number"
+                    <NumberInput
                       min={0}
                       max={item.sentCount ?? 0}
                       value={receivedCounts[item.id] ?? 0}
@@ -134,6 +181,71 @@ export default function SaleReceiveModal({
             </tbody>
           </table>
         </div>
+
+        {/* ── Ombordan yangi item qo'shish ───────────────────── */}
+        {warehouseItems.filter((w) => w.quantity > 0).length > 0 && (
+          <div className="pt-4 border-t border-slate-200">
+            <p className="text-sm font-semibold text-slate-700 mb-3">Qo&apos;shimcha qabul (ombordan)</p>
+
+            {newItems.length > 0 && (
+              <div className="mb-3 space-y-1">
+                {newItems.map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm">
+                    <span className="text-slate-700">{item.thicknessMm}&times;{item.widthMm}&times;{item.lengthM}m — {item.sentCount} dona</span>
+                    <button
+                      onClick={() => setNewItems((prev) => prev.filter((_, i) => i !== idx))}
+                      className="text-red-400 hover:text-red-600 ml-3"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <select
+                value={selectedWarehouseId}
+                onChange={(e) => {
+                  setSelectedWarehouseId(e.target.value ? Number(e.target.value) : "");
+                  setNewItemCount(1);
+                }}
+                className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">— O&apos;lcham tanlang —</option>
+                {warehouseItems.filter((w) => w.quantity > 0).map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.thicknessMm}&times;{w.widthMm}&times;{w.lengthM}m ({w.quantity} dona)
+                  </option>
+                ))}
+              </select>
+              <NumberInput
+                placeholder="Miqdor"
+                min={1}
+                max={warehouseItems.find((w) => w.id === selectedWarehouseId)?.quantity ?? 1}
+                value={newItemCount}
+                onChange={(e) => setNewItemCount(Number(e.target.value))}
+                className="w-20 border border-slate-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <NumberInput
+                placeholder="$/m³"
+                min={0}
+                step={0.01}
+                value={newItemPrice || ""}
+                onChange={(e) => setNewItemPrice(Number(e.target.value))}
+                className="w-20 border border-slate-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                type="button"
+                onClick={handleAddNewItem}
+                disabled={!selectedWarehouseId || newItemCount < 1 || newItemPrice <= 0}
+                className="px-3 py-1.5 bg-green-700 text-white text-sm rounded-lg hover:bg-green-800 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                + Qo&apos;shish
+              </button>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-700">

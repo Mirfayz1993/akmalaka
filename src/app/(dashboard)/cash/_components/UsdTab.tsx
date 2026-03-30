@@ -13,6 +13,7 @@ interface UsdTabProps {
   balance: number;
   operations: UsdOperation[];
   onAddOperation: () => void;
+  onDelete: (id: number) => void;
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -49,6 +50,7 @@ export default function UsdTab({
   balance,
   operations,
   onAddOperation,
+  onDelete,
 }: UsdTabProps) {
   const isPositive = balance >= 0;
 
@@ -111,13 +113,14 @@ export default function UsdTab({
               <th className="text-right px-4 py-3 text-slate-600 font-medium">
                 Balans
               </th>
+              <th className="px-2 py-3"></th>
             </tr>
           </thead>
           <tbody>
             {operations.length === 0 ? (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={8}
                   className="text-center py-10 text-slate-400"
                 >
                   Operatsiyalar mavjud emas
@@ -172,6 +175,17 @@ export default function UsdTab({
                       >
                         ${formatUsd(runningTotals[idx])}
                       </span>
+                    </td>
+                    <td className="px-2 py-3 text-right">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onDelete(op.id); }}
+                        className="p-1 text-slate-300 hover:text-red-500 transition-colors"
+                        title="O'chirish"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                        </svg>
+                      </button>
                     </td>
                   </tr>
                 );

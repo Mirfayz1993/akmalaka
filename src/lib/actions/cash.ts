@@ -120,6 +120,13 @@ export async function recordUsdOperation(data: {
   revalidatePath("/cash");
 }
 
+// ─── WRITE: Delete cash operation ────────────────────────────────────────────
+
+export async function deleteCashOperation(id: number) {
+  await db.delete(cashOperations).where(eq(cashOperations.id, id));
+  revalidatePath("/cash");
+}
+
 // ─── WRITE: Record exchange ($ → RUB) ────────────────────────────────────────
 
 export async function recordExchange(data: {

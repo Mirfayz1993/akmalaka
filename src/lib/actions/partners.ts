@@ -24,10 +24,13 @@ export async function getPartnerWithBalance(id: number) {
 
   if (!partner) return null;
 
-  const balances = await db
-    .select()
-    .from(partnerBalances)
-    .where(eq(partnerBalances.partnerId, id));
+  const balances = await db.query.partnerBalances.findMany({
+    where: eq(partnerBalances.partnerId, id),
+    with: {
+      transport: true,
+    },
+    orderBy: (b, { desc }) => [desc(b.createdAt)],
+  });
 
   const currentBalance = balances.reduce(
     (sum, b) => sum + Number(b.amount),

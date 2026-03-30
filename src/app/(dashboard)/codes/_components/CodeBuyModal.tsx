@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Modal from "@/components/ui/Modal";
+import NumberInput from "@/components/ui/NumberInput";
 import { buyCode } from "@/lib/actions/codes";
 import type { Partner } from "@/lib/actions/partners";
 
@@ -100,8 +101,7 @@ export default function CodeBuyModal({
           <label className="block text-sm font-medium text-slate-700 mb-1.5">
             Soni
           </label>
-          <input
-            type="number"
+          <NumberInput
             min={1}
             max={100}
             value={quantity}

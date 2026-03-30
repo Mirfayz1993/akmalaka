@@ -19,16 +19,17 @@ type PartnerWithBalance = {
     currency: string | null;
     description: string | null;
     createdAt: Date | string | null;
+    transport: { id: number; number: string | null; type: string } | null;
   }>;
   currentBalance: number;
 };
 
 const partnerTypeLabels: Record<string, string> = {
-  russia_supplier: "Rossiya ta\u2019minotchisi",
-  code_supplier: "Kod ta\u2019minotchisi",
+  russia_supplier: "Rossiya ta'minotchisi",
+  code_supplier: "Kod ta'minotchisi",
   code_buyer: "Kod xaridor",
-  wood_buyer: "Yog\u2018och xaridor",
-  service_provider: "Xizmat ko\u2018rsatuvchi",
+  wood_buyer: "Yog'och xaridor",
+  service_provider: "Xizmat ko'rsatuvchi",
   truck_owner: "Yuk mashinasi egasi",
   personal: "Shaxsiy",
   exchanger: "Ayrboshlovchi",
@@ -127,7 +128,7 @@ export default function PartnersPage() {
           <div className="flex-1 overflow-y-auto flex flex-col gap-1 pr-1">
             {filteredPartners.length === 0 ? (
               <p className="text-sm text-slate-400 text-center py-8">
-                Hamkorlar yo\u2018q
+                Hamkorlar yo&apos;q
               </p>
             ) : (
               filteredPartners.map((p) => (

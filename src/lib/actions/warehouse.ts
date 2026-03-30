@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { warehouse, timbers } from "@/db/schema";
+import { warehouse, timbers, transports } from "@/db/schema";
 import { eq, notInArray, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
@@ -39,6 +39,49 @@ export async function addToWarehouse(
   });
 
   revalidatePath("/warehouse");
+}
+
+export async function backfillWarehouseFromClosedWagons() {
+  // Barcha yopiq transportlarni timbers bilan ol
+  const closedTransports = await db.query.transports.findMany({
+    where: eq(transports.status, "closed"),
+    with: { timbers: true },
+  });
+
+  // Omborga allaqachon tushirilgan timberId lar
+  const existingWarehouseItems = await db.query.warehouse.findMany();
+  const existingTimberIds = new Set(
+    existingWarehouseItems.map((w) => w.timberId).filter(Boolean)
+  );
+
+  const itemsToAdd: {
+    timberId: number;
+    transportId: number;
+    thicknessMm: number;
+    widthMm: number;
+    lengthM: number;
+    quantity: number;
+  }[] = [];
+
+  for (const transport of closedTransports) {
+    for (const t of transport.timbers) {
+      if (existingTimberIds.has(t.id)) continue; // allaqachon bor
+      const remaining = (t.tashkentCount ?? 0) - (t.customerCount ?? 0);
+      if (remaining <= 0) continue;
+      itemsToAdd.push({
+        timberId: t.id,
+        transportId: transport.id,
+        thicknessMm: t.thicknessMm,
+        widthMm: t.widthMm,
+        lengthM: parseFloat(t.lengthM),
+        quantity: remaining,
+      });
+    }
+  }
+
+  if (itemsToAdd.length > 0) {
+    await addToWarehouse(itemsToAdd);
+  }
 }
 
 export async function getSoldNotFromWarehouse(transportId: number) {

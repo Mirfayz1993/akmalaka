@@ -3,9 +3,10 @@
 import { useState, useEffect } from "react";
 import { Plus, Truck } from "lucide-react";
 import WagonModal from "./_components/WagonModal";
+import WagonEditModal from "./_components/WagonEditModal";
 import WagonTable from "./_components/WagonTable";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import { getTransports, deleteTransport, closeTransport } from "@/lib/actions/wagons";
+import { getTransports, deleteTransport, closeTransport, getTransport, unloadTransport } from "@/lib/actions/wagons";
 import { getPartners, type Partner } from "@/lib/actions/partners";
 import { t } from "@/i18n/uz";
 
@@ -46,6 +47,13 @@ export default function WagonsPage() {
   const [closeTarget, setCloseTarget] = useState<Transport | null>(null);
   const [isCloseLoading, setIsCloseLoading] = useState(false);
 
+  // Unload dialog
+  const [unloadTarget, setUnloadTarget] = useState<Transport | null>(null);
+  const [isUnloadLoading, setIsUnloadLoading] = useState(false);
+
+  // Edit modal
+  const [editingTransport, setEditingTransport] = useState<NonNullable<Awaited<ReturnType<typeof getTransport>>> | null>(null);
+
   useEffect(() => {
     loadData();
   }, []);
@@ -65,9 +73,9 @@ export default function WagonsPage() {
     }
   }
 
-  function handleEdit(transport: Transport) {
-    // TODO: Tahrirlash modali — Task 6 da to'ldiriladi
-    console.log("Edit:", transport.id);
+  async function handleEdit(transport: Transport) {
+    const data = await getTransport(transport.id);
+    if (data) setEditingTransport(data as NonNullable<Awaited<ReturnType<typeof getTransport>>>);
   }
 
   function handleDeleteRequest(transport: Transport) {
@@ -106,6 +114,28 @@ export default function WagonsPage() {
     }
   }
 
+  function handleUnloadRequest(transport: Transport) {
+    setUnloadTarget(transport);
+  }
+
+  async function handleUnloadConfirm(choice: "close" | "unload") {
+    if (!unloadTarget) return;
+    setIsUnloadLoading(true);
+    try {
+      if (choice === "close") {
+        await closeTransport(unloadTarget.id);
+      } else {
+        await unloadTransport(unloadTarget.id);
+      }
+      setUnloadTarget(null);
+      await loadData();
+    } catch (err) {
+      console.error("Tushirishda xato:", err);
+    } finally {
+      setIsUnloadLoading(false);
+    }
+  }
+
   const allTransports = [...wagons, ...trucks];
 
   return (
@@ -137,6 +167,7 @@ export default function WagonsPage() {
         onEdit={handleEdit}
         onDelete={handleDeleteRequest}
         onClose={handleCloseRequest}
+        onUnload={handleUnloadRequest}
       />
 
       {/* Vagon modal */}
@@ -178,6 +209,51 @@ export default function WagonsPage() {
         confirmText={t.wagons.close}
         isLoading={isCloseLoading}
       />
+
+      {/* Tushurish dialog */}
+      {unloadTarget && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-sm shadow-xl">
+            <h3 className="text-base font-semibold text-slate-800 mb-2">Vagonni tushirish</h3>
+            <p className="text-sm text-slate-600 mb-4">
+              <b>{unloadTarget.number ?? `Vagon #${unloadTarget.id}`}</b> — qanday holat tanlaysiz?
+            </p>
+            <div className="space-y-2">
+              <button
+                disabled={isUnloadLoading}
+                onClick={() => handleUnloadConfirm("unload")}
+                className="w-full px-4 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+              >
+                Tushirilgan rejimga o&apos;tkazish
+              </button>
+              <button
+                disabled={isUnloadLoading}
+                onClick={() => handleUnloadConfirm("close")}
+                className="w-full px-4 py-2 text-sm bg-slate-700 text-white rounded-lg hover:bg-slate-800 disabled:opacity-50"
+              >
+                Yopilsin (barcha yog&apos;ochlar jo&apos;natilgan)
+              </button>
+              <button
+                disabled={isUnloadLoading}
+                onClick={() => setUnloadTarget(null)}
+                className="w-full px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 text-slate-600"
+              >
+                Bekor qilish
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tahrirlash modali */}
+      <WagonEditModal
+        isOpen={editingTransport !== null}
+        onClose={() => setEditingTransport(null)}
+        transport={editingTransport}
+        partners={partners}
+        onSuccess={() => { setEditingTransport(null); loadData(); }}
+      />
+
     </div>
   );
 }

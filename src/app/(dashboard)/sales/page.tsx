@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { getSales, getSale, deleteSale } from "@/lib/actions/sales";
 import { getPartners, Partner } from "@/lib/actions/partners";
 import { getTransports } from "@/lib/actions/wagons";
+import { getWarehouse } from "@/lib/actions/warehouse";
 import SaleTable from "./_components/SaleTable";
 import SaleModal from "./_components/SaleModal";
 import SaleReceiveModal from "./_components/SaleReceiveModal";
@@ -41,6 +42,14 @@ type SaleDetail = {
   }>;
 };
 
+type WarehouseItem = {
+  id: number;
+  thicknessMm: number;
+  widthMm: number;
+  lengthM: string;
+  quantity: number;
+};
+
 type TransportItem = {
   id: number;
   number: string | null;
@@ -59,6 +68,7 @@ export default function SalesPage() {
   const [sales, setSales] = useState<SaleWithCustomer[]>([]);
   const [partners, setPartners] = useState<Partner[]>([]);
   const [transports, setTransports] = useState<TransportItem[]>([]);
+  const [warehouseItems, setWarehouseItems] = useState<WarehouseItem[]>([]);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [receiveTarget, setReceiveTarget] = useState<SaleDetail | null>(null);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
@@ -72,14 +82,17 @@ export default function SalesPage() {
   async function loadData() {
     setLoading(true);
     try {
-      const [salesData, partnersData, transportsData] = await Promise.all([
+      const [salesData, partnersData, wagonsData, trucksData, warehouseData] = await Promise.all([
         getSales(),
         getPartners(),
         getTransports("wagon"),
+        getTransports("truck"),
+        getWarehouse(),
       ]);
       setSales(salesData as SaleWithCustomer[]);
       setPartners(partnersData as Partner[]);
-      setTransports(transportsData as unknown as TransportItem[]);
+      setTransports([...wagonsData, ...trucksData] as unknown as TransportItem[]);
+      setWarehouseItems(warehouseData as WarehouseItem[]);
     } finally {
       setLoading(false);
     }
@@ -147,22 +160,18 @@ export default function SalesPage() {
       <SaleModal
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
-        onSuccess={() => {
-          setIsCreateOpen(false);
-          loadData();
-        }}
+        onSuccess={() => { setIsCreateOpen(false); loadData(); }}
         partners={partners}
         transports={transports}
+        warehouseItems={warehouseItems}
       />
 
       <SaleReceiveModal
         isOpen={!!receiveTarget}
         onClose={() => setReceiveTarget(null)}
-        onSuccess={() => {
-          setReceiveTarget(null);
-          loadData();
-        }}
+        onSuccess={() => { setReceiveTarget(null); loadData(); }}
         sale={receiveTarget}
+        warehouseItems={warehouseItems}
       />
 
       <ConfirmDialog
