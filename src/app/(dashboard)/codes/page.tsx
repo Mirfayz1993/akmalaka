@@ -46,10 +46,24 @@ export default function CodesPage() {
     }
   }
 
+  // Faqat kodlar ro'yxatini yangilash (partnerlar o'zgarmaydi)
+  async function refreshCodes() {
+    try {
+      const [inv, hist] = await Promise.all([
+        getCodeInventory(),
+        getCodeHistory(),
+      ]);
+      setInventory(inv);
+      setHistory(hist);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
   async function handleDelete(id: number) {
     try {
       await deleteCode(id);
-      await loadData();
+      await refreshCodes();
     } catch (err) {
       alert(err instanceof Error ? err.message : "Xatolik yuz berdi");
     }
@@ -117,13 +131,13 @@ export default function CodesPage() {
       <CodeBuyModal
         isOpen={isBuyModalOpen}
         onClose={() => setIsBuyModalOpen(false)}
-        onSuccess={loadData}
+        onSuccess={refreshCodes}
         partners={partners}
       />
       <CodeSellModal
         isOpen={isSellModalOpen}
         onClose={() => setIsSellModalOpen(false)}
-        onSuccess={loadData}
+        onSuccess={refreshCodes}
         partners={partners}
         availableCodes={inventory}
       />
