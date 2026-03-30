@@ -73,6 +73,19 @@ export default function WagonsPage() {
     }
   }
 
+  async function refreshTransports() {
+    try {
+      const [wagonsData, trucksData] = await Promise.all([
+        getTransports("wagon"),
+        getTransports("truck"),
+      ]);
+      setWagons(wagonsData as unknown as Transport[]);
+      setTrucks(trucksData as unknown as Transport[]);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
   async function handleEdit(transport: Transport) {
     const data = await getTransport(transport.id);
     if (data) setEditingTransport(data as NonNullable<Awaited<ReturnType<typeof getTransport>>>);
@@ -88,7 +101,7 @@ export default function WagonsPage() {
     try {
       await deleteTransport(deleteTarget.id);
       setDeleteTarget(null);
-      await loadData();
+      await refreshTransports();
     } catch (err) {
       console.error("O'chirishda xato:", err);
     } finally {
@@ -106,7 +119,7 @@ export default function WagonsPage() {
     try {
       await closeTransport(closeTarget.id);
       setCloseTarget(null);
-      await loadData();
+      await refreshTransports();
     } catch (err) {
       console.error("Yopishda xato:", err);
     } finally {
@@ -128,7 +141,7 @@ export default function WagonsPage() {
         await unloadTransport(unloadTarget.id);
       }
       setUnloadTarget(null);
-      await loadData();
+      await refreshTransports();
     } catch (err) {
       console.error("Tushirishda xato:", err);
     } finally {
@@ -176,7 +189,7 @@ export default function WagonsPage() {
         onClose={() => setIsWagonModalOpen(false)}
         type="wagon"
         partners={partners}
-        onSuccess={loadData}
+        onSuccess={refreshTransports}
       />
 
       {/* Yuk mashinasi modal */}
@@ -185,7 +198,7 @@ export default function WagonsPage() {
         onClose={() => setIsTruckModalOpen(false)}
         type="truck"
         partners={partners}
-        onSuccess={loadData}
+        onSuccess={refreshTransports}
       />
 
       {/* O'chirish dialog */}
@@ -251,7 +264,7 @@ export default function WagonsPage() {
         onClose={() => setEditingTransport(null)}
         transport={editingTransport}
         partners={partners}
-        onSuccess={() => { setEditingTransport(null); loadData(); }}
+        onSuccess={() => { setEditingTransport(null); refreshTransports(); }}
       />
 
     </div>

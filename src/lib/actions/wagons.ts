@@ -28,6 +28,7 @@ export async function getTransports(type: "wagon" | "truck") {
       },
     },
     orderBy: (t, { desc }) => [desc(t.createdAt)],
+    limit: 100,
   });
 }
 
