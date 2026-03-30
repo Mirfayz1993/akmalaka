@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
-import { codes, partnerBalances, transports } from "@/db/schema";
+import { codes, partnerBalances, transports, cashOperations } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 // ─── GET: Mavjud kodlar (status = 'available') ────────────────────────────────
@@ -163,9 +163,28 @@ export async function sellCode(data: {
       currency: "usd",
       description: `Kod sotib olindi`,
     });
+
+    // USD Kassa: xarajat (kod xaridi narxi)
+    await tx.insert(cashOperations).values({
+      currency: "usd",
+      type: "expense",
+      amount: String(-buyCostUsd),
+      partnerId: code.supplierId,
+      description: `Kod xarajati (ta'minotchi)`,
+    });
+
+    // USD Kassa: daromad (kod sotuvi)
+    await tx.insert(cashOperations).values({
+      currency: "usd",
+      type: "income",
+      amount: String(sellPriceUsd),
+      partnerId: data.customerId,
+      description: `Kod sotuvi daromadi`,
+    });
   });
 
   revalidatePath("/codes");
+  revalidatePath("/cash");
 }
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
