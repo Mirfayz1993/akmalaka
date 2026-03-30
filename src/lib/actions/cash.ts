@@ -161,8 +161,15 @@ export async function recordExchange(data: {
       description: data.description ?? null,
     });
 
-    // Ayrboshlash hamkor balansiga ta'sir qilmaydi — ular faqat vosita
-    // partnerId bo'lsa ham partnerBalances ga yozilmaydi
+    // Ayrboshlash: biz hamkorga dollar berdik → partnerBalances ga yoziladi
+    if (data.partnerId) {
+      await tx.insert(partnerBalances).values({
+        partnerId: data.partnerId,
+        amount: String(-data.usdAmount),
+        currency: "usd",
+        description: data.description ?? "Pul ayrboshlash",
+      });
+    }
   });
 
   revalidatePath("/cash");

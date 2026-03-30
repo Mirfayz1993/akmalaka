@@ -125,6 +125,10 @@ export default function CashPage() {
   async function handleUsdSubmit(e: React.FormEvent) {
     e.preventDefault();
     setUsdError("");
+    if (!usdForm.partnerId) {
+      setUsdError("Hamkor tanlash majburiy");
+      return;
+    }
     const amt = parseFloat(usdForm.amount);
     if (!usdForm.amount || isNaN(amt) || amt <= 0) {
       setUsdError("Musbat summa kiriting");
@@ -165,6 +169,10 @@ export default function CashPage() {
     setExchError("");
     const usd = parseFloat(exchForm.usdAmount);
     const rub = parseFloat(exchForm.rubAmount);
+    if (!exchForm.partnerId) {
+      setExchError("Hamkor tanlash majburiy");
+      return;
+    }
     if (!exchForm.usdAmount || isNaN(usd) || usd <= 0) {
       setExchError("$ miqdorini kiriting");
       return;
@@ -297,7 +305,7 @@ export default function CashPage() {
           {/* Partner */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
-              Hamkor (ixtiyoriy)
+              Hamkor
             </label>
             <select
               value={usdForm.partnerId}
@@ -411,7 +419,7 @@ export default function CashPage() {
           {/* Partner */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
-              Ayrboshlovchi (ixtiyoriy)
+              Ayrboshlovchi (Hamkor)
             </label>
             <select
               value={exchForm.partnerId}
