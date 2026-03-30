@@ -2,16 +2,17 @@
 
 import { db } from "@/db";
 import { cashOperations, partnerBalances } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 // ─── GET: USD balance ─────────────────────────────────────────────────────────
 
 export async function getUsdBalance(): Promise<number> {
-  const rows = await db.query.cashOperations.findMany({
-    where: eq(cashOperations.currency, "usd"),
-  });
-  return rows.reduce((sum, row) => sum + parseFloat(row.amount), 0);
+  const result = await db
+    .select({ total: sql<string>`COALESCE(SUM(${cashOperations.amount}), 0)` })
+    .from(cashOperations)
+    .where(eq(cashOperations.currency, "usd"));
+  return parseFloat(result[0]?.total ?? "0");
 }
 
 // ─── GET: RUB state (balance + weighted average rate) ────────────────────────
@@ -20,28 +21,26 @@ export async function getRubState(): Promise<{
   rubBalance: number;
   avgRate: number;
 }> {
-  const rows = await db.query.cashOperations.findMany({
-    where: eq(cashOperations.currency, "rub"),
+  // SQL SUM for balance
+  const balanceResult = await db
+    .select({ total: sql<string>`COALESCE(SUM(${cashOperations.amount}), 0)` })
+    .from(cashOperations)
+    .where(eq(cashOperations.currency, "rub"));
+  const rubBalance = parseFloat(balanceResult[0]?.total ?? "0");
+
+  // Only income rows with exchangeRate for weighted avg rate
+  const incomeRows = await db.query.cashOperations.findMany({
+    where: and(
+      eq(cashOperations.currency, "rub"),
+      eq(cashOperations.type, "income"),
+      sql`${cashOperations.exchangeRate} IS NOT NULL AND ${cashOperations.exchangeRate}::numeric > 0 AND ${cashOperations.amount}::numeric > 0`
+    ),
+    columns: { amount: true, exchangeRate: true },
   });
-
-  const rubBalance = rows.reduce((sum, row) => sum + parseFloat(row.amount), 0);
-
-  // Weighted average rate — only income rows with exchangeRate > 0
-  const incomeRows = rows.filter(
-    (row) =>
-      row.type === "income" &&
-      parseFloat(row.amount) > 0 &&
-      row.exchangeRate !== null &&
-      row.exchangeRate !== undefined &&
-      parseFloat(row.exchangeRate) > 0
-  );
 
   let avgRate = 0;
   if (incomeRows.length > 0) {
-    const sumAmount = incomeRows.reduce(
-      (sum, row) => sum + parseFloat(row.amount),
-      0
-    );
+    const sumAmount = incomeRows.reduce((sum, row) => sum + parseFloat(row.amount), 0);
     const sumAmountDivRate = incomeRows.reduce(
       (sum, row) => sum + parseFloat(row.amount) / parseFloat(row.exchangeRate!),
       0

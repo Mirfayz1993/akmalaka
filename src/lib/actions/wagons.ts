@@ -11,7 +11,7 @@ import {
 } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { addToWarehouse } from "./warehouse";
+import { addToWarehouse, backfillWarehouseFromClosedWagons } from "./warehouse";
 
 // ─── GET TRANSPORTS ────────────────────────────────────────────────────────────
 
@@ -321,7 +321,10 @@ export async function closeTransport(id: number) {
     action: "Vagon yopildi (closed)",
   });
 
+  await backfillWarehouseFromClosedWagons();
+
   revalidatePath("/wagons");
+  revalidatePath("/warehouse");
 }
 
 // ─── DELETE TRANSPORT ──────────────────────────────────────────────────────────

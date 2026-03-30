@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import WarehouseTable from "./_components/WarehouseTable";
-import { getWarehouse, backfillWarehouseFromClosedWagons } from "@/lib/actions/warehouse";
+import { getWarehouse } from "@/lib/actions/warehouse";
 
 type WarehouseItem = {
   id: number;
@@ -24,7 +24,6 @@ export default function WarehousePage() {
 
   async function loadData() {
     try {
-      await backfillWarehouseFromClosedWagons();
       const data = await getWarehouse();
       // Map to WarehouseItem shape (only needed fields)
       const mapped: WarehouseItem[] = data.map((w) => ({
