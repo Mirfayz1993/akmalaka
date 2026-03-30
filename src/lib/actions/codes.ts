@@ -21,12 +21,14 @@ export async function getCodeInventory() {
 
 export async function getCodeHistory() {
   return await db.query.codes.findMany({
+    where: (t, { ne }) => ne(t.status, "available"),
     with: {
       supplier: true,
       usedInTransport: true,
       soldToPartner: true,
     },
     orderBy: (t, { desc }) => [desc(t.createdAt)],
+    limit: 100,
   });
 }
 
@@ -37,17 +39,13 @@ export async function buyCode(data: {
   supplierId: number;
   quantity: number;
 }) {
-  await db.transaction(async (tx) => {
-    for (let i = 0; i < data.quantity; i++) {
-      await tx.insert(codes).values({
-        type: data.type,
-        supplierId: data.supplierId,
-        status: "available",
-        buyPricePerTon: null,
-      });
-    }
-  });
-
+  const rows = Array.from({ length: data.quantity }, () => ({
+    type: data.type,
+    supplierId: data.supplierId,
+    status: "available" as const,
+    buyPricePerTon: null,
+  }));
+  await db.insert(codes).values(rows);
   revalidatePath("/codes");
 }
 
