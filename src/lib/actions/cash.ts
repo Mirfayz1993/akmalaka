@@ -82,6 +82,39 @@ export async function getExchangeHistory() {
   });
 }
 
+// ─── WRITE: Record RUB operation ─────────────────────────────────────────────
+
+export async function recordRubOperation(data: {
+  type: "income" | "expense";
+  amount: number;
+  partnerId?: number;
+  description?: string;
+}) {
+  const signedAmount = data.type === "income" ? data.amount : -data.amount;
+
+  await db.transaction(async (tx) => {
+    await tx.insert(cashOperations).values({
+      currency: "rub",
+      type: data.type,
+      amount: String(signedAmount),
+      partnerId: data.partnerId ?? null,
+      description: data.description ?? null,
+    });
+
+    if (data.partnerId) {
+      const balanceAmount = data.type === "income" ? data.amount : -data.amount;
+      await tx.insert(partnerBalances).values({
+        partnerId: data.partnerId,
+        amount: String(balanceAmount),
+        currency: "rub",
+        description: data.description ?? null,
+      });
+    }
+  });
+
+  revalidatePath("/cash");
+}
+
 // ─── WRITE: Record USD operation ─────────────────────────────────────────────
 
 export async function recordUsdOperation(data: {

@@ -14,7 +14,9 @@ interface RubTabProps {
   rubBalance: number;
   avgRate: number;
   operations: RubOperation[];
+  onAddOperation: () => void;
   onAddExchange: () => void;
+  onDelete: (id: number) => void;
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -51,9 +53,21 @@ export default function RubTab({
   rubBalance,
   avgRate,
   operations,
+  onAddOperation,
   onAddExchange,
+  onDelete,
 }: RubTabProps) {
   const isPositive = rubBalance >= 0;
+
+  // Running balance (operations are desc, reverse for running sum)
+  const sorted = [...operations].reverse();
+  const runningTotals: number[] = [];
+  let running = 0;
+  for (const op of sorted) {
+    running += parseFloat(op.amount);
+    runningTotals.push(running);
+  }
+  runningTotals.reverse();
 
   return (
     <div>
@@ -77,12 +91,20 @@ export default function RubTab({
             </p>
           </div>
         </div>
-        <button
-          onClick={onAddExchange}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 text-sm font-medium"
-        >
-          + Ayrboshlash
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={onAddOperation}
+            className="bg-slate-700 text-white px-4 py-2 rounded-lg hover:bg-slate-800 flex items-center gap-2 text-sm font-medium"
+          >
+            + Operatsiya
+          </button>
+          <button
+            onClick={onAddExchange}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 text-sm font-medium"
+          >
+            + Ayrboshlash
+          </button>
+        </div>
       </div>
 
       {/* Table */}
@@ -90,38 +112,26 @@ export default function RubTab({
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
-              <th className="text-left px-4 py-3 text-slate-600 font-medium">
-                Sana
-              </th>
-              <th className="text-left px-4 py-3 text-slate-600 font-medium">
-                Tur
-              </th>
-              <th className="text-left px-4 py-3 text-slate-600 font-medium">
-                Hamkor
-              </th>
-              <th className="text-right px-4 py-3 text-slate-600 font-medium">
-                Kurs
-              </th>
-              <th className="text-right px-4 py-3 text-slate-600 font-medium">
-                Kirim RUB
-              </th>
-              <th className="text-right px-4 py-3 text-slate-600 font-medium">
-                Chiqim RUB
-              </th>
+              <th className="text-left px-4 py-3 text-slate-600 font-medium">Sana</th>
+              <th className="text-left px-4 py-3 text-slate-600 font-medium">Tur</th>
+              <th className="text-left px-4 py-3 text-slate-600 font-medium">Hamkor</th>
+              <th className="text-left px-4 py-3 text-slate-600 font-medium">Tavsif</th>
+              <th className="text-right px-4 py-3 text-slate-600 font-medium">Kurs</th>
+              <th className="text-right px-4 py-3 text-slate-600 font-medium">Kirim ₽</th>
+              <th className="text-right px-4 py-3 text-slate-600 font-medium">Chiqim ₽</th>
+              <th className="text-right px-4 py-3 text-slate-600 font-medium">Balans ₽</th>
+              <th className="px-2 py-3"></th>
             </tr>
           </thead>
           <tbody>
             {operations.length === 0 ? (
               <tr>
-                <td
-                  colSpan={6}
-                  className="text-center py-10 text-slate-400"
-                >
+                <td colSpan={9} className="text-center py-10 text-slate-400">
                   Operatsiyalar mavjud emas
                 </td>
               </tr>
             ) : (
-              operations.map((op) => {
+              operations.map((op, idx) => {
                 const amt = parseFloat(op.amount);
                 const isIncome = amt > 0;
                 const rate = op.exchangeRate ? parseFloat(op.exchangeRate) : null;
@@ -138,6 +148,9 @@ export default function RubTab({
                     </td>
                     <td className="px-4 py-3 text-slate-600">
                       {op.partner?.name ?? "—"}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {op.description ?? "—"}
                     </td>
                     <td className="px-4 py-3 text-right text-slate-600">
                       {rate ? formatRub(rate) : "—"}
@@ -159,6 +172,26 @@ export default function RubTab({
                       ) : (
                         <span className="text-slate-300">—</span>
                       )}
+                    </td>
+                    <td className="px-4 py-3 text-right font-medium">
+                      <span
+                        className={
+                          runningTotals[idx] >= 0 ? "text-green-700" : "text-red-600"
+                        }
+                      >
+                        {formatRub(runningTotals[idx])} ₽
+                      </span>
+                    </td>
+                    <td className="px-2 py-3 text-right">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onDelete(op.id); }}
+                        className="p-1 text-slate-300 hover:text-red-500 transition-colors"
+                        title="O'chirish"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                        </svg>
+                      </button>
                     </td>
                   </tr>
                 );

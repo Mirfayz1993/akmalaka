@@ -8,6 +8,7 @@ import {
   getRubOperations,
   getExchangeHistory,
   recordUsdOperation,
+  recordRubOperation,
   recordExchange,
   deleteCashOperation,
 } from "@/lib/actions/cash";
@@ -63,6 +64,7 @@ export default function CashPage() {
 
   // Modal state
   const [isUsdModalOpen, setIsUsdModalOpen] = useState(false);
+  const [isRubModalOpen, setIsRubModalOpen] = useState(false);
   const [isExchangeModalOpen, setIsExchangeModalOpen] = useState(false);
 
   // USD operation form
@@ -74,6 +76,16 @@ export default function CashPage() {
   });
   const [usdSubmitting, setUsdSubmitting] = useState(false);
   const [usdError, setUsdError] = useState("");
+
+  // RUB operation form
+  const [rubForm, setRubForm] = useState({
+    type: "income" as "income" | "expense",
+    amount: "",
+    partnerId: "",
+    description: "",
+  });
+  const [rubSubmitting, setRubSubmitting] = useState(false);
+  const [rubError, setRubError] = useState("");
 
   // Exchange form
   const [exchForm, setExchForm] = useState({
@@ -107,11 +119,53 @@ export default function CashPage() {
     setPartners(pts);
   }
 
-  // ─── USD Delete handler ───────────────────────────────────────────────────────
+  // ─── Delete handlers ─────────────────────────────────────────────────────────
 
   async function handleDeleteUsd(id: number) {
     await deleteCashOperation(id);
     await loadData();
+  }
+
+  async function handleDeleteRub(id: number) {
+    await deleteCashOperation(id);
+    await loadData();
+  }
+
+  // ─── RUB Modal handlers ──────────────────────────────────────────────────────
+
+  function openRubModal() {
+    setRubForm({ type: "income", amount: "", partnerId: "", description: "" });
+    setRubError("");
+    setIsRubModalOpen(true);
+  }
+
+  async function handleRubSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setRubError("");
+    if (!rubForm.partnerId) {
+      setRubError("Hamkor tanlash majburiy");
+      return;
+    }
+    const amt = parseFloat(rubForm.amount);
+    if (!rubForm.amount || isNaN(amt) || amt <= 0) {
+      setRubError("Musbat summa kiriting");
+      return;
+    }
+    setRubSubmitting(true);
+    try {
+      await recordRubOperation({
+        type: rubForm.type,
+        amount: amt,
+        partnerId: parseInt(rubForm.partnerId),
+        description: rubForm.description || undefined,
+      });
+      setIsRubModalOpen(false);
+      await loadData();
+    } catch (err) {
+      setRubError(err instanceof Error ? err.message : "Xatolik yuz berdi");
+    } finally {
+      setRubSubmitting(false);
+    }
   }
 
   // ─── USD Modal handlers ──────────────────────────────────────────────────────
@@ -242,7 +296,9 @@ export default function CashPage() {
           rubBalance={rubBalance}
           avgRate={avgRate}
           operations={rubOperations}
+          onAddOperation={openRubModal}
           onAddExchange={openExchangeModal}
+          onDelete={handleDeleteRub}
         />
       )}
       {activeTab === "exchange" && (
@@ -360,6 +416,118 @@ export default function CashPage() {
               className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
             >
               {usdSubmitting ? "Saqlanmoqda..." : "Saqlash"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ─── RUB Operation Modal ────────────────────────────────────────────── */}
+      <Modal
+        isOpen={isRubModalOpen}
+        onClose={() => setIsRubModalOpen(false)}
+        title="₽ Operatsiya qo'shish"
+        size="md"
+      >
+        <form onSubmit={handleRubSubmit} className="space-y-4">
+          {/* Type */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Tur
+            </label>
+            <div className="flex gap-3">
+              {(["income", "expense"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setRubForm((f) => ({ ...f, type: t }))}
+                  className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                    rubForm.type === t
+                      ? t === "income"
+                        ? "bg-green-50 border-green-500 text-green-700"
+                        : "bg-red-50 border-red-500 text-red-700"
+                      : "border-slate-300 text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  {t === "income" ? "Kirim" : "Chiqim"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Amount */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Summa (₽)
+            </label>
+            <NumberInput
+              min="0"
+              step="0.01"
+              value={rubForm.amount}
+              onChange={(e) =>
+                setRubForm((f) => ({ ...f, amount: e.target.value }))
+              }
+              placeholder="0.00"
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            />
+          </div>
+
+          {/* Partner */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Hamkor
+            </label>
+            <select
+              value={rubForm.partnerId}
+              onChange={(e) =>
+                setRubForm((f) => ({ ...f, partnerId: e.target.value }))
+              }
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            >
+              <option value="">— Hamkor tanlang —</option>
+              {partners.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Tavsif (ixtiyoriy)
+            </label>
+            <input
+              type="text"
+              value={rubForm.description}
+              onChange={(e) =>
+                setRubForm((f) => ({ ...f, description: e.target.value }))
+              }
+              placeholder="Izoh..."
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            />
+          </div>
+
+          {rubError && (
+            <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
+              {rubError}
+            </p>
+          )}
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
+            <button
+              type="button"
+              onClick={() => setIsRubModalOpen(false)}
+              className="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 text-slate-700"
+            >
+              Bekor qilish
+            </button>
+            <button
+              type="submit"
+              disabled={rubSubmitting}
+              className="px-4 py-2 text-sm bg-slate-700 text-white rounded-lg hover:bg-slate-800 disabled:opacity-50"
+            >
+              {rubSubmitting ? "Saqlanmoqda..." : "Saqlash"}
             </button>
           </div>
         </form>
