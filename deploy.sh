@@ -5,7 +5,7 @@ echo "=== Wood ERP Deploy ==="
 
 # 1. Dependencies
 echo "[1/4] npm install..."
-npm ci --production=false
+npm install
 
 # 2. Build
 echo "[2/4] next build..."
