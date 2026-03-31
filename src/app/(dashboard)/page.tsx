@@ -1,6 +1,3 @@
-"use client";
-
-import { useState, useEffect } from "react";
 import Link from "next/link";
 import { getUsdBalance, getRubState, getUsdOperations } from "@/lib/actions/cash";
 import { getTransports } from "@/lib/actions/wagons";
@@ -8,7 +5,6 @@ import { getPartners } from "@/lib/actions/partners";
 
 type UsdOperation = Awaited<ReturnType<typeof getUsdOperations>>[number];
 type Transport = Awaited<ReturnType<typeof getTransports>>[number];
-type Partner = Awaited<ReturnType<typeof getPartners>>[number];
 
 const STATUS_LABELS: Record<string, string> = {
   in_transit: "Yo'lda",
@@ -45,141 +41,84 @@ function formatRub(amount: number) {
   }).format(amount);
 }
 
-export default function DashboardPage() {
-  const [usdBalance, setUsdBalance] = useState<number>(0);
-  const [rubBalance, setRubBalance] = useState<number>(0);
-  const [avgRate, setAvgRate] = useState<number>(0);
-  const [activeTransports, setActiveTransports] = useState<Transport[]>([]);
-  const [recentPartners, setRecentPartners] = useState<Partner[]>([]);
-  const [lastOperations, setLastOperations] = useState<UsdOperation[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export default async function DashboardPage() {
+  const [usdBalance, rubSt, transports, allPartners, ops] = await Promise.all([
+    getUsdBalance(),
+    getRubState(),
+    getTransports("wagon"),
+    getPartners(),
+    getUsdOperations(),
+  ]);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  async function loadData() {
-    setIsLoading(true);
-    try {
-      const [usdBal, rubSt, transports, allPartners, ops] = await Promise.all([
-        getUsdBalance(),
-        getRubState(),
-        getTransports("wagon"),
-        getPartners(),
-        getUsdOperations(),
-      ]);
-
-      setUsdBalance(usdBal);
-      setRubBalance(rubSt.rubBalance);
-      setAvgRate(rubSt.avgRate);
-      setActiveTransports(transports.filter((t) => t.status !== "closed"));
-      setRecentPartners(allPartners);
-      setLastOperations(ops.slice(0, 5));
-    } catch (err) {
-      console.error("Dashboard ma'lumotlarini yuklashda xato:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  if (isLoading) {
-    return (
-      <div className="p-6 flex items-center justify-center min-h-64">
-        <p className="text-slate-500 text-sm">Yuklanmoqda...</p>
-      </div>
-    );
-  }
+  const activeTransports = transports.filter((t) => t.status !== "closed");
+  const lastOperations = ops.slice(0, 5) as UsdOperation[];
 
   return (
     <div className="p-6 space-y-6">
       <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
 
-      {/* Qism 1 — Kassa kartalar */}
+      {/* Kassa kartalar */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* USD Kassa */}
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
           <p className="text-sm font-medium text-slate-500 mb-2">$ Kassa</p>
-          <p
-            className={`text-3xl font-bold ${
-              usdBalance >= 0 ? "text-green-600" : "text-red-600"
-            }`}
-          >
+          <p className={`text-3xl font-bold ${usdBalance >= 0 ? "text-green-600" : "text-red-600"}`}>
             {formatUsd(usdBalance)}
           </p>
         </div>
 
-        {/* RUB Kassa */}
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
           <p className="text-sm font-medium text-slate-500 mb-2">RUB Kassa</p>
-          <p
-            className={`text-3xl font-bold ${
-              rubBalance >= 0 ? "text-green-600" : "text-red-600"
-            }`}
-          >
-            {formatRub(rubBalance)} RUB
+          <p className={`text-3xl font-bold ${rubSt.rubBalance >= 0 ? "text-green-600" : "text-red-600"}`}>
+            {formatRub(rubSt.rubBalance)} RUB
           </p>
-          {avgRate > 0 && (
+          {rubSt.avgRate > 0 && (
             <p className="text-sm text-slate-500 mt-1">
-              1$ = {avgRate.toFixed(2)} RUB
+              1$ = {rubSt.avgRate.toFixed(2)} RUB
             </p>
           )}
         </div>
       </div>
 
-      {/* Qism 2 — Aktiv vagonlar */}
+      {/* Aktiv vagonlar */}
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
         <h2 className="text-base font-semibold text-slate-800 mb-4">
           Aktiv vagonlar:{" "}
           <span className="text-blue-600">{activeTransports.length} ta</span>
         </h2>
         <div className="flex flex-wrap gap-3">
-          {[
-            { status: "in_transit", label: STATUS_LABELS["in_transit"] },
-            { status: "at_border", label: STATUS_LABELS["at_border"] },
-            { status: "arrived", label: STATUS_LABELS["arrived"] },
-            { status: "unloaded", label: STATUS_LABELS["unloaded"] },
-          ].map(({ status, label }) => (
+          {(["in_transit", "at_border", "arrived", "unloaded"] as const).map((status) => (
             <div
               key={status}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium ${STATUS_CLASSES[status]}`}
             >
-              <span>{label}:</span>
-              <span className="font-bold">
-                {statusCount(activeTransports, status)}
-              </span>
+              <span>{STATUS_LABELS[status]}:</span>
+              <span className="font-bold">{statusCount(activeTransports, status)}</span>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Qism 3 — Hamkorlar xulosasi */}
+      {/* Hamkorlar */}
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-semibold text-slate-800">Hamkorlar</h2>
-          <Link
-            href="/partners"
-            className="text-sm text-blue-600 hover:underline"
-          >
+          <Link href="/partners" className="text-sm text-blue-600 hover:underline">
             Barchasini ko&apos;rish →
           </Link>
         </div>
         <p className="text-slate-600 text-sm">
           Hamkorlar soni:{" "}
-          <span className="font-semibold text-slate-800">
-            {recentPartners.length} ta
-          </span>
+          <span className="font-semibold text-slate-800">{allPartners.length} ta</span>
         </p>
         <p className="text-xs text-slate-400 mt-1">
           Qarz ma&apos;lumotlari uchun hamkorlar sahifasiga o&apos;ting.
         </p>
       </div>
 
-      {/* Qism 4 — So'nggi operatsiyalar */}
+      {/* So'nggi operatsiyalar */}
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-semibold text-slate-800">
-            So&apos;nggi operatsiyalar
-          </h2>
+          <h2 className="text-base font-semibold text-slate-800">So&apos;nggi operatsiyalar</h2>
           <Link href="/cash" className="text-sm text-blue-600 hover:underline">
             Barchasini ko&apos;rish →
           </Link>
@@ -192,18 +131,10 @@ export default function DashboardPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100">
-                  <th className="text-left py-2 pr-4 font-medium text-slate-500">
-                    Sana
-                  </th>
-                  <th className="text-left py-2 pr-4 font-medium text-slate-500">
-                    Hamkor
-                  </th>
-                  <th className="text-right py-2 pr-4 font-medium text-slate-500">
-                    Miqdor
-                  </th>
-                  <th className="text-left py-2 font-medium text-slate-500">
-                    Tur
-                  </th>
+                  <th className="text-left py-2 pr-4 font-medium text-slate-500">Sana</th>
+                  <th className="text-left py-2 pr-4 font-medium text-slate-500">Hamkor</th>
+                  <th className="text-right py-2 pr-4 font-medium text-slate-500">Miqdor</th>
+                  <th className="text-left py-2 font-medium text-slate-500">Tur</th>
                 </tr>
               </thead>
               <tbody>
@@ -213,36 +144,19 @@ export default function DashboardPage() {
                   return (
                     <tr key={op.id} className="border-b border-slate-50">
                       <td className="py-2 pr-4 text-slate-600">
-                        {op.createdAt
-                          ? new Date(op.createdAt).toLocaleDateString("ru-RU")
-                          : "—"}
+                        {op.createdAt ? new Date(op.createdAt).toLocaleDateString("ru-RU") : "—"}
                       </td>
-                      <td className="py-2 pr-4 text-slate-700">
-                        {op.partner?.name ?? "—"}
-                      </td>
-                      <td
-                        className={`py-2 pr-4 text-right font-semibold ${
-                          isIncome ? "text-green-600" : "text-red-600"
-                        }`}
-                      >
-                        {isIncome ? "+" : ""}
-                        {formatUsd(amount)}
+                      <td className="py-2 pr-4 text-slate-700">{op.partner?.name ?? "—"}</td>
+                      <td className={`py-2 pr-4 text-right font-semibold ${isIncome ? "text-green-600" : "text-red-600"}`}>
+                        {isIncome ? "+" : ""}{formatUsd(amount)}
                       </td>
                       <td className="py-2">
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                            op.type === "income"
-                              ? "bg-green-100 text-green-700"
-                              : op.type === "expense"
-                              ? "bg-red-100 text-red-700"
-                              : "bg-slate-100 text-slate-600"
-                          }`}
-                        >
-                          {op.type === "income"
-                            ? "Kirim"
-                            : op.type === "expense"
-                            ? "Chiqim"
-                            : "Ayrboshlash"}
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                          op.type === "income" ? "bg-green-100 text-green-700"
+                          : op.type === "expense" ? "bg-red-100 text-red-700"
+                          : "bg-slate-100 text-slate-600"
+                        }`}>
+                          {op.type === "income" ? "Kirim" : op.type === "expense" ? "Chiqim" : "Ayrboshlash"}
                         </span>
                       </td>
                     </tr>
