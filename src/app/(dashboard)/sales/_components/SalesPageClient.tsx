@@ -24,6 +24,9 @@ type SaleWithCustomer = {
     sentCount: number | null;
     receivedCount: number | null;
     pricePerCubicUsd: string | null;
+    thicknessMm: number | null;
+    widthMm: number | null;
+    lengthM: string | null;
   }>;
 };
 
