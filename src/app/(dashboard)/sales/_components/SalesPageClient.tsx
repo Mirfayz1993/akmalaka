@@ -91,27 +91,23 @@ export default function SalesPageClient({
     setSales(data as SaleWithCustomer[]);
   }
 
-  const handleReceive = async (id: number) => {
-    try {
-      const fullSale = await getSale(id);
-      if (!fullSale) return;
-      setReceiveTarget({
-        id: fullSale.id,
-        docNumber: fullSale.docNumber,
-        paymentType: fullSale.paymentType,
-        customer: fullSale.customer,
-        items: fullSale.items.map((item) => ({
-          id: item.id,
-          thicknessMm: item.thicknessMm,
-          widthMm: item.widthMm,
-          lengthM: item.lengthM ? String(item.lengthM) : null,
-          sentCount: item.sentCount,
-          receivedCount: item.receivedCount ?? 0,
-        })),
-      });
-    } catch (err) {
-      console.error(err);
-    }
+  const handleReceive = (id: number) => {
+    const sale = sales.find((s) => s.id === id);
+    if (!sale) return;
+    setReceiveTarget({
+      id: sale.id,
+      docNumber: sale.docNumber,
+      paymentType: sale.paymentType,
+      customer: sale.customer,
+      items: sale.items.map((item) => ({
+        id: item.id,
+        thicknessMm: item.thicknessMm ?? 0,
+        widthMm: item.widthMm ?? 0,
+        lengthM: item.lengthM ? String(item.lengthM) : null,
+        sentCount: item.sentCount,
+        receivedCount: item.receivedCount ?? 0,
+      })),
+    });
   };
 
   async function handleDeleteConfirm() {

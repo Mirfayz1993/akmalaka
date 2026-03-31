@@ -1,28 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { getPartners, getPartnerWithBalance } from "@/lib/actions/partners";
+import { getAllPartnersWithBalances, getPartnerWithBalance } from "@/lib/actions/partners";
 import type { Partner } from "@/lib/actions/partners";
 import PartnerModal from "./PartnerModal";
 import PartnerDetail from "./PartnerDetail";
 import PaymentModal from "./PaymentModal";
 
-type PartnerWithBalance = {
-  id: number;
-  name: string;
-  type: string;
-  phone: string | null;
-  notes: string | null;
-  balances: Array<{
-    id: number;
-    amount: string;
-    currency: string | null;
-    description: string | null;
-    createdAt: Date | string | null;
-    transport: { id: number; number: string | null; type: string } | null;
-  }>;
-  currentBalance: number;
-};
+type PartnerWithBalance = Awaited<ReturnType<typeof getAllPartnersWithBalances>>[number];
 
 const partnerTypeLabels: Record<string, string> = {
   russia_supplier: "Rossiya ta'minotchisi",
@@ -38,29 +23,34 @@ const partnerTypeLabels: Record<string, string> = {
 
 const ALL_TYPES = Object.keys(partnerTypeLabels) as Partner["type"][];
 
-export default function PartnersPageClient({ initialPartners }: { initialPartners: Partner[] }) {
-  const [partners, setPartners] = useState<Partner[]>(initialPartners);
+export default function PartnersPageClient({
+  initialPartnersWithBalances,
+}: {
+  initialPartnersWithBalances: PartnerWithBalance[];
+}) {
+  const [partners, setPartners] = useState<PartnerWithBalance[]>(initialPartnersWithBalances);
   const [selectedPartner, setSelectedPartner] = useState<PartnerWithBalance | null>(null);
   const [filter, setFilter] = useState<Partner["type"] | "all">("all");
   const [isPartnerModalOpen, setIsPartnerModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
-  async function loadData() {
-    const pts = await getPartners();
-    setPartners(pts);
-  }
-
-  async function handleSelectPartner(id: number) {
-    const detail = await getPartnerWithBalance(id);
-    setSelectedPartner(detail ?? null);
-  }
-
-  async function handleSuccess() {
-    await loadData();
+  async function refreshData() {
+    const fresh = await getAllPartnersWithBalances();
+    setPartners(fresh);
     if (selectedPartner) {
-      const detail = await getPartnerWithBalance(selectedPartner.id);
-      setSelectedPartner(detail ?? null);
+      const updated = fresh.find((p) => p.id === selectedPartner.id) ?? null;
+      setSelectedPartner(updated);
     }
+  }
+
+  // Click on partner — instant, no network call
+  function handleSelectPartner(partner: PartnerWithBalance) {
+    setSelectedPartner(partner);
+  }
+
+  // After mutation — refresh from server
+  async function handleSuccess() {
+    await refreshData();
   }
 
   const filteredPartners =
@@ -113,7 +103,7 @@ export default function PartnersPageClient({ initialPartners }: { initialPartner
               filteredPartners.map((p) => (
                 <button
                   key={p.id}
-                  onClick={() => handleSelectPartner(p.id)}
+                  onClick={() => handleSelectPartner(p)}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm text-left transition-colors ${
                     selectedPartner?.id === p.id
                       ? "bg-blue-50 border border-blue-200"
@@ -146,7 +136,7 @@ export default function PartnersPageClient({ initialPartners }: { initialPartner
         onClose={() => setIsPartnerModalOpen(false)}
         onSuccess={async () => {
           setIsPartnerModalOpen(false);
-          await loadData();
+          await refreshData();
         }}
       />
 

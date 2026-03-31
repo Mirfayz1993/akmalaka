@@ -60,9 +60,8 @@ export default function WagonsPageClient({ initialWagons, initialTrucks, partner
     setTrucks(trucksData as unknown as Transport[]);
   }
 
-  async function handleEdit(transport: Transport) {
-    const data = await getTransport(transport.id);
-    if (data) setEditingTransport(data as NonNullable<Awaited<ReturnType<typeof getTransport>>>);
+  function handleEdit(transport: Transport) {
+    setEditingTransport(transport as unknown as NonNullable<Awaited<ReturnType<typeof getTransport>>>);
   }
 
   async function handleDeleteConfirm() {

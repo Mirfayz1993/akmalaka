@@ -31,7 +31,11 @@ export async function getSales() {
   return await db.query.sales.findMany({
     with: {
       customer: true,
-      items: true,
+      items: {
+        with: {
+          timber: true,
+        },
+      },
     },
     orderBy: (t, { desc }) => [desc(t.sentAt)],
   });

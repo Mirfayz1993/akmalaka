@@ -26,6 +26,7 @@ export async function getTransports(type: "wagon" | "truck") {
           partner: true,
         },
       },
+      logs: true,
     },
     orderBy: (t, { desc }) => [desc(t.createdAt)],
     limit: 100,

@@ -17,6 +17,22 @@ export async function getPartners(type?: string) {
   return db.select().from(partners).orderBy(partners.name);
 }
 
+export async function getAllPartnersWithBalances() {
+  const all = await db.query.partners.findMany({
+    with: {
+      balances: {
+        with: { transport: true },
+        orderBy: (b, { desc }) => [desc(b.createdAt)],
+      },
+    },
+    orderBy: (p, { asc }) => [asc(p.name)],
+  });
+  return all.map((p) => ({
+    ...p,
+    currentBalance: p.balances.reduce((sum, b) => sum + Number(b.amount), 0),
+  }));
+}
+
 export async function getPartnerWithBalance(id: number) {
   const partner = await db.query.partners.findFirst({
     where: eq(partners.id, id),
