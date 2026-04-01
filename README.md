@@ -33,7 +33,20 @@ nano .env
 
 `.env` ichiga:
 ```
-DATABASE_URL=postgresql://postgres:20262026@localhost:5432/wood_erp
+DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/wood_erp
+AUTH_SECRET=your-secret-key-min-32-chars
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD_HASH=$2b$10$...bcrypt_hash...
+```
+
+**Parol hash generatsiya qilish:**
+```bash
+node scripts/hash-password.js SIZNING_PAROLINGIZ
+```
+
+**AUTH_SECRET generatsiya qilish:**
+```bash
+openssl rand -base64 32
 ```
 
 ### 4. Dependencies o'rnatish va build
@@ -95,6 +108,46 @@ pm2 status           # barcha processlar holati
 pm2 logs wood-erp    # loglarni ko'rish
 pm2 restart wood-erp # qayta ishga tushirish
 pm2 stop wood-erp    # to'xtatish
+pm2 monit            # real-time monitoring
+```
+
+## Testlar
+
+```bash
+npm run test         # bir martalik test
+npm run test:watch   # live reload test
+npm run test:coverage  # coverage hisoboti
+```
+
+## Health check
+
+```
+GET /api/health  →  { status: "ok", db: "connected", uptime: 123 }
+```
+
+## Arxitektura qisqacha
+
+```
+src/
+├── app/
+│   ├── (dashboard)/    ← Himoyalangan sahifalar
+│   ├── login/          ← Login sahifa
+│   └── api/
+│       ├── auth/       ← NextAuth endpoints
+│       └── health/     ← Health check
+├── components/
+│   ├── layout/         ← Sidebar
+│   └── ui/             ← Modal, Toast, Skeleton, EmptyState
+├── lib/
+│   ├── actions/        ← Server actions (DB operatsiyalar)
+│   ├── validators/     ← Zod schemalar
+│   ├── constants.ts    ← Label va rang konstantlari
+│   ├── cn.ts           ← Tailwind utility
+│   └── logger.ts       ← Structured logging
+├── db/
+│   ├── index.ts        ← Drizzle connection
+│   └── schema.ts       ← 12 jadval + audit logs
+└── types/index.ts      ← Shared TypeScript tiplari
 ```
 
 ---

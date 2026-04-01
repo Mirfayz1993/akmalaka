@@ -23,8 +23,8 @@ type TransportItem = {
     thicknessMm: number;
     widthMm: number;
     lengthM: string | number;
-    tashkentCount: number;
-    customerCount: number;
+    tashkentCount: number | null;
+    customerCount: number | null;
   }>;
 };
 

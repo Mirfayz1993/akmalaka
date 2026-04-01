@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { getSale, deleteSale } from "@/lib/actions/sales";
+import { toast } from "sonner";
+import { getSale, getSales, deleteSale } from "@/lib/actions/sales";
 import { getPartners, Partner } from "@/lib/actions/partners";
 import { getTransports } from "@/lib/actions/wagons";
 import { getWarehouse } from "@/lib/actions/warehouse";
@@ -10,26 +11,6 @@ import SaleTable from "./SaleTable";
 import SaleModal from "./SaleModal";
 import SaleReceiveModal from "./SaleReceiveModal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-
-type SaleWithCustomer = {
-  id: number;
-  docNumber: string | null;
-  status: string;
-  paymentType: string | null;
-  totalSentUsd: string | null;
-  totalReceivedUsd: string | null;
-  customer: { name: string } | null;
-  sentAt: Date | string | null;
-  items: Array<{
-    id: number;
-    sentCount: number | null;
-    receivedCount: number | null;
-    pricePerCubicUsd: string | null;
-    thicknessMm: number | null;
-    widthMm: number | null;
-    lengthM: string | null;
-  }>;
-};
 
 type SaleDetail = {
   id: number;
@@ -46,27 +27,9 @@ type SaleDetail = {
   }>;
 };
 
-type WarehouseItem = {
-  id: number;
-  thicknessMm: number;
-  widthMm: number;
-  lengthM: string;
-  quantity: number;
-};
-
-type TransportItem = {
-  id: number;
-  number: string | null;
-  status: string;
-  timbers: Array<{
-    id: number;
-    thicknessMm: number;
-    widthMm: number;
-    lengthM: string | number;
-    tashkentCount: number;
-    customerCount: number;
-  }>;
-};
+type WarehouseItem = Awaited<ReturnType<typeof getWarehouse>>[number];
+type TransportItem = Awaited<ReturnType<typeof getTransports>>[number];
+type SaleWithCustomer = Awaited<ReturnType<typeof getSales>>[number];
 
 interface Props {
   initialSales: SaleWithCustomer[];
@@ -116,7 +79,10 @@ export default function SalesPageClient({
     setDeleting(true);
     try {
       await deleteSale(deleteTargetId);
+      toast.success("Sotuv o'chirildi");
       startTransition(() => { router.refresh(); });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Xatolik yuz berdi");
     } finally {
       setDeleting(false);
       setDeleteTargetId(null);

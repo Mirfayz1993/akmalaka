@@ -18,9 +18,9 @@ export default async function CashPage() {
       initialUsdBalance={usdBalance}
       initialRubBalance={rubSt.rubBalance}
       initialAvgRate={rubSt.avgRate}
-      initialUsdOps={usdOps as never}
-      initialRubOps={rubOps as never}
-      initialExchanges={exchHist as never}
+      initialUsdOps={usdOps}
+      initialRubOps={rubOps}
+      initialExchanges={exchHist}
       partners={partners}
     />
   );

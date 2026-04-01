@@ -1,9 +1,11 @@
 export const dynamic = "force-dynamic";
+import { Suspense } from "react";
 import { getTransports } from "@/lib/actions/wagons";
 import { getPartners } from "@/lib/actions/partners";
 import WagonsPageClient from "./_components/WagonsPageClient";
+import { TableSkeleton } from "@/components/ui/Skeleton";
 
-export default async function WagonsPage() {
+async function WagonsContent() {
   const [wagons, trucks, partners] = await Promise.all([
     getTransports("wagon"),
     getTransports("truck"),
@@ -12,9 +14,17 @@ export default async function WagonsPage() {
 
   return (
     <WagonsPageClient
-      initialWagons={wagons as never}
-      initialTrucks={trucks as never}
+      initialWagons={wagons}
+      initialTrucks={trucks}
       partners={partners}
     />
+  );
+}
+
+export default function WagonsPage() {
+  return (
+    <Suspense fallback={<div className="p-6"><TableSkeleton rows={8} /></div>}>
+      <WagonsContent />
+    </Suspense>
   );
 }

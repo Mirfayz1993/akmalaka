@@ -16,10 +16,10 @@ export default async function SalesPage() {
 
   return (
     <SalesPageClient
-      initialSales={salesData as never}
+      initialSales={salesData}
       initialPartners={partnersData}
-      initialTransports={[...wagonsData, ...trucksData] as never}
-      initialWarehouse={warehouseData as never}
+      initialTransports={[...wagonsData, ...trucksData]}
+      initialWarehouse={warehouseData}
     />
   );
 }

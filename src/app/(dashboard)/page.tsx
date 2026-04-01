@@ -3,25 +3,14 @@ import Link from "next/link";
 import { getUsdBalance, getRubState, getUsdOperations } from "@/lib/actions/cash";
 import { getTransports } from "@/lib/actions/wagons";
 import { getPartners } from "@/lib/actions/partners";
+import { TRANSPORT_STATUS_LABELS, TRANSPORT_STATUS_COLORS, OPERATION_TYPE_LABELS } from "@/lib/constants";
 
 type UsdOperation = Awaited<ReturnType<typeof getUsdOperations>>[number];
 type Transport = Awaited<ReturnType<typeof getTransports>>[number];
 
-const STATUS_LABELS: Record<string, string> = {
-  in_transit: "Yo'lda",
-  at_border: "Chegarada",
-  arrived: "Yetib keldi",
-  unloaded: "Tushirildi",
-  closed: "Yopildi",
-};
-
-const STATUS_CLASSES: Record<string, string> = {
-  in_transit: "bg-yellow-100 text-yellow-800",
-  at_border: "bg-orange-100 text-orange-800",
-  arrived: "bg-green-100 text-green-800",
-  unloaded: "bg-blue-100 text-blue-800",
-  closed: "bg-slate-100 text-slate-600",
-};
+// Orqaga muvofiqlik uchun constants'dan alias
+const STATUS_LABELS = TRANSPORT_STATUS_LABELS;
+const STATUS_CLASSES = TRANSPORT_STATUS_COLORS;
 
 function statusCount(transports: Transport[], status: string) {
   return transports.filter((t) => t.status === status).length;
@@ -157,7 +146,7 @@ export default async function DashboardPage() {
                           : op.type === "expense" ? "bg-red-100 text-red-700"
                           : "bg-slate-100 text-slate-600"
                         }`}>
-                          {op.type === "income" ? "Kirim" : op.type === "expense" ? "Chiqim" : "Ayrboshlash"}
+                          {OPERATION_TYPE_LABELS[op.type] ?? op.type}
                         </span>
                       </td>
                     </tr>

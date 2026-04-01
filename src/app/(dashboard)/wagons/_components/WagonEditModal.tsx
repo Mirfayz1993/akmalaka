@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import Modal from "@/components/ui/Modal";
 import NumberInput from "@/components/ui/NumberInput";
 import { updateTransport, addTransportExpense, deleteTransportExpense } from "@/lib/actions/wagons";
@@ -313,10 +314,11 @@ export default function WagonEditModal({
         truckOwnerId: truckOwnerId ? parseInt(truckOwnerId) : undefined,
         truckOwnerPayment: truckOwnerPayment || undefined,
       });
+      toast.success("Transport yangilandi");
       onSuccess();
       onClose();
     } catch (err) {
-      console.error(err);
+      toast.error(err instanceof Error ? err.message : "Xatolik yuz berdi");
     } finally {
       setIsLoading(false);
     }

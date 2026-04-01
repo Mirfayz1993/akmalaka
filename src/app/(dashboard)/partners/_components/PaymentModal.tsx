@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import Modal from "@/components/ui/Modal";
 import NumberInput from "@/components/ui/NumberInput";
 import { recordPayment } from "@/lib/actions/partners";
@@ -50,8 +51,11 @@ export default function PaymentModal({
         description: description.trim() || undefined,
         docNumber: docNumber.trim() || undefined,
       });
+      toast.success("To'lov saqlandi");
       handleClose();
       onSuccess();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Xatolik yuz berdi");
     } finally {
       setLoading(false);
     }

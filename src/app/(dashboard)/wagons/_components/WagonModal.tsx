@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import Modal from "@/components/ui/Modal";
 import NumberInput from "@/components/ui/NumberInput";
 import { createTransport } from "@/lib/actions/wagons";
@@ -222,10 +223,11 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
         }))
       );
       resetForm();
+      toast.success("Transport yaratildi");
       onSuccess?.();
       onClose();
     } catch (err) {
-      console.error(err);
+      toast.error(err instanceof Error ? err.message : "Xatolik yuz berdi");
     } finally {
       setIsLoading(false);
     }

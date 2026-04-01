@@ -2,41 +2,42 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Plus, Truck } from "lucide-react";
 import WagonModal from "./WagonModal";
 import WagonEditModal from "./WagonEditModal";
 import WagonTable from "./WagonTable";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import { deleteTransport, closeTransport, getTransport, unloadTransport } from "@/lib/actions/wagons";
+import { deleteTransport, closeTransport, getTransports, unloadTransport, getTransport } from "@/lib/actions/wagons";
 import { type Partner } from "@/lib/actions/partners";
 import { t } from "@/i18n/uz";
 
-type TransportStatus = "in_transit" | "at_border" | "arrived" | "unloaded" | "closed";
-
-interface Timber {
-  id: number;
-  thicknessMm: number;
-  widthMm: number;
-  lengthM: string;
-  russiaCount: number;
-  tashkentCount: number | null;
-  customerCount: number | null;
-}
-
-interface Transport {
-  id: number;
-  number: string | null;
-  fromLocation: string | null;
-  toLocation: string | null;
-  status: TransportStatus;
-  timbers: Timber[];
-}
+// WagonTable bilan mos tip (WagonTable.Transport ning superset versiyasi)
+type Transport = Awaited<ReturnType<typeof getTransports>>[number];
 
 interface Props {
   initialWagons: Transport[];
   initialTrucks: Transport[];
   partners: Partner[];
 }
+
+// WagonTable uchun minimal tip (callback'larda qo'llanadi)
+type MinTransport = {
+  id: number;
+  number: string | null;
+  fromLocation: string | null;
+  toLocation: string | null;
+  status: "in_transit" | "at_border" | "arrived" | "unloaded" | "closed";
+  timbers: Array<{
+    id: number;
+    thicknessMm: number;
+    widthMm: number;
+    lengthM: string;
+    russiaCount: number;
+    tashkentCount: number | null;
+    customerCount: number | null;
+  }>;
+};
 
 export default function WagonsPageClient({ initialWagons, initialTrucks, partners }: Props) {
   const router = useRouter();
@@ -46,16 +47,16 @@ export default function WagonsPageClient({ initialWagons, initialTrucks, partner
 
   const [isWagonModalOpen, setIsWagonModalOpen] = useState(false);
   const [isTruckModalOpen, setIsTruckModalOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<Transport | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<MinTransport | null>(null);
   const [isDeleteLoading, setIsDeleteLoading] = useState(false);
-  const [closeTarget, setCloseTarget] = useState<Transport | null>(null);
+  const [closeTarget, setCloseTarget] = useState<MinTransport | null>(null);
   const [isCloseLoading, setIsCloseLoading] = useState(false);
-  const [unloadTarget, setUnloadTarget] = useState<Transport | null>(null);
+  const [unloadTarget, setUnloadTarget] = useState<MinTransport | null>(null);
   const [isUnloadLoading, setIsUnloadLoading] = useState(false);
-  const [editingTransport, setEditingTransport] = useState<NonNullable<Awaited<ReturnType<typeof getTransport>>> | null>(null);
+  const [editingTransport, setEditingTransport] = useState<Awaited<ReturnType<typeof getTransport>> | null>(null);
 
-  function handleEdit(transport: Transport) {
-    setEditingTransport(transport as unknown as NonNullable<Awaited<ReturnType<typeof getTransport>>>);
+  function handleEdit(transport: MinTransport) {
+    setEditingTransport(transport as Awaited<ReturnType<typeof getTransport>>);
   }
 
   async function handleDeleteConfirm() {
@@ -66,7 +67,7 @@ export default function WagonsPageClient({ initialWagons, initialTrucks, partner
       setDeleteTarget(null);
       startTransition(() => { router.refresh(); });
     } catch (err) {
-      console.error("O'chirishda xato:", err);
+      toast.error(err instanceof Error ? err.message : "O'chirishda xatolik yuz berdi");
     } finally {
       setIsDeleteLoading(false);
     }
@@ -80,7 +81,7 @@ export default function WagonsPageClient({ initialWagons, initialTrucks, partner
       setCloseTarget(null);
       startTransition(() => { router.refresh(); });
     } catch (err) {
-      console.error("Yopishda xato:", err);
+      toast.error(err instanceof Error ? err.message : "Yopishda xatolik yuz berdi");
     } finally {
       setIsCloseLoading(false);
     }
@@ -98,7 +99,7 @@ export default function WagonsPageClient({ initialWagons, initialTrucks, partner
       setUnloadTarget(null);
       startTransition(() => { router.refresh(); });
     } catch (err) {
-      console.error("Tushirishda xato:", err);
+      toast.error(err instanceof Error ? err.message : "Tushirishda xatolik yuz berdi");
     } finally {
       setIsUnloadLoading(false);
     }
@@ -209,7 +210,7 @@ export default function WagonsPageClient({ initialWagons, initialTrucks, partner
       <WagonEditModal
         isOpen={editingTransport !== null}
         onClose={() => setEditingTransport(null)}
-        transport={editingTransport}
+        transport={editingTransport ?? null}
         partners={partners}
         onSuccess={() => { setEditingTransport(null); startTransition(() => { router.refresh(); }); }}
       />

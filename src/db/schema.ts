@@ -464,3 +464,54 @@ export const warehouseRelations = relations(warehouse, ({ one, many }) => ({
   }),
   saleItems: many(saleItems),
 }));
+
+// ─── AUDIT LOGS ───────────────────────────────────────────────────────────────
+
+/** Kassa operatsiyalar audit log */
+export const cashLogs = pgTable("cash_logs", {
+  id: serial("id").primaryKey(),
+  cashOperationId: integer("cash_operation_id").references(() => cashOperations.id, { onDelete: "cascade" }),
+  action: text("action").notNull(),
+  details: text("details"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+/** Sotuv o'zgarishlar audit log */
+export const saleLogs = pgTable("sale_logs", {
+  id: serial("id").primaryKey(),
+  saleId: integer("sale_id").references(() => sales.id, { onDelete: "cascade" }),
+  action: text("action").notNull(),
+  details: text("details"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+/** Kodlar o'zgarishlar audit log */
+export const codeLogs = pgTable("code_logs", {
+  id: serial("id").primaryKey(),
+  codeId: integer("code_id").references(() => codes.id, { onDelete: "cascade" }),
+  action: text("action").notNull(),
+  details: text("details"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Audit log relations
+export const cashLogsRelations = relations(cashLogs, ({ one }) => ({
+  cashOperation: one(cashOperations, {
+    fields: [cashLogs.cashOperationId],
+    references: [cashOperations.id],
+  }),
+}));
+
+export const saleLogsRelations = relations(saleLogs, ({ one }) => ({
+  sale: one(sales, {
+    fields: [saleLogs.saleId],
+    references: [sales.id],
+  }),
+}));
+
+export const codeLogsRelations = relations(codeLogs, ({ one }) => ({
+  code: one(codes, {
+    fields: [codeLogs.codeId],
+    references: [codes.id],
+  }),
+}));

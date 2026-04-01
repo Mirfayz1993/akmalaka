@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   deleteCode,
   type CodeWithSupplier,
@@ -34,9 +35,10 @@ export default function CodesPageClient({
   async function handleDelete(id: number) {
     try {
       await deleteCode(id);
+      toast.success("Kod o'chirildi");
       startTransition(() => { router.refresh(); });
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Xatolik yuz berdi");
+      toast.error(err instanceof Error ? err.message : "Xatolik yuz berdi");
     }
   }
 

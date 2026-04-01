@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   recordUsdOperation, recordRubOperation,
   recordExchange, deleteCashOperation,
+  getUsdOperations, getRubOperations, getExchangeHistory,
 } from "@/lib/actions/cash";
 import { type Partner } from "@/lib/actions/partners";
 import Modal from "@/components/ui/Modal";
@@ -14,10 +15,9 @@ import RubTab from "./RubTab";
 import ExchangeTab from "./ExchangeTab";
 
 type TabType = "usd" | "rub" | "exchange";
-
-type UsdOperation = { id: number; type: string; amount: string; partner: { name: string } | null; description: string | null; createdAt: Date | string | null; };
-type RubOperation = { id: number; type: string; amount: string; exchangeRate: string | null; partner: { name: string } | null; description: string | null; createdAt: Date | string | null; };
-type ExchangeItem = { id: number; amount: string; exchangeRate: string | null; partner: { name: string } | null; description: string | null; createdAt: Date | string | null; };
+type UsdOperation = Awaited<ReturnType<typeof getUsdOperations>>[number];
+type RubOperation = Awaited<ReturnType<typeof getRubOperations>>[number];
+type ExchangeItem = Awaited<ReturnType<typeof getExchangeHistory>>[number];
 
 interface Props {
   initialUsdBalance: number;
