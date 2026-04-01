@@ -5,8 +5,7 @@ on:
     branches: [master]
 
 jobs:
-  # ─── 1. TEST + BUILD (GitHub serverida) ─────────────────────────────────────
-  build:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,48 +21,28 @@ jobs:
       - name: Testlarni ishlatish
         run: npm run test
 
-      - name: Build qilish (VPS ga tegmaydi)
+      - name: Build qilish (GitHub serverida, VPS ga tegmaydi)
         run: npm run build
         env:
           AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
           DATABASE_URL: postgresql://postgres:dummy@localhost:5432/wood_erp
 
-      - name: Build natijasini vaqtincha saqlash
-        uses: actions/upload-artifact@v4
-        with:
-          name: next-build
-          path: .next/
-          retention-days: 1
+      - name: SSH kalitni sozlash
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H 194.163.157.44 >> ~/.ssh/known_hosts
 
-  # ─── 2. DEPLOY (faqat build muvaffaqiyatli bo'lsa) ──────────────────────────
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Build natijasini yuklash
-        uses: actions/download-artifact@v4
-        with:
-          name: next-build
-          path: .next/
+      - name: Tayyor build ni VPS ga yuborish (rsync)
+        run: rsync -az --delete -e "ssh -i ~/.ssh/deploy_key" .next/ root@194.163.157.44:/var/www/wood-erp/.next/
 
-      - name: Tayyor build ni VPS ga yuborish
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: 194.163.157.44
-          username: root
-          key: ${{ secrets.VPS_SSH_KEY }}
-          source: ".next"
-          target: /var/www/wood-erp/
-
-      - name: VPS da deploy (build yo'q, faqat restart)
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: 194.163.157.44
-          username: root
-          key: ${{ secrets.VPS_SSH_KEY }}
-          script: |
-            cd /var/www/wood-erp
-            git pull origin master
-            npm ci
-            npx drizzle-kit migrate
+      - name: VPS da restart (build yo'q, faqat 30 soniya)
+        run: |
+          ssh -i ~/.ssh/deploy_key root@194.163.157.44 "
+            cd /var/www/wood-erp &&
+            git pull origin master &&
+            npm ci &&
+            npx drizzle-kit migrate &&
             pm2 reload ecosystem.config.js --update-env
+          "
