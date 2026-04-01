@@ -12,50 +12,54 @@ vi.mock("@/auth", () => ({
   auth: vi.fn(() => ({ user: { name: "admin" } })),
 }));
 
-// DB mock — Drizzle ORM ning fluent query builderini simulatsiya qilamiz
-const mockReturning = vi.fn();
-const mockValues = vi.fn(() => ({ returning: mockReturning }));
-const mockInsert = vi.fn(() => ({ values: mockValues }));
-
-const mockSet = vi.fn();
-const mockUpdateWhere = vi.fn(() => ({ returning: mockReturning }));
-const mockUpdate = vi.fn(() => ({
-  set: vi.fn(() => ({ where: mockUpdateWhere })),
-}));
-
-const mockDeleteWhere = vi.fn();
-const mockDelete = vi.fn(() => ({ where: mockDeleteWhere }));
-
-const mockOrderBy = vi.fn();
-const mockWhere = vi.fn(() => ({ orderBy: mockOrderBy }));
-const mockFrom = vi.fn(() => ({ where: mockWhere, orderBy: mockOrderBy }));
-const mockSelect = vi.fn(() => ({ from: mockFrom }));
-
-const mockTransaction = vi.fn();
-
-// query API mock (Drizzle relational queries)
-const mockFindMany = vi.fn();
-const mockFindFirst = vi.fn();
-
-const mockDb = {
-  insert: mockInsert,
-  update: mockUpdate,
-  delete: mockDelete,
-  select: mockSelect,
-  transaction: mockTransaction,
-  query: {
-    partners: {
-      findMany: mockFindMany,
-      findFirst: mockFindFirst,
+// DB mock — vi.hoisted bilan hoisting muammosidan qochamiz
+const {
+  mockReturning,
+  mockValues,
+  mockInsert,
+  mockUpdateWhere,
+  mockUpdate,
+  mockDeleteWhere,
+  mockDelete,
+  mockOrderBy,
+  mockWhere,
+  mockFrom,
+  mockSelect,
+  mockTransaction,
+  mockFindMany,
+  mockFindFirst,
+  mockDb,
+} = vi.hoisted(() => {
+  const mockReturning = vi.fn();
+  const mockValues = vi.fn(() => ({ returning: mockReturning }));
+  const mockInsert = vi.fn(() => ({ values: mockValues }));
+  const mockUpdateWhere = vi.fn(() => ({ returning: mockReturning }));
+  const mockUpdate = vi.fn(() => ({
+    set: vi.fn(() => ({ where: mockUpdateWhere })),
+  }));
+  const mockDeleteWhere = vi.fn();
+  const mockDelete = vi.fn(() => ({ where: mockDeleteWhere }));
+  const mockOrderBy = vi.fn();
+  const mockWhere = vi.fn(() => ({ orderBy: mockOrderBy }));
+  const mockFrom = vi.fn(() => ({ where: mockWhere, orderBy: mockOrderBy }));
+  const mockSelect = vi.fn(() => ({ from: mockFrom }));
+  const mockTransaction = vi.fn();
+  const mockFindMany = vi.fn();
+  const mockFindFirst = vi.fn();
+  const mockDb = {
+    insert: mockInsert,
+    update: mockUpdate,
+    delete: mockDelete,
+    select: mockSelect,
+    transaction: mockTransaction,
+    query: {
+      partners: { findMany: mockFindMany, findFirst: mockFindFirst },
+      partnerBalances: { findMany: mockFindMany },
+      cashOperations: { findMany: mockFindMany },
     },
-    partnerBalances: {
-      findMany: mockFindMany,
-    },
-    cashOperations: {
-      findMany: mockFindMany,
-    },
-  },
-};
+  };
+  return { mockReturning, mockValues, mockInsert, mockUpdateWhere, mockUpdate, mockDeleteWhere, mockDelete, mockOrderBy, mockWhere, mockFrom, mockSelect, mockTransaction, mockFindMany, mockFindFirst, mockDb };
+});
 
 vi.mock("@/db", () => ({
   db: mockDb,

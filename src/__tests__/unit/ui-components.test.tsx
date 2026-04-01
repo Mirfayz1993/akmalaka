@@ -138,8 +138,6 @@ describe("Skeleton komponenti", () => {
 describe("TableSkeleton komponenti", () => {
   it("aria-busy='true' atributiga ega", () => {
     render(<TableSkeleton />);
-    const el = screen.getByRole("generic", { hidden: true });
-    // aria-busy topamiz
     const busyEl = document.querySelector('[aria-busy="true"]');
     expect(busyEl).toBeTruthy();
   });
