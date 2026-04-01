@@ -10,9 +10,20 @@ export default defineConfig({
     setupFiles: ["./src/__tests__/setup.ts"],
     coverage: {
       provider: "v8",
-      reporter: ["text", "html"],
-      include: ["src/lib/**/*.ts", "src/components/**/*.tsx"],
-      exclude: ["src/lib/actions/**", "src/db/**"],
+      reporter: ["text", "html", "lcov"],
+      include: [
+        "src/lib/**/*.ts",
+        "src/components/**/*.tsx",
+        "src/lib/validators/**/*.ts",
+        "src/lib/actions/**/*.ts",
+      ],
+      exclude: ["src/db/**", "src/types/**", "src/i18n/**"],
+      thresholds: {
+        lines: 70,
+        functions: 70,
+        branches: 65,
+        statements: 70,
+      },
     },
   },
   resolve: {
