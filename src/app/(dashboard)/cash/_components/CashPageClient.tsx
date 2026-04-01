@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
-  getUsdBalance, getRubState, getUsdOperations, getRubOperations,
-  getExchangeHistory, recordUsdOperation, recordRubOperation,
+  recordUsdOperation, recordRubOperation,
   recordExchange, deleteCashOperation,
 } from "@/lib/actions/cash";
 import { type Partner } from "@/lib/actions/partners";
@@ -33,13 +33,14 @@ export default function CashPageClient({
   initialUsdBalance, initialRubBalance, initialAvgRate,
   initialUsdOps, initialRubOps, initialExchanges, partners,
 }: Props) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>("usd");
-  const [usdBalance, setUsdBalance] = useState(initialUsdBalance);
-  const [rubBalance, setRubBalance] = useState(initialRubBalance);
-  const [avgRate, setAvgRate] = useState(initialAvgRate);
-  const [usdOperations, setUsdOperations] = useState<UsdOperation[]>(initialUsdOps);
-  const [rubOperations, setRubOperations] = useState<RubOperation[]>(initialRubOps);
-  const [exchangeHistory, setExchangeHistory] = useState<ExchangeItem[]>(initialExchanges);
+  const [usdBalance] = useState(initialUsdBalance);
+  const [rubBalance] = useState(initialRubBalance);
+  const [avgRate] = useState(initialAvgRate);
+  const [usdOperations] = useState<UsdOperation[]>(initialUsdOps);
+  const [rubOperations] = useState<RubOperation[]>(initialRubOps);
+  const [exchangeHistory] = useState<ExchangeItem[]>(initialExchanges);
 
   const [isUsdModalOpen, setIsUsdModalOpen] = useState(false);
   const [isRubModalOpen, setIsRubModalOpen] = useState(false);
@@ -57,20 +58,8 @@ export default function CashPageClient({
   const [exchSubmitting, setExchSubmitting] = useState(false);
   const [exchError, setExchError] = useState("");
 
-  async function loadData() {
-    const [usdBal, rubSt, usdOps, rubOps, exchHist] = await Promise.all([
-      getUsdBalance(), getRubState(), getUsdOperations(), getRubOperations(), getExchangeHistory(),
-    ]);
-    setUsdBalance(usdBal);
-    setRubBalance(rubSt.rubBalance);
-    setAvgRate(rubSt.avgRate);
-    setUsdOperations(usdOps as UsdOperation[]);
-    setRubOperations(rubOps as RubOperation[]);
-    setExchangeHistory(exchHist as ExchangeItem[]);
-  }
-
-  async function handleDeleteUsd(id: number) { await deleteCashOperation(id); await loadData(); }
-  async function handleDeleteRub(id: number) { await deleteCashOperation(id); await loadData(); }
+  async function handleDeleteUsd(id: number) { await deleteCashOperation(id); router.refresh(); }
+  async function handleDeleteRub(id: number) { await deleteCashOperation(id); router.refresh(); }
 
   function openUsdModal() { setUsdForm({ type: "income", amount: "", partnerId: "", description: "" }); setUsdError(""); setIsUsdModalOpen(true); }
   function openRubModal() { setRubForm({ type: "income", amount: "", partnerId: "", description: "" }); setRubError(""); setIsRubModalOpen(true); }
@@ -86,7 +75,7 @@ export default function CashPageClient({
     try {
       await recordUsdOperation({ type: usdForm.type, amount: amt, partnerId: parseInt(usdForm.partnerId), description: usdForm.description || undefined });
       setIsUsdModalOpen(false);
-      await loadData();
+      router.refresh();
     } catch (err) {
       setUsdError(err instanceof Error ? err.message : "Xatolik yuz berdi");
     } finally { setUsdSubmitting(false); }
@@ -102,7 +91,7 @@ export default function CashPageClient({
     try {
       await recordRubOperation({ type: rubForm.type, amount: amt, partnerId: parseInt(rubForm.partnerId), description: rubForm.description || undefined });
       setIsRubModalOpen(false);
-      await loadData();
+      router.refresh();
     } catch (err) {
       setRubError(err instanceof Error ? err.message : "Xatolik yuz berdi");
     } finally { setRubSubmitting(false); }
@@ -123,7 +112,7 @@ export default function CashPageClient({
     try {
       await recordExchange({ usdAmount: usd, rubAmount: rub, rate: rub / usd, partnerId: parseInt(exchForm.partnerId), description: exchForm.description || undefined });
       setIsExchangeModalOpen(false);
-      await loadData();
+      router.refresh();
     } catch (err) {
       setExchError(err instanceof Error ? err.message : "Xatolik yuz berdi");
     } finally { setExchSubmitting(false); }

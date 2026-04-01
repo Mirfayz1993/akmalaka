@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, Truck } from "lucide-react";
 import WagonModal from "./WagonModal";
 import WagonEditModal from "./WagonEditModal";
 import WagonTable from "./WagonTable";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import { getTransports, deleteTransport, closeTransport, getTransport, unloadTransport } from "@/lib/actions/wagons";
+import { deleteTransport, closeTransport, getTransport, unloadTransport } from "@/lib/actions/wagons";
 import { type Partner } from "@/lib/actions/partners";
 import { t } from "@/i18n/uz";
 
@@ -38,8 +39,9 @@ interface Props {
 }
 
 export default function WagonsPageClient({ initialWagons, initialTrucks, partners }: Props) {
-  const [wagons, setWagons] = useState<Transport[]>(initialWagons);
-  const [trucks, setTrucks] = useState<Transport[]>(initialTrucks);
+  const router = useRouter();
+  const [wagons] = useState<Transport[]>(initialWagons);
+  const [trucks] = useState<Transport[]>(initialTrucks);
 
   const [isWagonModalOpen, setIsWagonModalOpen] = useState(false);
   const [isTruckModalOpen, setIsTruckModalOpen] = useState(false);
@@ -51,15 +53,6 @@ export default function WagonsPageClient({ initialWagons, initialTrucks, partner
   const [isUnloadLoading, setIsUnloadLoading] = useState(false);
   const [editingTransport, setEditingTransport] = useState<NonNullable<Awaited<ReturnType<typeof getTransport>>> | null>(null);
 
-  async function refreshTransports() {
-    const [wagonsData, trucksData] = await Promise.all([
-      getTransports("wagon"),
-      getTransports("truck"),
-    ]);
-    setWagons(wagonsData as unknown as Transport[]);
-    setTrucks(trucksData as unknown as Transport[]);
-  }
-
   function handleEdit(transport: Transport) {
     setEditingTransport(transport as unknown as NonNullable<Awaited<ReturnType<typeof getTransport>>>);
   }
@@ -70,7 +63,7 @@ export default function WagonsPageClient({ initialWagons, initialTrucks, partner
     try {
       await deleteTransport(deleteTarget.id);
       setDeleteTarget(null);
-      await refreshTransports();
+      router.refresh();
     } catch (err) {
       console.error("O'chirishda xato:", err);
     } finally {
@@ -84,7 +77,7 @@ export default function WagonsPageClient({ initialWagons, initialTrucks, partner
     try {
       await closeTransport(closeTarget.id);
       setCloseTarget(null);
-      await refreshTransports();
+      router.refresh();
     } catch (err) {
       console.error("Yopishda xato:", err);
     } finally {
@@ -102,7 +95,7 @@ export default function WagonsPageClient({ initialWagons, initialTrucks, partner
         await unloadTransport(unloadTarget.id);
       }
       setUnloadTarget(null);
-      await refreshTransports();
+      router.refresh();
     } catch (err) {
       console.error("Tushirishda xato:", err);
     } finally {
@@ -147,7 +140,7 @@ export default function WagonsPageClient({ initialWagons, initialTrucks, partner
         onClose={() => setIsWagonModalOpen(false)}
         type="wagon"
         partners={partners}
-        onSuccess={refreshTransports}
+        onSuccess={() => { setIsWagonModalOpen(false); router.refresh(); }}
       />
 
       <WagonModal
@@ -155,7 +148,7 @@ export default function WagonsPageClient({ initialWagons, initialTrucks, partner
         onClose={() => setIsTruckModalOpen(false)}
         type="truck"
         partners={partners}
-        onSuccess={refreshTransports}
+        onSuccess={() => { setIsTruckModalOpen(false); router.refresh(); }}
       />
 
       <ConfirmDialog
@@ -217,7 +210,7 @@ export default function WagonsPageClient({ initialWagons, initialTrucks, partner
         onClose={() => setEditingTransport(null)}
         transport={editingTransport}
         partners={partners}
-        onSuccess={() => { setEditingTransport(null); refreshTransports(); }}
+        onSuccess={() => { setEditingTransport(null); router.refresh(); }}
       />
     </div>
   );

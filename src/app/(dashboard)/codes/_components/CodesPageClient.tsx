@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
-  getCodeInventory,
-  getCodeHistory,
   deleteCode,
   type CodeWithSupplier,
   type CodeHistoryItem,
@@ -25,24 +24,16 @@ export default function CodesPageClient({
   initialHistory,
   partners,
 }: Props) {
-  const [inventory, setInventory] = useState(initialInventory);
-  const [history, setHistory] = useState(initialHistory);
+  const router = useRouter();
+  const [inventory] = useState(initialInventory);
+  const [history] = useState(initialHistory);
   const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
   const [isSellModalOpen, setIsSellModalOpen] = useState(false);
-
-  async function refreshCodes() {
-    const [inv, hist] = await Promise.all([
-      getCodeInventory(),
-      getCodeHistory(),
-    ]);
-    setInventory(inv);
-    setHistory(hist);
-  }
 
   async function handleDelete(id: number) {
     try {
       await deleteCode(id);
-      await refreshCodes();
+      router.refresh();
     } catch (err) {
       alert(err instanceof Error ? err.message : "Xatolik yuz berdi");
     }
@@ -97,13 +88,13 @@ export default function CodesPageClient({
       <CodeBuyModal
         isOpen={isBuyModalOpen}
         onClose={() => setIsBuyModalOpen(false)}
-        onSuccess={refreshCodes}
+        onSuccess={() => { setIsBuyModalOpen(false); router.refresh(); }}
         partners={partners}
       />
       <CodeSellModal
         isOpen={isSellModalOpen}
         onClose={() => setIsSellModalOpen(false)}
-        onSuccess={refreshCodes}
+        onSuccess={() => { setIsSellModalOpen(false); router.refresh(); }}
         partners={partners}
         availableCodes={inventory}
       />

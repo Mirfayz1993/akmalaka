@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { getAllPartnersWithBalances, getPartnerWithBalance } from "@/lib/actions/partners";
+import { useRouter } from "next/navigation";
+import { getAllPartnersWithBalances } from "@/lib/actions/partners";
 import type { Partner } from "@/lib/actions/partners";
 import PartnerModal from "./PartnerModal";
 import PartnerDetail from "./PartnerDetail";
@@ -28,29 +29,20 @@ export default function PartnersPageClient({
 }: {
   initialPartnersWithBalances: PartnerWithBalance[];
 }) {
-  const [partners, setPartners] = useState<PartnerWithBalance[]>(initialPartnersWithBalances);
+  const router = useRouter();
+  const [partners] = useState<PartnerWithBalance[]>(initialPartnersWithBalances);
   const [selectedPartner, setSelectedPartner] = useState<PartnerWithBalance | null>(null);
   const [filter, setFilter] = useState<Partner["type"] | "all">("all");
   const [isPartnerModalOpen, setIsPartnerModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
-  async function refreshData() {
-    const fresh = await getAllPartnersWithBalances();
-    setPartners(fresh);
-    if (selectedPartner) {
-      const updated = fresh.find((p) => p.id === selectedPartner.id) ?? null;
-      setSelectedPartner(updated);
-    }
-  }
-
-  // Click on partner — instant, no network call
   function handleSelectPartner(partner: PartnerWithBalance) {
     setSelectedPartner(partner);
   }
 
-  // After mutation — refresh from server
-  async function handleSuccess() {
-    await refreshData();
+  function handleSuccess() {
+    setSelectedPartner(null);
+    router.refresh();
   }
 
   const filteredPartners =
@@ -134,18 +126,18 @@ export default function PartnersPageClient({
       <PartnerModal
         isOpen={isPartnerModalOpen}
         onClose={() => setIsPartnerModalOpen(false)}
-        onSuccess={async () => {
+        onSuccess={() => {
           setIsPartnerModalOpen(false);
-          await refreshData();
+          handleSuccess();
         }}
       />
 
       <PaymentModal
         isOpen={isPaymentModalOpen}
         onClose={() => setIsPaymentModalOpen(false)}
-        onSuccess={async () => {
+        onSuccess={() => {
           setIsPaymentModalOpen(false);
-          await handleSuccess();
+          handleSuccess();
         }}
         partner={
           selectedPartner ? { id: selectedPartner.id, name: selectedPartner.name } : null

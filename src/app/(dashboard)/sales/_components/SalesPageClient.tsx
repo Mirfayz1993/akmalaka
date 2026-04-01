@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { getSales, getSale, deleteSale } from "@/lib/actions/sales";
+import { useRouter } from "next/navigation";
+import { getSale, deleteSale } from "@/lib/actions/sales";
 import { getPartners, Partner } from "@/lib/actions/partners";
 import { getTransports } from "@/lib/actions/wagons";
 import { getWarehouse } from "@/lib/actions/warehouse";
@@ -80,7 +81,8 @@ export default function SalesPageClient({
   initialTransports,
   initialWarehouse,
 }: Props) {
-  const [sales, setSales] = useState<SaleWithCustomer[]>(initialSales);
+  const router = useRouter();
+  const [sales] = useState<SaleWithCustomer[]>(initialSales);
   const [partners] = useState<Partner[]>(initialPartners);
   const [transports] = useState<TransportItem[]>(initialTransports);
   const [warehouseItems] = useState<WarehouseItem[]>(initialWarehouse);
@@ -88,11 +90,6 @@ export default function SalesPageClient({
   const [receiveTarget, setReceiveTarget] = useState<SaleDetail | null>(null);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
-
-  async function refreshSales() {
-    const data = await getSales();
-    setSales(data as SaleWithCustomer[]);
-  }
 
   const handleReceive = (id: number) => {
     const sale = sales.find((s) => s.id === id);
@@ -118,7 +115,7 @@ export default function SalesPageClient({
     setDeleting(true);
     try {
       await deleteSale(deleteTargetId);
-      await refreshSales();
+      router.refresh();
     } finally {
       setDeleting(false);
       setDeleteTargetId(null);
@@ -146,7 +143,7 @@ export default function SalesPageClient({
       <SaleModal
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
-        onSuccess={() => { setIsCreateOpen(false); refreshSales(); }}
+        onSuccess={() => { setIsCreateOpen(false); router.refresh(); }}
         partners={partners}
         transports={transports}
         warehouseItems={warehouseItems}
@@ -155,7 +152,7 @@ export default function SalesPageClient({
       <SaleReceiveModal
         isOpen={!!receiveTarget}
         onClose={() => setReceiveTarget(null)}
-        onSuccess={() => { setReceiveTarget(null); refreshSales(); }}
+        onSuccess={() => { setReceiveTarget(null); router.refresh(); }}
         sale={receiveTarget}
         warehouseItems={warehouseItems}
       />
