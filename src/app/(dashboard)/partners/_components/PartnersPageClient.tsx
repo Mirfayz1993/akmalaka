@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { getAllPartnersWithBalances } from "@/lib/actions/partners";
 import type { Partner } from "@/lib/actions/partners";
@@ -30,6 +30,7 @@ export default function PartnersPageClient({
   initialPartnersWithBalances: PartnerWithBalance[];
 }) {
   const router = useRouter();
+  const [, startTransition] = useTransition();
   const [partners] = useState<PartnerWithBalance[]>(initialPartnersWithBalances);
   const [selectedPartner, setSelectedPartner] = useState<PartnerWithBalance | null>(null);
   const [filter, setFilter] = useState<Partner["type"] | "all">("all");
@@ -42,7 +43,7 @@ export default function PartnersPageClient({
 
   function handleSuccess() {
     setSelectedPartner(null);
-    router.refresh();
+    startTransition(() => { router.refresh(); });
   }
 
   const filteredPartners =

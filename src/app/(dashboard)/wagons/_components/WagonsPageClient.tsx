@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Truck } from "lucide-react";
 import WagonModal from "./WagonModal";
@@ -40,6 +40,7 @@ interface Props {
 
 export default function WagonsPageClient({ initialWagons, initialTrucks, partners }: Props) {
   const router = useRouter();
+  const [, startTransition] = useTransition();
   const [wagons] = useState<Transport[]>(initialWagons);
   const [trucks] = useState<Transport[]>(initialTrucks);
 
@@ -63,7 +64,7 @@ export default function WagonsPageClient({ initialWagons, initialTrucks, partner
     try {
       await deleteTransport(deleteTarget.id);
       setDeleteTarget(null);
-      router.refresh();
+      startTransition(() => { router.refresh(); });
     } catch (err) {
       console.error("O'chirishda xato:", err);
     } finally {
@@ -77,7 +78,7 @@ export default function WagonsPageClient({ initialWagons, initialTrucks, partner
     try {
       await closeTransport(closeTarget.id);
       setCloseTarget(null);
-      router.refresh();
+      startTransition(() => { router.refresh(); });
     } catch (err) {
       console.error("Yopishda xato:", err);
     } finally {
@@ -95,7 +96,7 @@ export default function WagonsPageClient({ initialWagons, initialTrucks, partner
         await unloadTransport(unloadTarget.id);
       }
       setUnloadTarget(null);
-      router.refresh();
+      startTransition(() => { router.refresh(); });
     } catch (err) {
       console.error("Tushirishda xato:", err);
     } finally {
@@ -140,7 +141,7 @@ export default function WagonsPageClient({ initialWagons, initialTrucks, partner
         onClose={() => setIsWagonModalOpen(false)}
         type="wagon"
         partners={partners}
-        onSuccess={() => { setIsWagonModalOpen(false); router.refresh(); }}
+        onSuccess={() => { setIsWagonModalOpen(false); startTransition(() => { router.refresh(); }); }}
       />
 
       <WagonModal
@@ -148,7 +149,7 @@ export default function WagonsPageClient({ initialWagons, initialTrucks, partner
         onClose={() => setIsTruckModalOpen(false)}
         type="truck"
         partners={partners}
-        onSuccess={() => { setIsTruckModalOpen(false); router.refresh(); }}
+        onSuccess={() => { setIsTruckModalOpen(false); startTransition(() => { router.refresh(); }); }}
       />
 
       <ConfirmDialog
@@ -210,7 +211,7 @@ export default function WagonsPageClient({ initialWagons, initialTrucks, partner
         onClose={() => setEditingTransport(null)}
         transport={editingTransport}
         partners={partners}
-        onSuccess={() => { setEditingTransport(null); router.refresh(); }}
+        onSuccess={() => { setEditingTransport(null); startTransition(() => { router.refresh(); }); }}
       />
     </div>
   );

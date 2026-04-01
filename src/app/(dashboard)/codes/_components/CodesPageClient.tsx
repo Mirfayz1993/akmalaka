@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   deleteCode,
@@ -25,6 +25,7 @@ export default function CodesPageClient({
   partners,
 }: Props) {
   const router = useRouter();
+  const [, startTransition] = useTransition();
   const [inventory] = useState(initialInventory);
   const [history] = useState(initialHistory);
   const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
@@ -33,7 +34,7 @@ export default function CodesPageClient({
   async function handleDelete(id: number) {
     try {
       await deleteCode(id);
-      router.refresh();
+      startTransition(() => { router.refresh(); });
     } catch (err) {
       alert(err instanceof Error ? err.message : "Xatolik yuz berdi");
     }
@@ -88,13 +89,13 @@ export default function CodesPageClient({
       <CodeBuyModal
         isOpen={isBuyModalOpen}
         onClose={() => setIsBuyModalOpen(false)}
-        onSuccess={() => { setIsBuyModalOpen(false); router.refresh(); }}
+        onSuccess={() => { setIsBuyModalOpen(false); startTransition(() => { router.refresh(); }); }}
         partners={partners}
       />
       <CodeSellModal
         isOpen={isSellModalOpen}
         onClose={() => setIsSellModalOpen(false)}
-        onSuccess={() => { setIsSellModalOpen(false); router.refresh(); }}
+        onSuccess={() => { setIsSellModalOpen(false); startTransition(() => { router.refresh(); }); }}
         partners={partners}
         availableCodes={inventory}
       />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   recordUsdOperation, recordRubOperation,
@@ -34,6 +34,7 @@ export default function CashPageClient({
   initialUsdOps, initialRubOps, initialExchanges, partners,
 }: Props) {
   const router = useRouter();
+  const [, startTransition] = useTransition();
   const [activeTab, setActiveTab] = useState<TabType>("usd");
   const [usdBalance] = useState(initialUsdBalance);
   const [rubBalance] = useState(initialRubBalance);
@@ -58,8 +59,8 @@ export default function CashPageClient({
   const [exchSubmitting, setExchSubmitting] = useState(false);
   const [exchError, setExchError] = useState("");
 
-  async function handleDeleteUsd(id: number) { await deleteCashOperation(id); router.refresh(); }
-  async function handleDeleteRub(id: number) { await deleteCashOperation(id); router.refresh(); }
+  async function handleDeleteUsd(id: number) { await deleteCashOperation(id); startTransition(() => { router.refresh(); }); }
+  async function handleDeleteRub(id: number) { await deleteCashOperation(id); startTransition(() => { router.refresh(); }); }
 
   function openUsdModal() { setUsdForm({ type: "income", amount: "", partnerId: "", description: "" }); setUsdError(""); setIsUsdModalOpen(true); }
   function openRubModal() { setRubForm({ type: "income", amount: "", partnerId: "", description: "" }); setRubError(""); setIsRubModalOpen(true); }
@@ -75,7 +76,7 @@ export default function CashPageClient({
     try {
       await recordUsdOperation({ type: usdForm.type, amount: amt, partnerId: parseInt(usdForm.partnerId), description: usdForm.description || undefined });
       setIsUsdModalOpen(false);
-      router.refresh();
+      startTransition(() => { router.refresh(); });
     } catch (err) {
       setUsdError(err instanceof Error ? err.message : "Xatolik yuz berdi");
     } finally { setUsdSubmitting(false); }
@@ -91,7 +92,7 @@ export default function CashPageClient({
     try {
       await recordRubOperation({ type: rubForm.type, amount: amt, partnerId: parseInt(rubForm.partnerId), description: rubForm.description || undefined });
       setIsRubModalOpen(false);
-      router.refresh();
+      startTransition(() => { router.refresh(); });
     } catch (err) {
       setRubError(err instanceof Error ? err.message : "Xatolik yuz berdi");
     } finally { setRubSubmitting(false); }
@@ -112,7 +113,7 @@ export default function CashPageClient({
     try {
       await recordExchange({ usdAmount: usd, rubAmount: rub, rate: rub / usd, partnerId: parseInt(exchForm.partnerId), description: exchForm.description || undefined });
       setIsExchangeModalOpen(false);
-      router.refresh();
+      startTransition(() => { router.refresh(); });
     } catch (err) {
       setExchError(err instanceof Error ? err.message : "Xatolik yuz berdi");
     } finally { setExchSubmitting(false); }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { getSale, deleteSale } from "@/lib/actions/sales";
 import { getPartners, Partner } from "@/lib/actions/partners";
@@ -82,6 +82,7 @@ export default function SalesPageClient({
   initialWarehouse,
 }: Props) {
   const router = useRouter();
+  const [, startTransition] = useTransition();
   const [sales] = useState<SaleWithCustomer[]>(initialSales);
   const [partners] = useState<Partner[]>(initialPartners);
   const [transports] = useState<TransportItem[]>(initialTransports);
@@ -115,7 +116,7 @@ export default function SalesPageClient({
     setDeleting(true);
     try {
       await deleteSale(deleteTargetId);
-      router.refresh();
+      startTransition(() => { router.refresh(); });
     } finally {
       setDeleting(false);
       setDeleteTargetId(null);
@@ -143,7 +144,7 @@ export default function SalesPageClient({
       <SaleModal
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
-        onSuccess={() => { setIsCreateOpen(false); router.refresh(); }}
+        onSuccess={() => { setIsCreateOpen(false); startTransition(() => { router.refresh(); }); }}
         partners={partners}
         transports={transports}
         warehouseItems={warehouseItems}
@@ -152,7 +153,7 @@ export default function SalesPageClient({
       <SaleReceiveModal
         isOpen={!!receiveTarget}
         onClose={() => setReceiveTarget(null)}
-        onSuccess={() => { setReceiveTarget(null); router.refresh(); }}
+        onSuccess={() => { setReceiveTarget(null); startTransition(() => { router.refresh(); }); }}
         sale={receiveTarget}
         warehouseItems={warehouseItems}
       />
