@@ -39,10 +39,17 @@ jobs:
 
       - name: VPS da restart (build yo'q, faqat 30 soniya)
         run: |
-          ssh -i ~/.ssh/deploy_key root@194.163.157.44 "
-            cd /var/www/wood-erp &&
-            git pull origin master &&
-            npm ci &&
-            npx drizzle-kit migrate &&
+          ssh -i ~/.ssh/deploy_key root@194.163.157.44 << 'EOF'
+            cd /var/www/wood-erp
+            LOCK_BEFORE=$(md5sum package-lock.json | cut -d' ' -f1)
+            git pull origin master
+            LOCK_AFTER=$(md5sum package-lock.json | cut -d' ' -f1)
+            if [ "$LOCK_BEFORE" != "$LOCK_AFTER" ]; then
+              echo "Yangi paketlar bor, o'rnatilmoqda..."
+              npm install
+            else
+              echo "Paketlar o'zgarmagan, o'tkazib yuborildi."
+            fi
+            npx drizzle-kit migrate
             pm2 reload ecosystem.config.js --update-env
-          "
+          EOF
