@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { getSales } from "@/lib/actions/sales";
 import { getPartners } from "@/lib/actions/partners";
 import { getTransports } from "@/lib/actions/wagons";

@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { getWarehouse } from "@/lib/actions/warehouse";
 import WarehouseTable from "./_components/WarehouseTable";
 

@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { getUsdBalance, getRubState, getUsdOperations, getRubOperations, getExchangeHistory } from "@/lib/actions/cash";
 import { getPartners } from "@/lib/actions/partners";
 import CashPageClient from "./_components/CashPageClient";

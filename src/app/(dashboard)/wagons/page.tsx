@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { getTransports } from "@/lib/actions/wagons";
 import { getPartners } from "@/lib/actions/partners";
 import WagonsPageClient from "./_components/WagonsPageClient";

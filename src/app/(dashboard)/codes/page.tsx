@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { getCodeInventory, getCodeHistory } from "@/lib/actions/codes";
 import { getPartners } from "@/lib/actions/partners";
 import CodesPageClient from "./_components/CodesPageClient";

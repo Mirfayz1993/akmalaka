@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { getAllPartnersWithBalances } from "@/lib/actions/partners";
 import PartnersPageClient from "./_components/PartnersPageClient";
 

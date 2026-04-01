@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { getUsdBalance, getRubState, getUsdOperations } from "@/lib/actions/cash";
 import { getTransports } from "@/lib/actions/wagons";
