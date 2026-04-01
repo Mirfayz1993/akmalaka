@@ -1,0 +1,69 @@
+name: Test & Deploy
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  # ─── 1. TEST + BUILD (GitHub serverida) ─────────────────────────────────────
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Paketlarni o'rnatish
+        run: npm ci
+
+      - name: Testlarni ishlatish
+        run: npm run test
+
+      - name: Build qilish (VPS ga tegmaydi)
+        run: npm run build
+        env:
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+          DATABASE_URL: postgresql://postgres:dummy@localhost:5432/wood_erp
+
+      - name: Build natijasini vaqtincha saqlash
+        uses: actions/upload-artifact@v4
+        with:
+          name: next-build
+          path: .next/
+          retention-days: 1
+
+  # ─── 2. DEPLOY (faqat build muvaffaqiyatli bo'lsa) ──────────────────────────
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build natijasini yuklash
+        uses: actions/download-artifact@v4
+        with:
+          name: next-build
+          path: .next/
+
+      - name: Tayyor build ni VPS ga yuborish
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: 194.163.157.44
+          username: root
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: ".next"
+          target: /var/www/wood-erp/
+
+      - name: VPS da deploy (build yo'q, faqat restart)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 194.163.157.44
+          username: root
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd /var/www/wood-erp
+            git pull origin master
+            npm ci
+            npx drizzle-kit migrate
+            pm2 reload ecosystem.config.js --update-env
