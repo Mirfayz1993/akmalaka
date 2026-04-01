@@ -33,7 +33,10 @@ export async function getSales() {
       customer: true,
       items: {
         with: {
-          timber: true,
+          timber: {
+            with: { transport: true },
+          },
+          transport: true,
         },
       },
     },
@@ -50,7 +53,10 @@ export async function getSale(id: number) {
       customer: true,
       items: {
         with: {
-          timber: true,
+          timber: {
+            with: { transport: true },
+          },
+          transport: true,
         },
       },
     },
@@ -118,6 +124,20 @@ export async function createSale(data: {
         pricePerCubicUsd: String(item.pricePerCubicUsd),
         totalUsd: String(item.totalUsd),
       });
+
+      // warehouseId bo'lsa → yuborishda darhol ombor kamaytirish
+      if (item.warehouseId) {
+        const wItem = await tx.query.warehouse.findFirst({
+          where: eq(warehouse.id, item.warehouseId),
+        });
+        if (!wItem || wItem.quantity < item.sentCount) {
+          throw new Error("Omborda yetarli miqdor yo'q");
+        }
+        await tx
+          .update(warehouse)
+          .set({ quantity: sql`${warehouse.quantity} - ${item.sentCount}` })
+          .where(eq(warehouse.id, item.warehouseId));
+      }
     }
   });
 
@@ -161,26 +181,10 @@ export async function receiveSale(
           })
           .where(eq(timbers.id, saleItem.timberId));
       }
-
-      // warehouseId bo'lsa → warehouse.quantity -= receivedCount
-      if (saleItem.warehouseId) {
-        // Bug 2: Manfiy himoya — yetarli miqdor borligini tekshirish
-        const warehouseItem = await tx.query.warehouse.findFirst({
-          where: eq(warehouse.id, saleItem.warehouseId),
-        });
-        if (!warehouseItem || warehouseItem.quantity < receivedCount) {
-          throw new Error("Omborda yetarli miqdor yo'q");
-        }
-        await tx
-          .update(warehouse)
-          .set({
-            quantity: sql`${warehouse.quantity} - ${receivedCount}`,
-          })
-          .where(eq(warehouse.id, saleItem.warehouseId));
-      }
+      // warehouseId bo'lsa → ombor allaqachon createSale da ayirilgan, bu yerda qilmaymiz
     }
 
-    // Yangi items qo'shish (qabul paytida qo'shilgan)
+    // Yangi items qo'shish (qabul paytida vagondan qo'shilgan)
     if (newItems && newItems.length > 0) {
       for (const newItem of newItems) {
         const kub =
@@ -194,7 +198,7 @@ export async function receiveSale(
         await tx.insert(saleItems).values({
           saleId,
           timberId: newItem.timberId ?? null,
-          warehouseId: newItem.warehouseId ?? null,
+          transportId: newItem.transportId ?? null,
           thicknessMm: newItem.thicknessMm,
           widthMm: newItem.widthMm,
           lengthM: String(newItem.lengthM),
@@ -204,18 +208,12 @@ export async function receiveSale(
           totalUsd: String(itemTotalUsd),
         });
 
-        // warehouseId bo'lsa → warehouse.quantity -= sentCount
-        if (newItem.warehouseId) {
-          const warehouseItem = await tx.query.warehouse.findFirst({
-            where: eq(warehouse.id, newItem.warehouseId),
-          });
-          if (!warehouseItem || warehouseItem.quantity < newItem.sentCount) {
-            throw new Error("Omborda yetarli miqdor yo'q");
-          }
+        // timberId bo'lsa → timbers.customerCount += sentCount (vagon hisobi)
+        if (newItem.timberId) {
           await tx
-            .update(warehouse)
-            .set({ quantity: sql`${warehouse.quantity} - ${newItem.sentCount}` })
-            .where(eq(warehouse.id, newItem.warehouseId));
+            .update(timbers)
+            .set({ customerCount: sql`${timbers.customerCount} + ${newItem.sentCount}` })
+            .where(eq(timbers.id, newItem.timberId));
         }
       }
     }

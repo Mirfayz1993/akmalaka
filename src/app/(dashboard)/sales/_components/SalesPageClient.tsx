@@ -24,6 +24,9 @@ type SaleDetail = {
     lengthM: string | null;
     sentCount: number | null;
     receivedCount: number | null;
+    timberId: number | null;
+    transportId: number | null;
+    transportName: string | null;
   }>;
 };
 
@@ -70,6 +73,9 @@ export default function SalesPageClient({
         lengthM: item.lengthM ? String(item.lengthM) : null,
         sentCount: item.sentCount,
         receivedCount: item.receivedCount ?? 0,
+        timberId: item.timberId ?? null,
+        transportId: item.transportId ?? item.timber?.transportId ?? null,
+        transportName: item.transport?.number ?? item.timber?.transport?.number ?? null,
       })),
     });
   };
@@ -121,7 +127,7 @@ export default function SalesPageClient({
         onClose={() => setReceiveTarget(null)}
         onSuccess={() => { setReceiveTarget(null); startTransition(() => { router.refresh(); }); }}
         sale={receiveTarget}
-        warehouseItems={warehouseItems}
+        transports={transports}
       />
 
       <ConfirmDialog

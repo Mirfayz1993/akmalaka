@@ -5,16 +5,23 @@ import Modal from "@/components/ui/Modal";
 import NumberInput from "@/components/ui/NumberInput";
 import { receiveSale } from "@/lib/actions/sales";
 
-type WarehouseItem = {
+type TransportItem = {
   id: number;
-  thicknessMm: number;
-  widthMm: number;
-  lengthM: string;
-  quantity: number;
+  number: string | null;
+  status: string;
+  timbers: Array<{
+    id: number;
+    thicknessMm: number;
+    widthMm: number;
+    lengthM: string | number;
+    tashkentCount: number | null;
+    customerCount: number | null;
+  }>;
 };
 
 type NewReceiveItem = {
-  warehouseId: number;
+  timberId: number;
+  transportId: number;
   thicknessMm: number;
   widthMm: number;
   lengthM: number;
@@ -34,6 +41,9 @@ type SaleDetail = {
     lengthM: string | null;
     sentCount: number | null;
     receivedCount: number | null;
+    timberId: number | null;
+    transportId: number | null;
+    transportName: string | null;
   }>;
 };
 
@@ -42,7 +52,7 @@ interface SaleReceiveModalProps {
   onClose: () => void;
   onSuccess: () => void;
   sale: SaleDetail | null;
-  warehouseItems: WarehouseItem[];
+  transports: TransportItem[];
 }
 
 export default function SaleReceiveModal({
@@ -50,13 +60,14 @@ export default function SaleReceiveModal({
   onClose,
   onSuccess,
   sale,
-  warehouseItems,
+  transports,
 }: SaleReceiveModalProps) {
   const [receivedCounts, setReceivedCounts] = useState<Record<number, number>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [newItems, setNewItems] = useState<NewReceiveItem[]>([]);
-  const [selectedWarehouseId, setSelectedWarehouseId] = useState<number | "">("");
+  const [selectedTransportId, setSelectedTransportId] = useState<number | "">("");
+  const [selectedTimberId, setSelectedTimberId] = useState<number | "">("");
   const [newItemCount, setNewItemCount] = useState(1);
   const [newItemPrice, setNewItemPrice] = useState(0);
 
@@ -70,6 +81,23 @@ export default function SaleReceiveModal({
     }
   }, [sale]);
 
+  // Tanlangan transportning timberlari (mavjud miqdori > 0 bo'lganlar)
+  const selectedTransport = transports.find((t) => t.id === selectedTransportId);
+  const availableTimbers = selectedTransport?.timbers.filter((tb) => {
+    const available = (tb.tashkentCount ?? 0) - (tb.customerCount ?? 0);
+    return available > 0;
+  }) ?? [];
+
+  const selectedTimber = availableTimbers.find((tb) => tb.id === selectedTimberId);
+  const maxCount = selectedTimber
+    ? (selectedTimber.tashkentCount ?? 0) - (selectedTimber.customerCount ?? 0)
+    : 1;
+
+  // Qo'shimcha qabul uchun faqat yetib kelgan/tushirilgan vagonlar
+  const receivableTransports = transports.filter((t) =>
+    ["arrived", "unloaded", "closed"].includes(t.status)
+  );
+
   function handleCountChange(itemId: number, value: number) {
     const item = sale?.items.find((i) => i.id === itemId);
     const max = item?.sentCount ?? 0;
@@ -78,20 +106,22 @@ export default function SaleReceiveModal({
   }
 
   function handleAddNewItem() {
-    const wItem = warehouseItems.find((w) => w.id === selectedWarehouseId);
-    if (!wItem || newItemCount < 1 || newItemCount > wItem.quantity || newItemPrice <= 0) return;
+    if (!selectedTransport || !selectedTimber) return;
+    if (newItemCount < 1 || newItemCount > maxCount || newItemPrice <= 0) return;
+
     setNewItems((prev) => [
       ...prev,
       {
-        warehouseId: wItem.id,
-        thicknessMm: wItem.thicknessMm,
-        widthMm: wItem.widthMm,
-        lengthM: parseFloat(wItem.lengthM),
+        timberId: selectedTimber.id,
+        transportId: selectedTransport.id,
+        thicknessMm: selectedTimber.thicknessMm,
+        widthMm: selectedTimber.widthMm,
+        lengthM: parseFloat(String(selectedTimber.lengthM)),
         sentCount: newItemCount,
         pricePerCubicUsd: newItemPrice,
       },
     ]);
-    setSelectedWarehouseId("");
+    setSelectedTimberId("");
     setNewItemCount(1);
     setNewItemPrice(0);
   }
@@ -122,7 +152,8 @@ export default function SaleReceiveModal({
     setReceivedCounts({});
     setError(null);
     setNewItems([]);
-    setSelectedWarehouseId("");
+    setSelectedTransportId("");
+    setSelectedTimberId("");
     setNewItemCount(1);
     setNewItemPrice(0);
     onClose();
@@ -152,6 +183,7 @@ export default function SaleReceiveModal({
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
                 <th className="text-left px-4 py-3 font-medium text-slate-600">{"O'lcham"}</th>
+                <th className="text-left px-4 py-3 font-medium text-slate-600">Vagon</th>
                 <th className="text-right px-4 py-3 font-medium text-slate-600">{"Jo'natildi"}</th>
                 <th className="text-right px-4 py-3 font-medium text-slate-600">Qabul soni</th>
               </tr>
@@ -161,6 +193,9 @@ export default function SaleReceiveModal({
                 <tr key={item.id} className="border-b border-slate-100">
                   <td className="px-4 py-3 text-slate-700">
                     {item.thicknessMm}×{item.widthMm}×{item.lengthM}m
+                  </td>
+                  <td className="px-4 py-3 text-slate-500 text-xs">
+                    {item.transportName ?? "—"}
                   </td>
                   <td className="px-4 py-3 text-right text-slate-600">
                     {item.sentCount ?? 0} dona
@@ -182,50 +217,87 @@ export default function SaleReceiveModal({
           </table>
         </div>
 
-        {/* ── Ombordan yangi item qo'shish ───────────────────── */}
-        {warehouseItems.filter((w) => w.quantity > 0).length > 0 && (
+        {/* ── Vagondan qo'shimcha qabul ───────────────────── */}
+        {receivableTransports.length > 0 && (
           <div className="pt-4 border-t border-slate-200">
-            <p className="text-sm font-semibold text-slate-700 mb-3">Qo&apos;shimcha qabul (ombordan)</p>
+            <p className="text-sm font-semibold text-slate-700 mb-3">
+              Qo&apos;shimcha qabul (vagondan)
+            </p>
 
             {newItems.length > 0 && (
               <div className="mb-3 space-y-1">
-                {newItems.map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm">
-                    <span className="text-slate-700">{item.thicknessMm}&times;{item.widthMm}&times;{item.lengthM}m — {item.sentCount} dona</span>
-                    <button
-                      onClick={() => setNewItems((prev) => prev.filter((_, i) => i !== idx))}
-                      className="text-red-400 hover:text-red-600 ml-3"
+                {newItems.map((item, idx) => {
+                  const tr = transports.find((t) => t.id === item.transportId);
+                  return (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm"
                     >
-                      ✕
-                    </button>
-                  </div>
-                ))}
+                      <span className="text-slate-700">
+                        {tr?.number ?? `#${item.transportId}`} —{" "}
+                        {item.thicknessMm}&times;{item.widthMm}&times;{item.lengthM}m —{" "}
+                        {item.sentCount} dona
+                      </span>
+                      <button
+                        onClick={() => setNewItems((prev) => prev.filter((_, i) => i !== idx))}
+                        className="text-red-400 hover:text-red-600 ml-3"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
             <div className="flex items-center gap-2 flex-wrap">
+              {/* Vagon tanlash */}
               <select
-                value={selectedWarehouseId}
+                value={selectedTransportId}
                 onChange={(e) => {
-                  setSelectedWarehouseId(e.target.value ? Number(e.target.value) : "");
+                  setSelectedTransportId(e.target.value ? Number(e.target.value) : "");
+                  setSelectedTimberId("");
                   setNewItemCount(1);
                 }}
                 className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">— O&apos;lcham tanlang —</option>
-                {warehouseItems.filter((w) => w.quantity > 0).map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.thicknessMm}&times;{w.widthMm}&times;{w.lengthM}m ({w.quantity} dona)
+                <option value="">— Vagon tanlang —</option>
+                {receivableTransports.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.number ?? `#${t.id}`}
                   </option>
                 ))}
               </select>
+
+              {/* O'lcham tanlash */}
+              <select
+                value={selectedTimberId}
+                onChange={(e) => {
+                  setSelectedTimberId(e.target.value ? Number(e.target.value) : "");
+                  setNewItemCount(1);
+                }}
+                disabled={!selectedTransportId || availableTimbers.length === 0}
+                className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+              >
+                <option value="">— O&apos;lcham —</option>
+                {availableTimbers.map((tb) => {
+                  const avail = (tb.tashkentCount ?? 0) - (tb.customerCount ?? 0);
+                  return (
+                    <option key={tb.id} value={tb.id}>
+                      {tb.thicknessMm}&times;{tb.widthMm}&times;{tb.lengthM}m ({avail} dona)
+                    </option>
+                  );
+                })}
+              </select>
+
               <NumberInput
                 placeholder="Miqdor"
                 min={1}
-                max={warehouseItems.find((w) => w.id === selectedWarehouseId)?.quantity ?? 1}
+                max={maxCount}
                 value={newItemCount}
                 onChange={(e) => setNewItemCount(Number(e.target.value))}
-                className="w-20 border border-slate-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={!selectedTimberId}
+                className="w-20 border border-slate-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
               />
               <NumberInput
                 placeholder="$/m³"
@@ -233,12 +305,13 @@ export default function SaleReceiveModal({
                 step={0.01}
                 value={newItemPrice || ""}
                 onChange={(e) => setNewItemPrice(Number(e.target.value))}
-                className="w-20 border border-slate-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={!selectedTimberId}
+                className="w-20 border border-slate-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
               />
               <button
                 type="button"
                 onClick={handleAddNewItem}
-                disabled={!selectedWarehouseId || newItemCount < 1 || newItemPrice <= 0}
+                disabled={!selectedTimberId || newItemCount < 1 || newItemPrice <= 0}
                 className="px-3 py-1.5 bg-green-700 text-white text-sm rounded-lg hover:bg-green-800 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 + Qo&apos;shish
