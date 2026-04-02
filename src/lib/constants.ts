@@ -1,19 +1,32 @@
-// Transport status labels
+// Transport status labels (4-bosqichli tizim)
 export const TRANSPORT_STATUS_LABELS: Record<string, string> = {
   in_transit: "Yo'lda",
-  at_border: "Chegara",
-  arrived: "Yetib keldi",
-  unloaded: "Tushirildi",
-  closed: "Yopildi",
+  arrived: "Yetib kelgan",
+  unloaded: "Tushurilgan",
+  closed: "Yopilgan",
 };
 
 // Transport status colors
 export const TRANSPORT_STATUS_COLORS: Record<string, string> = {
   in_transit: "bg-yellow-100 text-yellow-700",
-  at_border: "bg-orange-100 text-orange-700",
-  arrived: "bg-green-100 text-green-700",
-  unloaded: "bg-blue-100 text-blue-700",
-  closed: "bg-gray-100 text-gray-600",
+  arrived: "bg-blue-100 text-blue-700",
+  unloaded: "bg-purple-100 text-purple-700",
+  closed: "bg-slate-100 text-slate-500",
+};
+
+// Status ketma-ketligi (faqat oldinga)
+export const STATUS_ORDER: Record<string, number> = {
+  in_transit: 0,
+  arrived: 1,
+  unloaded: 2,
+  closed: 3,
+};
+
+// Keyingi status
+export const NEXT_STATUS: Record<string, string> = {
+  in_transit: "arrived",
+  arrived: "unloaded",
+  unloaded: "closed",
 };
 
 // Partner type labels

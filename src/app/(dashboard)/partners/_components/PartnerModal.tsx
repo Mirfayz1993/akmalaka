@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Modal from "@/components/ui/Modal";
+import PhoneInput from "@/components/ui/PhoneInput";
 import { createPartner } from "@/lib/actions/partners";
 import type { Partner } from "@/lib/actions/partners";
 
@@ -104,29 +105,9 @@ export default function PartnerModal({
           <label className="block text-sm font-medium text-slate-700 mb-1">
             Telefon
           </label>
-          <input
-            type="tel"
+          <PhoneInput
             value={phone}
-            onChange={(e) => {
-              const val = e.target.value;
-              if (!val.startsWith("+998")) {
-                setPhone("+998");
-                return;
-              }
-              setPhone(val);
-            }}
-            onBlur={(e) => {
-              // Blur da format: +998 XX XXX XX XX
-              const rest = e.target.value.slice(4).replace(/\D/g, "").slice(0, 9);
-              let formatted = "+998";
-              if (rest.length > 0) formatted += " " + rest.slice(0, 2);
-              if (rest.length > 2) formatted += " " + rest.slice(2, 5);
-              if (rest.length > 5) formatted += " " + rest.slice(5, 7);
-              if (rest.length > 7) formatted += " " + rest.slice(7, 9);
-              setPhone(formatted);
-            }}
-            placeholder="+998 90 123 45 67"
-            maxLength={17}
+            onChange={setPhone}
             className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
           />
         </div>

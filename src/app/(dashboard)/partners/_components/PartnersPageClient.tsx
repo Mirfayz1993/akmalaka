@@ -2,11 +2,13 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { getAllPartnersWithBalances } from "@/lib/actions/partners";
+import { toast } from "sonner";
+import { getAllPartnersWithBalances, deletePartner } from "@/lib/actions/partners";
 import type { Partner } from "@/lib/actions/partners";
 import PartnerModal from "./PartnerModal";
 import PartnerDetail from "./PartnerDetail";
 import PaymentModal from "./PaymentModal";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 type PartnerWithBalance = Awaited<ReturnType<typeof getAllPartnersWithBalances>>[number];
 
@@ -31,11 +33,13 @@ export default function PartnersPageClient({
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
-  const [partners] = useState<PartnerWithBalance[]>(initialPartnersWithBalances);
+  const partners = initialPartnersWithBalances;
   const [selectedPartner, setSelectedPartner] = useState<PartnerWithBalance | null>(null);
   const [filter, setFilter] = useState<Partner["type"] | "all">("all");
   const [isPartnerModalOpen, setIsPartnerModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<PartnerWithBalance | null>(null);
+  const [isDeleteLoading, setIsDeleteLoading] = useState(false);
 
   function handleSelectPartner(partner: PartnerWithBalance) {
     setSelectedPartner(partner);
@@ -44,6 +48,21 @@ export default function PartnersPageClient({
   function handleSuccess() {
     setSelectedPartner(null);
     startTransition(() => { router.refresh(); });
+  }
+
+  async function handleDeleteConfirm() {
+    if (!deleteTarget) return;
+    setIsDeleteLoading(true);
+    try {
+      await deletePartner(deleteTarget.id);
+      setDeleteTarget(null);
+      setSelectedPartner(null);
+      startTransition(() => { router.refresh(); });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "O'chirishda xatolik yuz berdi");
+    } finally {
+      setIsDeleteLoading(false);
+    }
   }
 
   const filteredPartners =
@@ -120,6 +139,7 @@ export default function PartnersPageClient({
             partner={selectedPartner}
             onPayment={() => setIsPaymentModalOpen(true)}
             onClose={() => setSelectedPartner(null)}
+            onDelete={() => selectedPartner && setDeleteTarget(selectedPartner)}
           />
         </div>
       </div>
@@ -131,6 +151,16 @@ export default function PartnersPageClient({
           setIsPartnerModalOpen(false);
           handleSuccess();
         }}
+      />
+
+      <ConfirmDialog
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Hamkorni o'chirish"
+        message={`"${deleteTarget?.name}" hamkorini o'chirishni tasdiqlaysizmi? Bu amalni qaytarib bo'lmaydi.`}
+        confirmText="O'chirish"
+        isLoading={isDeleteLoading}
       />
 
       <PaymentModal

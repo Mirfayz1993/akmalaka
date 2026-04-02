@@ -90,6 +90,7 @@ export const transports = pgTable("transports", {
   toLocation: text("to_location"),
   sentAt: date("sent_at"),
   arrivedAt: date("arrived_at"),
+  unloadedAt: date("unloaded_at"),
   closedAt: date("closed_at"),
   tonnage: numeric("tonnage"),
   status: transportStatusEnum("status").notNull().default("in_transit"),
@@ -178,6 +179,7 @@ export const timbers = pgTable("timbers", {
   lengthM: numeric("length_m").notNull(),
   russiaCount: integer("russia_count").notNull().default(0),
   tashkentCount: integer("tashkent_count").default(0),
+  supplierCount: integer("supplier_count").default(0),
   customerCount: integer("customer_count").default(0),
   createdAt: timestamp("created_at").defaultNow(),
 });

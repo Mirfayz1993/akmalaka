@@ -8,10 +8,30 @@ import {
   cashOperations,
   timbers,
   transportExpenses,
+  warehouse,
+  saleItems,
+  codes,
 } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { addToWarehouse, backfillWarehouseFromClosedWagons } from "./warehouse";
+
+// ─── STATUS TIZIMI ─────────────────────────────────────────────────────────────
+// NOTE: "use server" fayldan faqat async funksiyalar export qilinadi.
+// Konstant va tiplar bu yerda emas, balki alohida faylda bo'lishi kerak.
+
+type TransportStatus = "in_transit" | "at_border" | "arrived" | "unloaded" | "closed";
+
+// Faqat bitta keyingi statusga o'tish mumkin
+const NEXT_STATUS_MAP: Record<string, TransportStatus> = {
+  in_transit: "arrived",
+  arrived: "unloaded",
+  unloaded: "closed",
+};
+
+function getNextStatus(current: string): TransportStatus | null {
+  return NEXT_STATUS_MAP[current] ?? null;
+}
 
 // ─── GET TRANSPORTS ────────────────────────────────────────────────────────────
 
@@ -65,7 +85,10 @@ export async function createTransport(
   timberRows?: TimberInput[]
 ) {
   const transport = await db.transaction(async (tx) => {
-    const [transport] = await tx.insert(transports).values(data).returning();
+    const [transport] = await tx.insert(transports).values({
+      ...data,
+      status: "in_transit",
+    }).returning();
 
     // Timber qatorlarini saqlash
     if (timberRows && timberRows.length > 0) {
@@ -85,95 +108,10 @@ export async function createTransport(
       }
     }
 
-    // Log yozish
     await tx.insert(transportLogs).values({
       transportId: transport.id,
-      action: "Transport yaratildi",
+      action: "Transport yaratildi (Yo'lda statusida)",
     });
-
-    const tonnage = data.tonnage ? Number(data.tonnage) : 0;
-
-    // Kod UZ uchun partner_balances yozish
-    if (data.codeUzSupplierId && data.codeUzPricePerTon) {
-      const pricePerTon = Number(data.codeUzPricePerTon);
-      // TZ qoida #1: tonnaj × $/t (KUB EMAS)
-      const amount = -(tonnage * pricePerTon);
-      await tx.insert(partnerBalances).values({
-        partnerId: data.codeUzSupplierId,
-        amount: String(amount),
-        currency: "usd",
-        description: "Kod UZ xarajati",
-        transportId: transport.id,
-      });
-    }
-
-    // Kod KZ uchun partner_balances yozish
-    if (data.codeKzSupplierId && data.codeKzPricePerTon) {
-      const pricePerTon = Number(data.codeKzPricePerTon);
-      // TZ qoida #1: tonnaj × $/t (KUB EMAS)
-      const amount = -(tonnage * pricePerTon);
-      await tx.insert(partnerBalances).values({
-        partnerId: data.codeKzSupplierId,
-        amount: String(amount),
-        currency: "usd",
-        description: "Kod KZ xarajati",
-        transportId: transport.id,
-      });
-    }
-
-    // Standart xarajatlar uchun partner_balances yozish
-    type ExpenseEntry = {
-      amount: typeof data.expenseNds;
-      partnerId: typeof data.expenseNdsPartnerId;
-      description: string;
-    };
-
-    const standardExpenses: ExpenseEntry[] = [
-      {
-        amount: data.expenseNds,
-        partnerId: data.expenseNdsPartnerId,
-        description: "NDS xarajati",
-      },
-      {
-        amount: data.expenseUsluga,
-        partnerId: data.expenseUslugaPartnerId,
-        description: "Usluga xarajati",
-      },
-      {
-        amount: data.expenseTupik,
-        partnerId: data.expenseTupikPartnerId,
-        description: "Tupik xarajati",
-      },
-      {
-        amount: data.expenseXrannei,
-        partnerId: data.expenseXranneiPartnerId,
-        description: "Xrannei xarajati",
-      },
-      {
-        amount: data.expenseOrtish,
-        partnerId: data.expenseOrtishPartnerId,
-        description: "Ortish xarajati",
-      },
-      {
-        amount: data.expenseTushurish,
-        partnerId: data.expenseTushirishPartnerId,
-        description: "Tushurish xarajati",
-      },
-    ];
-
-    for (const expense of standardExpenses) {
-      if (expense.amount && Number(expense.amount) > 0 && expense.partnerId) {
-        // manfiy — biz ularga qarz
-        const amount = -Number(expense.amount);
-        await tx.insert(partnerBalances).values({
-          partnerId: expense.partnerId,
-          amount: String(amount),
-          currency: "usd",
-          description: expense.description,
-          transportId: transport.id,
-        });
-      }
-    }
 
     return transport;
   });
@@ -203,32 +141,85 @@ export async function updateTransport(
   return transport;
 }
 
-// ─── UPDATE TRANSPORT STATUS ───────────────────────────────────────────────────
+// ─── ARRIVE TRANSPORT (Yo'lda → Yetib kelgan) ─────────────────────────────────
 
-const validStatuses = ["in_transit", "at_border", "arrived", "unloaded", "closed"] as const;
-type TransportStatus = typeof validStatuses[number];
+export async function arriveTransport(id: number) {
+  const transport = await db.query.transports.findFirst({
+    where: eq(transports.id, id),
+    with: { timbers: true },
+  });
 
-export async function updateTransportStatus(id: number, status: TransportStatus) {
-  if (!validStatuses.includes(status)) {
-    throw new Error(`Noto'g'ri status: ${status}`);
+  if (!transport) throw new Error("Transport topilmadi");
+  if (transport.status !== "in_transit") {
+    throw new Error("Faqat 'Yo'lda' statusidagi transportni 'Yetib kelgan'ga o'tkazish mumkin");
   }
 
-  const [transport] = await db
-    .update(transports)
-    .set({ status: status as typeof transports.$inferInsert["status"] })
-    .where(eq(transports.id, id))
-    .returning();
+  const today = new Date().toISOString().split("T")[0];
+  const tonnage = Number(transport.tonnage ?? 0);
 
-  await db.insert(transportLogs).values({
-    transportId: id,
-    action: `Status o'zgartirildi: ${status}`,
+  await db.transaction(async (tx) => {
+    // Statusni o'zgartirish
+    await tx
+      .update(transports)
+      .set({ status: "arrived", arrivedAt: transport.arrivedAt ?? today })
+      .where(eq(transports.id, id));
+
+    // Kod UZ uchun partner_balances
+    if (transport.codeUzSupplierId && transport.codeUzPricePerTon) {
+      const amount = -(tonnage * Number(transport.codeUzPricePerTon));
+      await tx.insert(partnerBalances).values({
+        partnerId: transport.codeUzSupplierId,
+        amount: String(amount),
+        currency: "usd",
+        description: "Kod UZ xarajati",
+        transportId: id,
+      });
+    }
+
+    // Kod KZ uchun partner_balances
+    if (transport.codeKzSupplierId && transport.codeKzPricePerTon) {
+      const amount = -(tonnage * Number(transport.codeKzPricePerTon));
+      await tx.insert(partnerBalances).values({
+        partnerId: transport.codeKzSupplierId,
+        amount: String(amount),
+        currency: "usd",
+        description: "Kod KZ xarajati",
+        transportId: id,
+      });
+    }
+
+    // Yuk mashina egasi uchun partner_balances (faqat truck)
+    if (transport.type === "truck" && transport.truckOwnerId && transport.truckOwnerPayment) {
+      const amount = -Number(transport.truckOwnerPayment);
+      await tx.insert(partnerBalances).values({
+        partnerId: transport.truckOwnerId,
+        amount: String(amount),
+        currency: "usd",
+        description: "Yuk mashina egasiga to'lov",
+        transportId: id,
+      });
+    }
+
+    // Toshkent sonlarini rossiya sonidan default to'ldirish
+    for (const timber of transport.timbers) {
+      if ((timber.tashkentCount ?? 0) === 0 && timber.russiaCount > 0) {
+        await tx
+          .update(timbers)
+          .set({ tashkentCount: timber.russiaCount })
+          .where(eq(timbers.id, timber.id));
+      }
+    }
+
+    await tx.insert(transportLogs).values({
+      transportId: id,
+      action: "Status o'zgartirildi: Yetib kelgan",
+    });
   });
 
   revalidatePath("/wagons");
-  return transport;
 }
 
-// ─── UNLOAD TRANSPORT ──────────────────────────────────────────────────────────
+// ─── UNLOAD TRANSPORT (Yetib kelgan → Tushurilgan) ─────────────────────────────
 
 export async function unloadTransport(id: number) {
   const transport = await db.query.transports.findFirst({
@@ -237,7 +228,13 @@ export async function unloadTransport(id: number) {
   });
 
   if (!transport) throw new Error("Transport topilmadi");
+  if (transport.status !== "arrived") {
+    throw new Error("Faqat 'Yetib kelgan' statusidagi transportni 'Tushurilgan'ga o'tkazish mumkin");
+  }
 
+  const today = new Date().toISOString().split("T")[0];
+
+  // Toshkent kubi hisoblash (ta'minotchiga to'lov uchun)
   let totalCubTashkent = 0;
   for (const timber of transport.timbers) {
     const tashkentCount = timber.tashkentCount ?? 0;
@@ -248,13 +245,17 @@ export async function unloadTransport(id: number) {
   const rubPricePerCubic = Number(transport.rubPricePerCubic ?? 0);
   const totalRub = totalCubTashkent * rubPricePerCubic;
 
-  const rubOpsResult = await db
-    .select({ totalAmount: sql<string>`COALESCE(SUM(${cashOperations.amount}), 0)` })
-    .from(cashOperations)
-    .where(eq(cashOperations.currency, "rub"));
-  const rubBalance = Number(rubOpsResult[0]?.totalAmount ?? 0);
-  if (rubBalance < totalRub) throw new Error("RUB kassada yetarli mablag' yo'q");
+  // RUB kassa balansi tekshirish
+  if (totalRub > 0) {
+    const rubOpsResult = await db
+      .select({ totalAmount: sql<string>`COALESCE(SUM(${cashOperations.amount}), 0)` })
+      .from(cashOperations)
+      .where(eq(cashOperations.currency, "rub"));
+    const rubBalance = Number(rubOpsResult[0]?.totalAmount ?? 0);
+    if (rubBalance < totalRub) throw new Error("RUB kassada yetarli mablag' yo'q");
+  }
 
+  // O'rtacha RUB kursi hisoblash
   const rubIncomeOps = await db
     .select({ amount: cashOperations.amount, exchangeRate: cashOperations.exchangeRate })
     .from(cashOperations)
@@ -270,56 +271,111 @@ export async function unloadTransport(id: number) {
       totalUsdEquivalent += opAmount / opRate;
     }
   }
-
-  let avgRate = totalUsdEquivalent > 0 ? totalRubAmount / totalUsdEquivalent : 1;
-  if (avgRate <= 0) throw new Error("RUB kassada kurs ma'lumoti topilmadi");
-  const totalUsd = totalRub / avgRate;
+  const avgRate = totalUsdEquivalent > 0 ? totalRubAmount / totalUsdEquivalent : 1;
 
   await db.transaction(async (tx) => {
-    await tx.insert(cashOperations).values({
-      currency: "rub",
-      type: "expense",
-      amount: String(-totalRub),
-      exchangeRate: String(avgRate),
-      transportId: id,
-      description: `Vagon tushirildi #${transport.number ?? id}`,
-    });
-
-    if (transport.supplierId && totalRub > 0) {
-      await tx.insert(partnerBalances).values({
-        partnerId: transport.supplierId,
-        amount: String(-totalUsd),
-        currency: "usd",
+    // RUB kassa xarajat
+    if (totalRub > 0) {
+      await tx.insert(cashOperations).values({
+        currency: "rub",
+        type: "expense",
+        amount: String(-totalRub),
+        exchangeRate: String(avgRate),
         transportId: id,
-        description: `Yog'och to'lovi — vagon ${transport.number ?? id}`,
+        description: `Transport tushirildi #${transport.number ?? id}`,
       });
+
+      // Rossiya ta'minotchisi balansi
+      if (transport.supplierId && avgRate > 0) {
+        const totalUsd = totalRub / avgRate;
+        await tx.insert(partnerBalances).values({
+          partnerId: transport.supplierId,
+          amount: String(-totalUsd),
+          currency: "usd",
+          transportId: id,
+          description: `Yog'och to'lovi — transport ${transport.number ?? id}`,
+        });
+      }
     }
 
+    // Standart xarajatlar balanslarini yaratish
+    type ExpenseEntry = {
+      amount: typeof transport.expenseNds;
+      partnerId: typeof transport.expenseNdsPartnerId;
+      description: string;
+    };
+
+    const standardExpenses: ExpenseEntry[] = [
+      { amount: transport.expenseNds, partnerId: transport.expenseNdsPartnerId, description: "NDS xarajati" },
+      { amount: transport.expenseUsluga, partnerId: transport.expenseUslugaPartnerId, description: "Usluga xarajati" },
+      { amount: transport.expenseTupik, partnerId: transport.expenseTupikPartnerId, description: "Tupik xarajati" },
+      { amount: transport.expenseXrannei, partnerId: transport.expenseXranneiPartnerId, description: "Xrannei xarajati" },
+      { amount: transport.expenseOrtish, partnerId: transport.expenseOrtishPartnerId, description: "Ortish xarajati" },
+      { amount: transport.expenseTushurish, partnerId: transport.expenseTushirishPartnerId, description: "Tushurish xarajati" },
+    ];
+
+    for (const expense of standardExpenses) {
+      if (expense.amount && Number(expense.amount) > 0 && expense.partnerId) {
+        await tx.insert(partnerBalances).values({
+          partnerId: expense.partnerId,
+          amount: String(-Number(expense.amount)),
+          currency: "usd",
+          description: expense.description,
+          transportId: id,
+        });
+      }
+    }
+
+    // SupplierCount ni tashkentCount dan default to'ldirish
+    for (const timber of transport.timbers) {
+      if ((timber.supplierCount ?? 0) === 0 && (timber.tashkentCount ?? 0) > 0) {
+        await tx
+          .update(timbers)
+          .set({ supplierCount: timber.tashkentCount })
+          .where(eq(timbers.id, timber.id));
+      }
+    }
+
+    // Status o'zgartirish
     await tx
       .update(transports)
-      .set({ status: "unloaded" })
+      .set({ status: "unloaded", unloadedAt: today })
       .where(eq(transports.id, id));
 
     await tx.insert(transportLogs).values({
       transportId: id,
-      action: "Vagon tushirildi (unloaded)",
+      action: "Status o'zgartirildi: Tushurilgan",
     });
   });
 
   revalidatePath("/wagons");
 }
 
-// ─── CLOSE TRANSPORT ───────────────────────────────────────────────────────────
+// ─── CLOSE TRANSPORT (Tushurilgan → Yopilgan) ──────────────────────────────────
 
 export async function closeTransport(id: number) {
-  await db
-    .update(transports)
-    .set({ status: "closed" })
-    .where(eq(transports.id, id));
+  const transport = await db.query.transports.findFirst({
+    where: eq(transports.id, id),
+    with: { timbers: true },
+  });
 
-  await db.insert(transportLogs).values({
-    transportId: id,
-    action: "Vagon yopildi (closed)",
+  if (!transport) throw new Error("Transport topilmadi");
+  if (transport.status !== "unloaded") {
+    throw new Error("Faqat 'Tushurilgan' statusidagi transportni 'Yopilgan'ga o'tkazish mumkin");
+  }
+
+  const today = new Date().toISOString().split("T")[0];
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(transports)
+      .set({ status: "closed", closedAt: today })
+      .where(eq(transports.id, id));
+
+    await tx.insert(transportLogs).values({
+      transportId: id,
+      action: "Status o'zgartirildi: Yopilgan",
+    });
   });
 
   await backfillWarehouseFromClosedWagons();
@@ -339,11 +395,22 @@ export async function deleteTransport(id: number) {
     throw new Error("Transport topilmadi");
   }
 
-  if (transport.status !== "in_transit") {
+  if (transport.status !== "in_transit" && transport.status !== "at_border") {
     throw new Error("Faqat yo'ldagi transportni o'chirish mumkin");
   }
 
-  await db.delete(transports).where(eq(transports.id, id));
+  await db.transaction(async (tx) => {
+    // FK bog'liq yozuvlarni cascade o'chirish (schema da CASCADE yo'q joylar)
+    await tx.delete(partnerBalances).where(eq(partnerBalances.transportId, id));
+    await tx.delete(cashOperations).where(eq(cashOperations.transportId, id));
+    await tx.delete(saleItems).where(eq(saleItems.transportId, id));
+    await tx.delete(warehouse).where(eq(warehouse.transportId, id));
+    // codes.usedInTransportId ni NULL ga o'rnatish (o'chirmaslik)
+    await tx.update(codes).set({ usedInTransportId: null }).where(eq(codes.usedInTransportId, id));
+    // timbers, transportExpenses, transportLogs — schema da CASCADE bor, avtomatik o'chadi
+    await tx.delete(transports).where(eq(transports.id, id));
+  });
+
   revalidatePath("/wagons");
 }
 
@@ -371,4 +438,23 @@ export async function addTransportExpense(
 export async function deleteTransportExpense(id: number) {
   await db.delete(transportExpenses).where(eq(transportExpenses.id, id));
   revalidatePath("/wagons");
+}
+
+// ─── GET TRANSPORT SALE ITEMS ──────────────────────────────────────────────────
+
+export async function getTransportSaleItems(transportId: number) {
+  const { saleItems, sales, partners, timbers: timbersTable } = await import("@/db/schema");
+  const { and } = await import("drizzle-orm");
+
+  return await db.query.saleItems.findMany({
+    where: eq(saleItems.transportId, transportId),
+    with: {
+      sale: {
+        with: { customer: true },
+      },
+      timber: true,
+      warehouse: true,
+    },
+    orderBy: (si, { desc }) => [desc(si.createdAt)],
+  });
 }

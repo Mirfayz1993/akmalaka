@@ -27,8 +27,8 @@ export default function CodesPageClient({
 }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
-  const [inventory] = useState(initialInventory);
-  const [history] = useState(initialHistory);
+  const inventory = initialInventory;
+  const history = initialHistory;
   const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
   const [isSellModalOpen, setIsSellModalOpen] = useState(false);
 

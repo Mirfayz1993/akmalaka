@@ -14,6 +14,19 @@ interface Partner {
   type: string;
 }
 
+interface TransportForDefault {
+  supplierId: number | null;
+  codeUzSupplierId: number | null;
+  codeKzSupplierId: number | null;
+  truckOwnerId: number | null;
+  expenseNdsPartnerId: number | null;
+  expenseUslugaPartnerId: number | null;
+  expenseTupikPartnerId: number | null;
+  expenseXranneiPartnerId: number | null;
+  expenseOrtishPartnerId: number | null;
+  expenseTushirishPartnerId: number | null;
+}
+
 interface TimberRow {
   thicknessMm: string;
   widthMm: string;
@@ -32,6 +45,7 @@ interface WagonModalProps {
   onClose: () => void;
   type: "wagon" | "truck";
   partners: Partner[];
+  transports: TransportForDefault[];
   onSuccess?: () => void;
 }
 
@@ -43,7 +57,60 @@ function calcCub(thicknessMm: string, widthMm: string, lengthM: string, count: s
   return (t / 1000) * (w / 1000) * l * c;
 }
 
-export default function WagonModal({ isOpen, onClose, type, partners, onSuccess }: WagonModalProps) {
+// Eng ko'p ishlatilgan hamkorni qaytaradi.
+// Agar bitta bo'lsa — o'sha, agar ko'p bo'lsa — eng ko'p ishlatilgan,
+// agar tarix bo'lmasa — birinchi ro'yxatga olingan (eng kichik ID).
+function getMostUsedPartnerId(
+  partnerList: { id: number }[],
+  transports: TransportForDefault[],
+  getField: (tr: TransportForDefault) => number | null | undefined
+): string {
+  if (partnerList.length === 0) return "";
+  if (partnerList.length === 1) return String(partnerList[0].id);
+
+  const counts = new Map<number, number>();
+  for (const tr of transports) {
+    const pid = getField(tr);
+    if (pid && partnerList.some((p) => p.id === pid)) {
+      counts.set(pid, (counts.get(pid) ?? 0) + 1);
+    }
+  }
+
+  if (counts.size === 0) {
+    // Tarix yo'q — birinchi ro'yxatga olingan hamkor
+    return String(partnerList[0].id);
+  }
+
+  let maxCount = 0;
+  let mostUsedId = partnerList[0].id;
+  for (const [id, count] of counts.entries()) {
+    if (count > maxCount) {
+      maxCount = count;
+      mostUsedId = id;
+    }
+  }
+  return String(mostUsedId);
+}
+
+export default function WagonModal({ isOpen, onClose, type, partners, transports, onSuccess }: WagonModalProps) {
+  // ── Partner listalari (useState dan oldin hisoblash) ──
+  const russiaSuppliers = partners.filter((p) => p.type === "russia_supplier");
+  const codeSuppliers = partners.filter((p) => p.type === "code_supplier");
+  const serviceProviders = partners.filter((p) => p.type === "service_provider");
+  const truckOwners = partners.filter((p) => p.type === "truck_owner");
+
+  // ── Default partner ID larini hisoblash ──
+  const defaultSupplierId = getMostUsedPartnerId(russiaSuppliers, transports, (tr) => tr.supplierId);
+  const defaultCodeUzSupplierId = getMostUsedPartnerId(codeSuppliers, transports, (tr) => tr.codeUzSupplierId);
+  const defaultCodeKzSupplierId = getMostUsedPartnerId(codeSuppliers, transports, (tr) => tr.codeKzSupplierId);
+  const defaultTruckOwnerId = getMostUsedPartnerId(truckOwners, transports, (tr) => tr.truckOwnerId);
+  const defaultExpenseNdsPartnerId = getMostUsedPartnerId(serviceProviders, transports, (tr) => tr.expenseNdsPartnerId);
+  const defaultExpenseUslugaPartnerId = getMostUsedPartnerId(serviceProviders, transports, (tr) => tr.expenseUslugaPartnerId);
+  const defaultExpenseTupikPartnerId = getMostUsedPartnerId(serviceProviders, transports, (tr) => tr.expenseTupikPartnerId);
+  const defaultExpenseXranneiPartnerId = getMostUsedPartnerId(serviceProviders, transports, (tr) => tr.expenseXranneiPartnerId);
+  const defaultExpenseOrtishPartnerId = getMostUsedPartnerId(serviceProviders, transports, (tr) => tr.expenseOrtishPartnerId);
+  const defaultExpenseTushirishPartnerId = getMostUsedPartnerId(serviceProviders, transports, (tr) => tr.expenseTushirishPartnerId);
+
   // Section 1 — Asosiy ma'lumotlar
   const [number, setNumber] = useState("");
   const [sentAt, setSentAt] = useState("");
@@ -51,13 +118,13 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
   const [fromLocation, setFromLocation] = useState("");
   const [toLocation, setToLocation] = useState("");
   const [tonnage, setTonnage] = useState("");
-  const [supplierId, setSupplierId] = useState("");
+  const [supplierId, setSupplierId] = useState(defaultSupplierId);
 
   // Section 2 — Kodlar (faqat wagon)
   const [codeUzPricePerTon, setCodeUzPricePerTon] = useState("");
-  const [codeUzSupplierId, setCodeUzSupplierId] = useState("");
+  const [codeUzSupplierId, setCodeUzSupplierId] = useState(defaultCodeUzSupplierId);
   const [codeKzPricePerTon, setCodeKzPricePerTon] = useState("");
-  const [codeKzSupplierId, setCodeKzSupplierId] = useState("");
+  const [codeKzSupplierId, setCodeKzSupplierId] = useState(defaultCodeKzSupplierId);
 
   // Section 3 — Yog'ochlar
   const [timberRows, setTimberRows] = useState<TimberRow[]>([
@@ -69,29 +136,24 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
 
   // Section 5 — Xarajatlar
   const [expenseNds, setExpenseNds] = useState("");
-  const [expenseNdsPartnerId, setExpenseNdsPartnerId] = useState("");
+  const [expenseNdsPartnerId, setExpenseNdsPartnerId] = useState(defaultExpenseNdsPartnerId);
   const [expenseUsluga, setExpenseUsluga] = useState("");
-  const [expenseUslugaPartnerId, setExpenseUslugaPartnerId] = useState("");
+  const [expenseUslugaPartnerId, setExpenseUslugaPartnerId] = useState(defaultExpenseUslugaPartnerId);
   const [expenseTupik, setExpenseTupik] = useState("");
-  const [expenseTupikPartnerId, setExpenseTupikPartnerId] = useState("");
+  const [expenseTupikPartnerId, setExpenseTupikPartnerId] = useState(defaultExpenseTupikPartnerId);
   const [expenseXrannei, setExpenseXrannei] = useState("");
-  const [expenseXranneiPartnerId, setExpenseXranneiPartnerId] = useState("");
+  const [expenseXranneiPartnerId, setExpenseXranneiPartnerId] = useState(defaultExpenseXranneiPartnerId);
   const [expenseOrtish, setExpenseOrtish] = useState("");
-  const [expenseOrtishPartnerId, setExpenseOrtishPartnerId] = useState("");
+  const [expenseOrtishPartnerId, setExpenseOrtishPartnerId] = useState(defaultExpenseOrtishPartnerId);
   const [expenseTushurish, setExpenseTushurish] = useState("");
-  const [expenseTushirishPartnerId, setExpenseTushirishPartnerId] = useState("");
+  const [expenseTushirishPartnerId, setExpenseTushirishPartnerId] = useState(defaultExpenseTushirishPartnerId);
 
   const [additionalExpenses, setAdditionalExpenses] = useState<AdditionalExpense[]>([]);
 
-  const [truckOwnerId, setTruckOwnerId] = useState("");
+  const [truckOwnerId, setTruckOwnerId] = useState(defaultTruckOwnerId);
   const [truckOwnerPayment, setTruckOwnerPayment] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
-
-  const russiaSuppliers = partners.filter((p) => p.type === "russia_supplier");
-  const codeSuppliers = partners.filter((p) => p.type === "code_supplier");
-  const serviceProviders = partners.filter((p) => p.type === "service_provider");
-  const truckOwners = partners.filter((p) => p.type === "truck_owner");
 
   // Hisoblashlar
   const tonnageNum = parseFloat(tonnage) || 0;
@@ -124,7 +186,9 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
   }
 
   function handleAddAdditionalExpense() {
-    setAdditionalExpenses((prev) => [...prev, { name: "", amount: "", partnerId: "" }]);
+    // Yangi qo'shimcha xarajatga ham default service_provider qo'shamiz
+    const defaultServiceProvider = getMostUsedPartnerId(serviceProviders, transports, (tr) => tr.expenseNdsPartnerId);
+    setAdditionalExpenses((prev) => [...prev, { name: "", amount: "", partnerId: defaultServiceProvider }]);
   }
 
   function handleRemoveAdditionalExpense(idx: number) {
@@ -148,27 +212,27 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
     setFromLocation("");
     setToLocation("");
     setTonnage("");
-    setSupplierId("");
+    setSupplierId(defaultSupplierId);
     setCodeUzPricePerTon("");
-    setCodeUzSupplierId("");
+    setCodeUzSupplierId(defaultCodeUzSupplierId);
     setCodeKzPricePerTon("");
-    setCodeKzSupplierId("");
+    setCodeKzSupplierId(defaultCodeKzSupplierId);
     setTimberRows([{ thicknessMm: "", widthMm: "", lengthM: "", russiaCount: "" }]);
     setRubPricePerCubic("");
     setExpenseNds("");
-    setExpenseNdsPartnerId("");
+    setExpenseNdsPartnerId(defaultExpenseNdsPartnerId);
     setExpenseUsluga("");
-    setExpenseUslugaPartnerId("");
+    setExpenseUslugaPartnerId(defaultExpenseUslugaPartnerId);
     setExpenseTupik("");
-    setExpenseTupikPartnerId("");
+    setExpenseTupikPartnerId(defaultExpenseTupikPartnerId);
     setExpenseXrannei("");
-    setExpenseXranneiPartnerId("");
+    setExpenseXranneiPartnerId(defaultExpenseXranneiPartnerId);
     setExpenseOrtish("");
-    setExpenseOrtishPartnerId("");
+    setExpenseOrtishPartnerId(defaultExpenseOrtishPartnerId);
     setExpenseTushurish("");
-    setExpenseTushirishPartnerId("");
+    setExpenseTushirishPartnerId(defaultExpenseTushirishPartnerId);
     setAdditionalExpenses([]);
-    setTruckOwnerId("");
+    setTruckOwnerId(defaultTruckOwnerId);
     setTruckOwnerPayment("");
     setIsLoading(false);
   }
@@ -178,7 +242,60 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
     onClose();
   }
 
+  // ── Majburiy hamkor tekshiruvi ──
+  function validatePartners(): boolean {
+    if (type === "truck" && parseFloat(truckOwnerPayment) > 0 && !truckOwnerId) {
+      toast.error("Yuk mashina egasini tanlang (majburiy)");
+      return false;
+    }
+    if (parseFloat(codeUzPricePerTon) > 0 && !codeUzSupplierId) {
+      toast.error("Kod UZ hamkorini tanlang (majburiy)");
+      return false;
+    }
+    if (parseFloat(codeKzPricePerTon) > 0 && !codeKzSupplierId) {
+      toast.error("Kod KZ hamkorini tanlang (majburiy)");
+      return false;
+    }
+    if (parseFloat(rubPricePerCubic) > 0 && !supplierId) {
+      toast.error("Yog'och ta'minotchisini tanlang (majburiy)");
+      return false;
+    }
+    if (parseFloat(expenseNds) > 0 && !expenseNdsPartnerId) {
+      toast.error("NDS xarajati uchun hamkorni tanlang (majburiy)");
+      return false;
+    }
+    if (parseFloat(expenseUsluga) > 0 && !expenseUslugaPartnerId) {
+      toast.error("Usluga xarajati uchun hamkorni tanlang (majburiy)");
+      return false;
+    }
+    if (parseFloat(expenseTupik) > 0 && !expenseTupikPartnerId) {
+      toast.error("Tupik xarajati uchun hamkorni tanlang (majburiy)");
+      return false;
+    }
+    if (parseFloat(expenseXrannei) > 0 && !expenseXranneiPartnerId) {
+      toast.error("Xrannei xarajati uchun hamkorni tanlang (majburiy)");
+      return false;
+    }
+    if (parseFloat(expenseOrtish) > 0 && !expenseOrtishPartnerId) {
+      toast.error("Ortish xarajati uchun hamkorni tanlang (majburiy)");
+      return false;
+    }
+    if (parseFloat(expenseTushurish) > 0 && !expenseTushirishPartnerId) {
+      toast.error("Tushurish xarajati uchun hamkorni tanlang (majburiy)");
+      return false;
+    }
+    for (let i = 0; i < additionalExpenses.length; i++) {
+      const exp = additionalExpenses[i];
+      if (parseFloat(exp.amount) > 0 && !exp.partnerId) {
+        toast.error(`Qo'shimcha xarajat #${i + 1} uchun hamkorni tanlang (majburiy)`);
+        return false;
+      }
+    }
+    return true;
+  }
+
   async function handleSubmit() {
+    if (!validatePartners()) return;
     setIsLoading(true);
     try {
       await createTransport({
@@ -237,8 +354,15 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
     "w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none";
   const selectClass =
     "w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white";
+  const selectRequiredClass =
+    "w-full border border-red-400 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-400 focus:border-red-400 outline-none bg-white";
   const labelClass = "block text-xs text-slate-600 mb-1";
   const sectionTitleClass = "text-sm font-semibold text-slate-700 mb-3 pb-2 border-b border-slate-200";
+
+  // Summa > 0 lekin hamkor tanlanmagan bo'lsa qizil chegara ko'rsatish
+  function expenseSelectClass(amount: string, partnerId: string) {
+    return `${parseFloat(amount) > 0 && !partnerId ? selectRequiredClass : selectClass} mt-1`;
+  }
 
   const modalTitle = type === "wagon" ? t.wagons.newWagon : t.wagons.newTruck;
 
@@ -247,7 +371,12 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
       <div className="space-y-6">
         {/* ── Section 1: Asosiy ma'lumotlar ── */}
         <section>
-          <h3 className={sectionTitleClass}>{t.wagons.basicInfo}</h3>
+          <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-200">
+            <h3 className="text-sm font-semibold text-slate-700">{t.wagons.basicInfo}</h3>
+            <span className="text-xs px-2.5 py-1 rounded-full font-semibold bg-yellow-100 text-yellow-700">
+              Yo&apos;lda
+            </span>
+          </div>
           <div className="space-y-4">
             {/* Vagon raqami */}
             <div>
@@ -317,7 +446,9 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
               </div>
             ) : (
               <div>
-                <label className={labelClass}>Yuk mashina egasiga beriladigan pul</label>
+                <label className={labelClass}>
+                  Yuk mashina egasiga beriladigan pul <span className="text-red-500">*</span>
+                </label>
                 <div className="flex items-center gap-2">
                   <NumberInput
                     className={inputClass}
@@ -327,7 +458,7 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
                   />
                   <span className="text-sm text-slate-500 whitespace-nowrap">$</span>
                   <select
-                    className={selectClass}
+                    className={parseFloat(truckOwnerPayment) > 0 && !truckOwnerId ? selectRequiredClass : selectClass}
                     value={truckOwnerId}
                     onChange={(e) => setTruckOwnerId(e.target.value)}
                   >
@@ -337,14 +468,20 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
                     ))}
                   </select>
                 </div>
+                {parseFloat(truckOwnerPayment) > 0 && !truckOwnerId && (
+                  <p className="text-xs text-red-500 mt-1">Egasini tanlash majburiy</p>
+                )}
               </div>
             )}
 
             {/* Rossiya ta'minotchisi */}
             <div>
-              <label className={labelClass}>{t.wagons.supplier}</label>
+              <label className={labelClass}>
+                {t.wagons.supplier}
+                {parseFloat(rubPricePerCubic) > 0 && <span className="text-red-500 ml-1">*</span>}
+              </label>
               <select
-                className={selectClass}
+                className={parseFloat(rubPricePerCubic) > 0 && !supplierId ? selectRequiredClass : selectClass}
                 value={supplierId}
                 onChange={(e) => setSupplierId(e.target.value)}
               >
@@ -355,6 +492,9 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
                   </option>
                 ))}
               </select>
+              {parseFloat(rubPricePerCubic) > 0 && !supplierId && (
+                <p className="text-xs text-red-500 mt-1">Ta'minotchini tanlash majburiy</p>
+              )}
             </div>
           </div>
         </section>
@@ -383,7 +523,7 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
                 </div>
                 <div className="mt-2">
                   <select
-                    className={selectClass}
+                    className={parseFloat(codeUzPricePerTon) > 0 && !codeUzSupplierId ? selectRequiredClass : selectClass}
                     value={codeUzSupplierId}
                     onChange={(e) => setCodeUzSupplierId(e.target.value)}
                   >
@@ -394,6 +534,9 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
                       </option>
                     ))}
                   </select>
+                  {parseFloat(codeUzPricePerTon) > 0 && !codeUzSupplierId && (
+                    <p className="text-xs text-red-500 mt-1">Kod UZ hamkorini tanlash majburiy</p>
+                  )}
                 </div>
               </div>
 
@@ -416,7 +559,7 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
                 </div>
                 <div className="mt-2">
                   <select
-                    className={selectClass}
+                    className={parseFloat(codeKzPricePerTon) > 0 && !codeKzSupplierId ? selectRequiredClass : selectClass}
                     value={codeKzSupplierId}
                     onChange={(e) => setCodeKzSupplierId(e.target.value)}
                   >
@@ -427,6 +570,9 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
                       </option>
                     ))}
                   </select>
+                  {parseFloat(codeKzPricePerTon) > 0 && !codeKzSupplierId && (
+                    <p className="text-xs text-red-500 mt-1">Kod KZ hamkorini tanlash majburiy</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -536,7 +682,10 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
             {/* NDS + Usluga */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={labelClass}>{t.wagons.nds}</label>
+                <label className={labelClass}>
+                  {t.wagons.nds}
+                  {parseFloat(expenseNds) > 0 && <span className="text-red-500 ml-1">*</span>}
+                </label>
                 <NumberInput
                   className={inputClass}
                   placeholder="0"
@@ -544,7 +693,7 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
                   onChange={(e) => setExpenseNds(e.target.value)}
                 />
                 <select
-                  className={`${selectClass} mt-1`}
+                  className={expenseSelectClass(expenseNds, expenseNdsPartnerId)}
                   value={expenseNdsPartnerId}
                   onChange={(e) => setExpenseNdsPartnerId(e.target.value)}
                 >
@@ -555,7 +704,10 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
                 </select>
               </div>
               <div>
-                <label className={labelClass}>{t.wagons.usluga}</label>
+                <label className={labelClass}>
+                  {t.wagons.usluga}
+                  {parseFloat(expenseUsluga) > 0 && <span className="text-red-500 ml-1">*</span>}
+                </label>
                 <NumberInput
                   className={inputClass}
                   placeholder="0"
@@ -563,7 +715,7 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
                   onChange={(e) => setExpenseUsluga(e.target.value)}
                 />
                 <select
-                  className={`${selectClass} mt-1`}
+                  className={expenseSelectClass(expenseUsluga, expenseUslugaPartnerId)}
                   value={expenseUslugaPartnerId}
                   onChange={(e) => setExpenseUslugaPartnerId(e.target.value)}
                 >
@@ -578,7 +730,10 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
             {/* Tupik + Xrannei */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={labelClass}>{t.wagons.tupik}</label>
+                <label className={labelClass}>
+                  {t.wagons.tupik}
+                  {parseFloat(expenseTupik) > 0 && <span className="text-red-500 ml-1">*</span>}
+                </label>
                 <NumberInput
                   className={inputClass}
                   placeholder="0"
@@ -586,7 +741,7 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
                   onChange={(e) => setExpenseTupik(e.target.value)}
                 />
                 <select
-                  className={`${selectClass} mt-1`}
+                  className={expenseSelectClass(expenseTupik, expenseTupikPartnerId)}
                   value={expenseTupikPartnerId}
                   onChange={(e) => setExpenseTupikPartnerId(e.target.value)}
                 >
@@ -597,7 +752,10 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
                 </select>
               </div>
               <div>
-                <label className={labelClass}>{t.wagons.xrannei}</label>
+                <label className={labelClass}>
+                  {t.wagons.xrannei}
+                  {parseFloat(expenseXrannei) > 0 && <span className="text-red-500 ml-1">*</span>}
+                </label>
                 <NumberInput
                   className={inputClass}
                   placeholder="0"
@@ -605,7 +763,7 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
                   onChange={(e) => setExpenseXrannei(e.target.value)}
                 />
                 <select
-                  className={`${selectClass} mt-1`}
+                  className={expenseSelectClass(expenseXrannei, expenseXranneiPartnerId)}
                   value={expenseXranneiPartnerId}
                   onChange={(e) => setExpenseXranneiPartnerId(e.target.value)}
                 >
@@ -620,7 +778,10 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
             {/* Ortish + Tushurish */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={labelClass}>{t.wagons.ortish}</label>
+                <label className={labelClass}>
+                  {t.wagons.ortish}
+                  {parseFloat(expenseOrtish) > 0 && <span className="text-red-500 ml-1">*</span>}
+                </label>
                 <NumberInput
                   className={inputClass}
                   placeholder="0"
@@ -628,7 +789,7 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
                   onChange={(e) => setExpenseOrtish(e.target.value)}
                 />
                 <select
-                  className={`${selectClass} mt-1`}
+                  className={expenseSelectClass(expenseOrtish, expenseOrtishPartnerId)}
                   value={expenseOrtishPartnerId}
                   onChange={(e) => setExpenseOrtishPartnerId(e.target.value)}
                 >
@@ -639,7 +800,10 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
                 </select>
               </div>
               <div>
-                <label className={labelClass}>{t.wagons.tushurish}</label>
+                <label className={labelClass}>
+                  {t.wagons.tushurish}
+                  {parseFloat(expenseTushurish) > 0 && <span className="text-red-500 ml-1">*</span>}
+                </label>
                 <NumberInput
                   className={inputClass}
                   placeholder="0"
@@ -647,7 +811,7 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
                   onChange={(e) => setExpenseTushurish(e.target.value)}
                 />
                 <select
-                  className={`${selectClass} mt-1`}
+                  className={expenseSelectClass(expenseTushurish, expenseTushirishPartnerId)}
                   value={expenseTushirishPartnerId}
                   onChange={(e) => setExpenseTushirishPartnerId(e.target.value)}
                 >
@@ -684,7 +848,7 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
                   onChange={(e) => handleAdditionalExpenseChange(idx, "amount", e.target.value)}
                 />
                 <select
-                  className={selectClass}
+                  className={parseFloat(exp.amount) > 0 && !exp.partnerId ? selectRequiredClass : selectClass}
                   value={exp.partnerId}
                   onChange={(e) => handleAdditionalExpenseChange(idx, "partnerId", e.target.value)}
                 >
@@ -693,6 +857,9 @@ export default function WagonModal({ isOpen, onClose, type, partners, onSuccess 
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
                 </select>
+                {parseFloat(exp.amount) > 0 && !exp.partnerId && (
+                  <p className="text-xs text-red-500">Hamkorni tanlash majburiy</p>
+                )}
               </div>
             ))}
 

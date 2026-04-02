@@ -5,23 +5,9 @@ import Modal from "@/components/ui/Modal";
 import NumberInput from "@/components/ui/NumberInput";
 import { receiveSale } from "@/lib/actions/sales";
 
-type TransportItem = {
-  id: number;
-  number: string | null;
-  status: string;
-  timbers: Array<{
-    id: number;
-    thicknessMm: number;
-    widthMm: number;
-    lengthM: string | number;
-    tashkentCount: number | null;
-    customerCount: number | null;
-  }>;
-};
-
 type NewReceiveItem = {
-  timberId: number;
-  transportId: number;
+  timberId?: number;
+  transportId?: number;
   thicknessMm: number;
   widthMm: number;
   lengthM: number;
@@ -32,7 +18,6 @@ type NewReceiveItem = {
 type SaleDetail = {
   id: number;
   docNumber: string | null;
-  paymentType: string | null;
   customer: { name: string } | null;
   items: Array<{
     id: number;
@@ -52,7 +37,6 @@ interface SaleReceiveModalProps {
   onClose: () => void;
   onSuccess: () => void;
   sale: SaleDetail | null;
-  transports: TransportItem[];
 }
 
 export default function SaleReceiveModal({
@@ -60,16 +44,16 @@ export default function SaleReceiveModal({
   onClose,
   onSuccess,
   sale,
-  transports,
 }: SaleReceiveModalProps) {
   const [receivedCounts, setReceivedCounts] = useState<Record<number, number>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [newItems, setNewItems] = useState<NewReceiveItem[]>([]);
-  const [selectedTransportId, setSelectedTransportId] = useState<number | "">("");
-  const [selectedTimberId, setSelectedTimberId] = useState<number | "">("");
-  const [newItemCount, setNewItemCount] = useState(1);
-  const [newItemPrice, setNewItemPrice] = useState(0);
+  const [newThicknessMm, setNewThicknessMm] = useState("");
+  const [newWidthMm, setNewWidthMm] = useState("");
+  const [newLengthM, setNewLengthM] = useState("");
+  const [newCount, setNewCount] = useState("");
+  const [newPrice, setNewPrice] = useState("");
 
   useEffect(() => {
     if (sale) {
@@ -81,22 +65,14 @@ export default function SaleReceiveModal({
     }
   }, [sale]);
 
-  // Tanlangan transportning timberlari (mavjud miqdori > 0 bo'lganlar)
-  const selectedTransport = transports.find((t) => t.id === selectedTransportId);
-  const availableTimbers = selectedTransport?.timbers.filter((tb) => {
-    const available = (tb.tashkentCount ?? 0) - (tb.customerCount ?? 0);
-    return available > 0;
-  }) ?? [];
+  // Savdodagi transport (bitta vagon)
+  const saleTransportId = sale?.items[0]?.transportId ?? null;
 
-  const selectedTimber = availableTimbers.find((tb) => tb.id === selectedTimberId);
-  const maxCount = selectedTimber
-    ? (selectedTimber.tashkentCount ?? 0) - (selectedTimber.customerCount ?? 0)
-    : 1;
-
-  // Qo'shimcha qabul uchun faqat yetib kelgan/tushirilgan vagonlar
-  const receivableTransports = transports.filter((t) =>
-    ["arrived", "unloaded", "closed"].includes(t.status)
-  );
+  const newCub =
+    (parseFloat(newThicknessMm) || 0) / 1000 *
+    (parseFloat(newWidthMm) || 0) / 1000 *
+    (parseFloat(newLengthM) || 0) *
+    (parseFloat(newCount) || 0);
 
   function handleCountChange(itemId: number, value: number) {
     const item = sale?.items.find((i) => i.id === itemId);
@@ -106,24 +82,30 @@ export default function SaleReceiveModal({
   }
 
   function handleAddNewItem() {
-    if (!selectedTransport || !selectedTimber) return;
-    if (newItemCount < 1 || newItemCount > maxCount || newItemPrice <= 0) return;
+    const t = parseFloat(newThicknessMm);
+    const w = parseFloat(newWidthMm);
+    const l = parseFloat(newLengthM);
+    const c = parseInt(newCount);
+    const p = parseFloat(newPrice);
+    if (!t || !w || !l || !c || c < 1 || !p || p <= 0) return;
 
     setNewItems((prev) => [
       ...prev,
       {
-        timberId: selectedTimber.id,
-        transportId: selectedTransport.id,
-        thicknessMm: selectedTimber.thicknessMm,
-        widthMm: selectedTimber.widthMm,
-        lengthM: parseFloat(String(selectedTimber.lengthM)),
-        sentCount: newItemCount,
-        pricePerCubicUsd: newItemPrice,
+        timberId: undefined,
+        transportId: saleTransportId ?? undefined,
+        thicknessMm: t,
+        widthMm: w,
+        lengthM: l,
+        sentCount: c,
+        pricePerCubicUsd: p,
       },
     ]);
-    setSelectedTimberId("");
-    setNewItemCount(1);
-    setNewItemPrice(0);
+    setNewThicknessMm("");
+    setNewWidthMm("");
+    setNewLengthM("");
+    setNewCount("");
+    setNewPrice("");
   }
 
   async function handleSubmit() {
@@ -152,10 +134,11 @@ export default function SaleReceiveModal({
     setReceivedCounts({});
     setError(null);
     setNewItems([]);
-    setSelectedTransportId("");
-    setSelectedTimberId("");
-    setNewItemCount(1);
-    setNewItemPrice(0);
+    setNewThicknessMm("");
+    setNewWidthMm("");
+    setNewLengthM("");
+    setNewCount("");
+    setNewPrice("");
     onClose();
   }
 
@@ -217,108 +200,96 @@ export default function SaleReceiveModal({
           </table>
         </div>
 
-        {/* ── Vagondan qo'shimcha qabul ───────────────────── */}
-        {receivableTransports.length > 0 && (
-          <div className="pt-4 border-t border-slate-200">
-            <p className="text-sm font-semibold text-slate-700 mb-3">
-              Qo&apos;shimcha qabul (vagondan)
-            </p>
+        {/* ── Qo'shimcha qabul (qo'lda kiritish) ─────────── */}
+        <div className="pt-4 border-t border-slate-200">
+          <p className="text-sm font-semibold text-slate-700 mb-3">
+            Qo&apos;shimcha qabul
+          </p>
 
-            {newItems.length > 0 && (
-              <div className="mb-3 space-y-1">
-                {newItems.map((item, idx) => {
-                  const tr = transports.find((t) => t.id === item.transportId);
-                  return (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm"
-                    >
-                      <span className="text-slate-700">
-                        {tr?.number ?? `#${item.transportId}`} —{" "}
-                        {item.thicknessMm}&times;{item.widthMm}&times;{item.lengthM}m —{" "}
-                        {item.sentCount} dona
-                      </span>
-                      <button
-                        onClick={() => setNewItems((prev) => prev.filter((_, i) => i !== idx))}
-                        className="text-red-400 hover:text-red-600 ml-3"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* Vagon tanlash */}
-              <select
-                value={selectedTransportId}
-                onChange={(e) => {
-                  setSelectedTransportId(e.target.value ? Number(e.target.value) : "");
-                  setSelectedTimberId("");
-                  setNewItemCount(1);
-                }}
-                className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">— Vagon tanlang —</option>
-                {receivableTransports.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.number ?? `#${t.id}`}
-                  </option>
-                ))}
-              </select>
-
-              {/* O'lcham tanlash */}
-              <select
-                value={selectedTimberId}
-                onChange={(e) => {
-                  setSelectedTimberId(e.target.value ? Number(e.target.value) : "");
-                  setNewItemCount(1);
-                }}
-                disabled={!selectedTransportId || availableTimbers.length === 0}
-                className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-              >
-                <option value="">— O&apos;lcham —</option>
-                {availableTimbers.map((tb) => {
-                  const avail = (tb.tashkentCount ?? 0) - (tb.customerCount ?? 0);
-                  return (
-                    <option key={tb.id} value={tb.id}>
-                      {tb.thicknessMm}&times;{tb.widthMm}&times;{tb.lengthM}m ({avail} dona)
-                    </option>
-                  );
-                })}
-              </select>
-
-              <NumberInput
-                placeholder="Miqdor"
-                min={1}
-                max={maxCount}
-                value={newItemCount}
-                onChange={(e) => setNewItemCount(Number(e.target.value))}
-                disabled={!selectedTimberId}
-                className="w-20 border border-slate-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-              />
-              <NumberInput
-                placeholder="$/m³"
-                min={0}
-                step={0.01}
-                value={newItemPrice || ""}
-                onChange={(e) => setNewItemPrice(Number(e.target.value))}
-                disabled={!selectedTimberId}
-                className="w-20 border border-slate-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-              />
-              <button
-                type="button"
-                onClick={handleAddNewItem}
-                disabled={!selectedTimberId || newItemCount < 1 || newItemPrice <= 0}
-                className="px-3 py-1.5 bg-green-700 text-white text-sm rounded-lg hover:bg-green-800 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                + Qo&apos;shish
-              </button>
+          {newItems.length > 0 && (
+            <div className="mb-3 space-y-1">
+              {newItems.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm"
+                >
+                  <span className="text-slate-700">
+                    {item.thicknessMm}&times;{item.widthMm}&times;{item.lengthM}m —{" "}
+                    {item.sentCount} dona — ${item.pricePerCubicUsd}/m³
+                  </span>
+                  <button
+                    onClick={() => setNewItems((prev) => prev.filter((_, i) => i !== idx))}
+                    className="text-red-400 hover:text-red-600 ml-3"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
             </div>
+          )}
+
+          <div className="flex items-end gap-2 flex-wrap">
+            <div>
+              <p className="text-xs text-slate-500 mb-1">Qalinligi (mm)</p>
+              <NumberInput
+                value={newThicknessMm}
+                placeholder="50"
+                onChange={(e) => setNewThicknessMm(e.target.value)}
+                className="w-20 border border-slate-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 mb-1">Eni (mm)</p>
+              <NumberInput
+                value={newWidthMm}
+                placeholder="100"
+                onChange={(e) => setNewWidthMm(e.target.value)}
+                className="w-20 border border-slate-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 mb-1">Uzunligi (m)</p>
+              <NumberInput
+                value={newLengthM}
+                placeholder="6"
+                onChange={(e) => setNewLengthM(e.target.value)}
+                className="w-20 border border-slate-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 mb-1">Soni</p>
+              <NumberInput
+                value={newCount}
+                placeholder="0"
+                onChange={(e) => setNewCount(e.target.value)}
+                className="w-20 border border-slate-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 mb-1">$/m³</p>
+              <NumberInput
+                value={newPrice}
+                placeholder="0"
+                onChange={(e) => setNewPrice(e.target.value)}
+                className="w-20 border border-slate-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 mb-1">Kub m³</p>
+              <div className="w-20 border border-slate-200 bg-slate-50 rounded-lg px-2 py-1.5 text-sm text-slate-600 text-right">
+                {newCub.toFixed(3)}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleAddNewItem}
+              disabled={!newThicknessMm || !newWidthMm || !newLengthM || !newCount || !newPrice}
+              className="px-3 py-1.5 bg-green-700 text-white text-sm rounded-lg hover:bg-green-800 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              + Qo&apos;shish
+            </button>
           </div>
-        )}
+        </div>
 
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-700">

@@ -4,7 +4,6 @@ type SaleWithCustomer = {
   id: number;
   docNumber: string | null;
   status: string;
-  paymentType: string | null;
   totalSentUsd: string | null;
   totalReceivedUsd: string | null;
   customer: { name: string } | null;
@@ -26,11 +25,10 @@ interface SaleTableProps {
 function formatDate(date: Date | string | null): string {
   if (!date) return "—";
   const d = new Date(date);
-  return d.toLocaleDateString("uz-UZ", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const yyyy = d.getUTCFullYear();
+  return `${dd}/${mm}/${yyyy}`;
 }
 
 function formatUsd(val: string | null): string {
@@ -40,11 +38,6 @@ function formatUsd(val: string | null): string {
   return "$" + num.toFixed(2);
 }
 
-const paymentTypeLabels: Record<string, string> = {
-  cash: "Naqd",
-  debt: "Qarz",
-  mixed: "Aralash",
-};
 
 export default function SaleTable({ sales, onReceive, onDelete }: SaleTableProps) {
   if (sales.length === 0) {
@@ -63,7 +56,6 @@ export default function SaleTable({ sales, onReceive, onDelete }: SaleTableProps
             <th className="text-left px-4 py-3 font-semibold text-slate-700">#</th>
             <th className="text-left px-4 py-3 font-semibold text-slate-700">Mijoz</th>
             <th className="text-left px-4 py-3 font-semibold text-slate-700">Sana</th>
-            <th className="text-left px-4 py-3 font-semibold text-slate-700">{"To'lov turi"}</th>
             <th className="text-left px-4 py-3 font-semibold text-slate-700">Jami $</th>
             <th className="text-left px-4 py-3 font-semibold text-slate-700">Status</th>
             <th className="text-left px-4 py-3 font-semibold text-slate-700">Amallar</th>
@@ -80,9 +72,6 @@ export default function SaleTable({ sales, onReceive, onDelete }: SaleTableProps
               </td>
               <td className="px-4 py-3 text-slate-600">
                 {formatDate(sale.sentAt)}
-              </td>
-              <td className="px-4 py-3 text-slate-600">
-                {sale.paymentType ? (paymentTypeLabels[sale.paymentType] ?? sale.paymentType) : "—"}
               </td>
               <td className="px-4 py-3 text-green-700 font-semibold">
                 {sale.status === "received"

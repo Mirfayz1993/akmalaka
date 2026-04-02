@@ -1,5 +1,7 @@
 "use client";
 
+import { Trash2 } from "lucide-react";
+
 type PartnerWithBalance = {
   id: number;
   name: string;
@@ -21,6 +23,7 @@ interface PartnerDetailProps {
   partner: PartnerWithBalance | null;
   onPayment: () => void;
   onClose: () => void;
+  onDelete: () => void;
 }
 
 const partnerTypeLabels: Record<string, string> = {
@@ -66,6 +69,7 @@ function amountColorClass(amount: string): string {
 export default function PartnerDetail({
   partner,
   onPayment,
+  onDelete,
 }: PartnerDetailProps) {
   if (!partner) {
     return (
@@ -106,12 +110,21 @@ export default function PartnerDetail({
             {partner.currentBalance > 0 ? "+" : ""}
             {partner.currentBalance.toFixed(2)}
           </p>
-          <button
-            onClick={onPayment}
-            className="mt-2 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            To&apos;lov qilish
-          </button>
+          <div className="flex items-center gap-2 mt-2">
+            <button
+              onClick={onPayment}
+              className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              To&apos;lov qilish
+            </button>
+            <button
+              onClick={onDelete}
+              className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              title="Hamkorni o'chirish"
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
         </div>
       </div>
 

@@ -36,7 +36,15 @@ export const t = {
     cubicMeters: "Kub m\u00b3",
     totalCubRussia: "Jami kub (Rossiya)",
     totalCubTashkent: "Jami kub (Toshkent)",
+    totalCubSupplier: "Jami kub (Ta'minotchi)",
     totalCubCustomer: "Jami kub (Mijoz)",
+    // sanalar
+    createdAt: "Yaratilgan sana",
+    unloadedAt: "Tushurilgan sana",
+    // status o'zgartirish ogohlantirishlari
+    statusChangeWarningArrived: "Quyidagi ma'lumotlar staticga o'tadi (o'zgartirib bo'lmaydi): Vagon raqami, Jo'natilgan sana, Yetib kelgan sana, Qayerdan/Qayerga, Tonnaj, Rossiya ta'minotchisi, Kod UZ/KZ. Kod KZ, Kod UZ va Yuk mashina egasi balanslariga qarz yoziladi.",
+    statusChangeWarningUnloaded: "Toshkent soni staticga o'tadi. Standart xarajatlar (NDS, Usluga, Tupik, Xranenie, Ortish, Tushurish) hamkor balanslariga qarz sifatida yoziladi.",
+    statusChangeWarningClosed: "Vagon yopiladi. Bu amalni faqat barcha yog'ochlar sotilgan yoki omborga tushirilgan bo'lsa bajarishingiz mumkin.",
     // yog'och narxi
     rubPerCubic: "RUB/m\u00b3",
     totalRub: "Jami RUB",
@@ -57,10 +65,9 @@ export const t = {
     close: "Yopish",
     // statuslar
     in_transit: "Yo'lda",
-    at_border: "Chegara",
-    arrived: "Yetib keldi",
-    unloaded: "Tushirildi",
-    closed: "Yopildi",
+    arrived: "Yetib kelgan",
+    unloaded: "Tushurilgan",
+    closed: "Yopilgan",
     // umumiy
     newWagon: "Yangi vagon",
     newTruck: "Yangi yuk mashinasi",

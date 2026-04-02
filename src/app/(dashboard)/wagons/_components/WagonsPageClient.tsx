@@ -8,11 +8,10 @@ import WagonModal from "./WagonModal";
 import WagonEditModal from "./WagonEditModal";
 import WagonTable from "./WagonTable";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import { deleteTransport, closeTransport, getTransports, unloadTransport, getTransport } from "@/lib/actions/wagons";
+import { deleteTransport, getTransports, getTransport } from "@/lib/actions/wagons";
 import { type Partner } from "@/lib/actions/partners";
 import { t } from "@/i18n/uz";
 
-// WagonTable bilan mos tip (WagonTable.Transport ning superset versiyasi)
 type Transport = Awaited<ReturnType<typeof getTransports>>[number];
 
 interface Props {
@@ -21,12 +20,12 @@ interface Props {
   partners: Partner[];
 }
 
-// WagonTable uchun minimal tip (callback'larda qo'llanadi)
 type MinTransport = {
   id: number;
   number: string | null;
   fromLocation: string | null;
   toLocation: string | null;
+  // at_border is legacy, kept for DB compat but not used in UI
   status: "in_transit" | "at_border" | "arrived" | "unloaded" | "closed";
   timbers: Array<{
     id: number;
@@ -42,21 +41,22 @@ type MinTransport = {
 export default function WagonsPageClient({ initialWagons, initialTrucks, partners }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
-  const [wagons] = useState<Transport[]>(initialWagons);
-  const [trucks] = useState<Transport[]>(initialTrucks);
+  const wagons = initialWagons;
+  const trucks = initialTrucks;
 
   const [isWagonModalOpen, setIsWagonModalOpen] = useState(false);
   const [isTruckModalOpen, setIsTruckModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<MinTransport | null>(null);
   const [isDeleteLoading, setIsDeleteLoading] = useState(false);
-  const [closeTarget, setCloseTarget] = useState<MinTransport | null>(null);
-  const [isCloseLoading, setIsCloseLoading] = useState(false);
-  const [unloadTarget, setUnloadTarget] = useState<MinTransport | null>(null);
-  const [isUnloadLoading, setIsUnloadLoading] = useState(false);
   const [editingTransport, setEditingTransport] = useState<Awaited<ReturnType<typeof getTransport>> | null>(null);
 
-  function handleEdit(transport: MinTransport) {
-    setEditingTransport(transport as Awaited<ReturnType<typeof getTransport>>);
+  async function handleEdit(transport: MinTransport) {
+    try {
+      const full = await getTransport(transport.id);
+      setEditingTransport(full ?? null);
+    } catch {
+      toast.error("Transport ma'lumotlarini yuklashda xatolik");
+    }
   }
 
   async function handleDeleteConfirm() {
@@ -70,38 +70,6 @@ export default function WagonsPageClient({ initialWagons, initialTrucks, partner
       toast.error(err instanceof Error ? err.message : "O'chirishda xatolik yuz berdi");
     } finally {
       setIsDeleteLoading(false);
-    }
-  }
-
-  async function handleCloseConfirm() {
-    if (!closeTarget) return;
-    setIsCloseLoading(true);
-    try {
-      await closeTransport(closeTarget.id);
-      setCloseTarget(null);
-      startTransition(() => { router.refresh(); });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Yopishda xatolik yuz berdi");
-    } finally {
-      setIsCloseLoading(false);
-    }
-  }
-
-  async function handleUnloadConfirm(choice: "close" | "unload") {
-    if (!unloadTarget) return;
-    setIsUnloadLoading(true);
-    try {
-      if (choice === "close") {
-        await closeTransport(unloadTarget.id);
-      } else {
-        await unloadTransport(unloadTarget.id);
-      }
-      setUnloadTarget(null);
-      startTransition(() => { router.refresh(); });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Tushirishda xatolik yuz berdi");
-    } finally {
-      setIsUnloadLoading(false);
     }
   }
 
@@ -133,8 +101,6 @@ export default function WagonsPageClient({ initialWagons, initialTrucks, partner
         transports={allTransports}
         onEdit={handleEdit}
         onDelete={(t) => setDeleteTarget(t)}
-        onClose={(t) => setCloseTarget(t)}
-        onUnload={(t) => setUnloadTarget(t)}
       />
 
       <WagonModal
@@ -142,6 +108,7 @@ export default function WagonsPageClient({ initialWagons, initialTrucks, partner
         onClose={() => setIsWagonModalOpen(false)}
         type="wagon"
         partners={partners}
+        transports={allTransports}
         onSuccess={() => { setIsWagonModalOpen(false); startTransition(() => { router.refresh(); }); }}
       />
 
@@ -150,6 +117,7 @@ export default function WagonsPageClient({ initialWagons, initialTrucks, partner
         onClose={() => setIsTruckModalOpen(false)}
         type="truck"
         partners={partners}
+        transports={allTransports}
         onSuccess={() => { setIsTruckModalOpen(false); startTransition(() => { router.refresh(); }); }}
       />
 
@@ -163,56 +131,15 @@ export default function WagonsPageClient({ initialWagons, initialTrucks, partner
         isLoading={isDeleteLoading}
       />
 
-      <ConfirmDialog
-        isOpen={!!closeTarget}
-        onClose={() => setCloseTarget(null)}
-        onConfirm={handleCloseConfirm}
-        title={t.wagons.closeConfirmTitle}
-        message={t.wagons.closeConfirmMessage}
-        confirmText={t.wagons.close}
-        isLoading={isCloseLoading}
-      />
-
-      {unloadTarget && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-sm shadow-xl">
-            <h3 className="text-base font-semibold text-slate-800 mb-2">Vagonni tushirish</h3>
-            <p className="text-sm text-slate-600 mb-4">
-              <b>{unloadTarget.number ?? `Vagon #${unloadTarget.id}`}</b> — qanday holat tanlaysiz?
-            </p>
-            <div className="space-y-2">
-              <button
-                disabled={isUnloadLoading}
-                onClick={() => handleUnloadConfirm("unload")}
-                className="w-full px-4 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
-              >
-                Tushirilgan rejimga o&apos;tkazish
-              </button>
-              <button
-                disabled={isUnloadLoading}
-                onClick={() => handleUnloadConfirm("close")}
-                className="w-full px-4 py-2 text-sm bg-slate-700 text-white rounded-lg hover:bg-slate-800 disabled:opacity-50"
-              >
-                Yopilsin (barcha yog&apos;ochlar jo&apos;natilgan)
-              </button>
-              <button
-                disabled={isUnloadLoading}
-                onClick={() => setUnloadTarget(null)}
-                className="w-full px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 text-slate-600"
-              >
-                Bekor qilish
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <WagonEditModal
         isOpen={editingTransport !== null}
         onClose={() => setEditingTransport(null)}
         transport={editingTransport ?? null}
         partners={partners}
-        onSuccess={() => { setEditingTransport(null); startTransition(() => { router.refresh(); }); }}
+        onSuccess={() => {
+          setEditingTransport(null);
+          startTransition(() => { router.refresh(); });
+        }}
       />
     </div>
   );

@@ -6,7 +6,6 @@ import {
   saleItems,
   timbers,
   warehouse,
-  cashOperations,
   partnerBalances,
 } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
@@ -67,7 +66,6 @@ export async function getSale(id: number) {
 
 export async function createSale(data: {
   customerId: number;
-  paymentType: "cash" | "debt" | "mixed";
   notes?: string;
   items: SaleItemInput[];
 }) {
@@ -101,7 +99,6 @@ export async function createSale(data: {
       .insert(sales)
       .values({
         customerId: data.customerId,
-        paymentType: data.paymentType,
         notes: data.notes ?? null,
         status: "sent",
         sentAt: new Date(),
@@ -262,46 +259,14 @@ export async function receiveSale(
       })
       .where(eq(sales.id, saleId));
 
-    // Kassa / Partner balance
-    if (sale.paymentType === "cash") {
-      // Kassaga kirim
-      await tx.insert(cashOperations).values({
-        currency: "usd",
-        type: "income",
-        amount: String(totalReceivedUsd),
-        partnerId: sale.customerId,
-        description: `Savdo #${sale.docNumber} — naqd to'lov`,
-        docNumber: sale.docNumber ?? null,
-      });
-    } else if (sale.paymentType === "debt") {
-      // Hamkor balansiga — ular bizga qarz (musbat)
-      await tx.insert(partnerBalances).values({
-        partnerId: sale.customerId,
-        amount: String(totalReceivedUsd),
-        currency: "usd",
-        description: `Savdo #${sale.docNumber} — qarz`,
-        docNumber: sale.docNumber ?? null,
-      });
-    } else if (sale.paymentType === "mixed") {
-      const half = totalReceivedUsd / 2;
-      // Kassaga kirim (yarmi)
-      await tx.insert(cashOperations).values({
-        currency: "usd",
-        type: "income",
-        amount: String(half),
-        partnerId: sale.customerId,
-        description: `Savdo #${sale.docNumber} — aralash (naqd qism)`,
-        docNumber: sale.docNumber ?? null,
-      });
-      // Hamkor balansiga (yarmi qarz)
-      await tx.insert(partnerBalances).values({
-        partnerId: sale.customerId,
-        amount: String(half),
-        currency: "usd",
-        description: `Savdo #${sale.docNumber} — aralash (qarz qism)`,
-        docNumber: sale.docNumber ?? null,
-      });
-    }
+    // Mijoz qabul qildi → uning qarzi sifatida yozamiz (musbat = ular bizga qarz)
+    await tx.insert(partnerBalances).values({
+      partnerId: sale.customerId,
+      amount: String(totalReceivedUsd),
+      currency: "usd",
+      description: `Savdo #${sale.docNumber}`,
+      docNumber: sale.docNumber ?? null,
+    });
   });
 
   revalidatePath("/sales");

@@ -59,8 +59,12 @@ export async function updateTimber(
   id: number,
   data: {
     tashkentCount?: number;
+    supplierCount?: number;
     customerCount?: number;
     russiaCount?: number;
+    thicknessMm?: number;
+    widthMm?: number;
+    lengthM?: string;
   }
 ) {
   const existing = await db.query.timbers.findFirst({

@@ -49,10 +49,10 @@ export default function SalesPageClient({
 }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
-  const [sales] = useState<SaleWithCustomer[]>(initialSales);
-  const [partners] = useState<Partner[]>(initialPartners);
-  const [transports] = useState<TransportItem[]>(initialTransports);
-  const [warehouseItems] = useState<WarehouseItem[]>(initialWarehouse);
+  const sales = initialSales;
+  const partners = initialPartners;
+  const transports = initialTransports;
+  const warehouseItems = initialWarehouse;
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [receiveTarget, setReceiveTarget] = useState<SaleDetail | null>(null);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
@@ -127,7 +127,6 @@ export default function SalesPageClient({
         onClose={() => setReceiveTarget(null)}
         onSuccess={() => { setReceiveTarget(null); startTransition(() => { router.refresh(); }); }}
         sale={receiveTarget}
-        transports={transports}
       />
 
       <ConfirmDialog

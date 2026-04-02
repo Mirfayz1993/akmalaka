@@ -18,10 +18,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (!username || !password) return null;
 
         const adminUsername = process.env.ADMIN_USERNAME;
-        const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH;
+        const hashB64 = process.env.ADMIN_PASSWORD_HASH_B64;
+        const adminPasswordHash = hashB64
+          ? Buffer.from(hashB64, "base64").toString("utf8")
+          : undefined;
 
         if (!adminUsername || !adminPasswordHash) {
-          console.error("ADMIN_USERNAME yoki ADMIN_PASSWORD_HASH sozlanmagan");
+          console.error("ADMIN_USERNAME yoki ADMIN_PASSWORD_HASH_B64 sozlanmagan");
           return null;
         }
 

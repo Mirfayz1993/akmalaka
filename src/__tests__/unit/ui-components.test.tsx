@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import NumberInput from "@/components/ui/NumberInput";
 import EmptyState from "@/components/ui/EmptyState";
@@ -115,13 +115,13 @@ describe("EmptyState komponenti", () => {
 describe("Skeleton komponenti", () => {
   it("aria-hidden='true' atributiga ega", () => {
     const { container } = render(<Skeleton />);
-    expect(container.firstChild?.getAttribute("aria-hidden")).toBe("true");
+    expect((container.firstChild as HTMLElement)?.getAttribute("aria-hidden")).toBe("true");
   });
 
   it("className prop qabul qiladi", () => {
     const { container } = render(<Skeleton className="w-32 h-4" />);
-    expect(container.firstChild?.className).toContain("w-32");
-    expect(container.firstChild?.className).toContain("h-4");
+    expect((container.firstChild as HTMLElement)?.className).toContain("w-32");
+    expect((container.firstChild as HTMLElement)?.className).toContain("h-4");
   });
 
   it("style prop qabul qiladi", () => {
@@ -131,7 +131,7 @@ describe("Skeleton komponenti", () => {
 
   it("animate-pulse klassiga ega", () => {
     const { container } = render(<Skeleton />);
-    expect(container.firstChild?.className).toContain("animate-pulse");
+    expect((container.firstChild as HTMLElement)?.className).toContain("animate-pulse");
   });
 });
 

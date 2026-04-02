@@ -36,12 +36,12 @@ export default function CashPageClient({
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [activeTab, setActiveTab] = useState<TabType>("usd");
-  const [usdBalance] = useState(initialUsdBalance);
-  const [rubBalance] = useState(initialRubBalance);
-  const [avgRate] = useState(initialAvgRate);
-  const [usdOperations] = useState<UsdOperation[]>(initialUsdOps);
-  const [rubOperations] = useState<RubOperation[]>(initialRubOps);
-  const [exchangeHistory] = useState<ExchangeItem[]>(initialExchanges);
+  const usdBalance = initialUsdBalance;
+  const rubBalance = initialRubBalance;
+  const avgRate = initialAvgRate;
+  const usdOperations = initialUsdOps;
+  const rubOperations = initialRubOps;
+  const exchangeHistory = initialExchanges;
 
   const [isUsdModalOpen, setIsUsdModalOpen] = useState(false);
   const [isRubModalOpen, setIsRubModalOpen] = useState(false);

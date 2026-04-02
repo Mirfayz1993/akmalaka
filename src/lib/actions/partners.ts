@@ -94,9 +94,9 @@ export async function recordPayment(data: {
 }) {
   if (data.amount === 0) throw new Error("Summa nol bo'lishi mumkin emas");
   await db.transaction(async (tx) => {
-    // amount > 0 → biz ulardan pul oldik (income)
-    // amount < 0 → biz ularga to'ladik (expense)
-    const operationType = data.amount > 0 ? "income" : "expense";
+    // amount < 0 → biz ularga to'ladik (expense) → kassa chiqim, balans musbat (qarz kamayadi)
+    // amount > 0 → biz ulardan oldik (income) → kassa kirim, balans manfiy (ularning qarzi kamayadi)
+    const operationType = data.amount < 0 ? "expense" : "income";
 
     await tx.insert(cashOperations).values({
       currency: data.currency,
@@ -107,9 +107,10 @@ export async function recordPayment(data: {
       docNumber: data.docNumber,
     });
 
+    // Kassa bilan teskari: biz to'lasak (amount < 0) → balans musbat (qarz kamayadi)
     await tx.insert(partnerBalances).values({
       partnerId: data.partnerId,
-      amount: String(data.amount),
+      amount: String(-data.amount),
       currency: data.currency,
       description: data.description,
       docNumber: data.docNumber,
