@@ -14,6 +14,7 @@ export default function NumberInput({ onFocus, ...props }: NumberInputProps) {
         }
         onFocus?.(e);
       }}
+      onWheel={(e) => (e.target as HTMLInputElement).blur()}
       {...props}
     />
   );
