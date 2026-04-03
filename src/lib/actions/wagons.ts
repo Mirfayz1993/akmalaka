@@ -234,70 +234,7 @@ export async function unloadTransport(id: number) {
 
   const today = new Date().toISOString().split("T")[0];
 
-  // Toshkent kubi hisoblash (ta'minotchiga to'lov uchun)
-  let totalCubTashkent = 0;
-  for (const timber of transport.timbers) {
-    const tashkentCount = timber.tashkentCount ?? 0;
-    const cub = (timber.thicknessMm / 1000) * (timber.widthMm / 1000) * Number(timber.lengthM) * tashkentCount;
-    totalCubTashkent += cub;
-  }
-
-  const rubPricePerCubic = Number(transport.rubPricePerCubic ?? 0);
-  const totalRub = totalCubTashkent * rubPricePerCubic;
-
-  // RUB kassa balansi tekshirish
-  if (totalRub > 0) {
-    const rubOpsResult = await db
-      .select({ totalAmount: sql<string>`COALESCE(SUM(${cashOperations.amount}), 0)` })
-      .from(cashOperations)
-      .where(eq(cashOperations.currency, "rub"));
-    const rubBalance = Number(rubOpsResult[0]?.totalAmount ?? 0);
-    if (rubBalance < totalRub) throw new Error("RUB kassada yetarli mablag' yo'q");
-  }
-
-  // O'rtacha RUB kursi hisoblash
-  const rubIncomeOps = await db
-    .select({ amount: cashOperations.amount, exchangeRate: cashOperations.exchangeRate })
-    .from(cashOperations)
-    .where(eq(cashOperations.currency, "rub"));
-
-  let totalRubAmount = 0;
-  let totalUsdEquivalent = 0;
-  for (const op of rubIncomeOps) {
-    const opAmount = Number(op.amount);
-    const opRate = Number(op.exchangeRate ?? 0);
-    if (opAmount > 0 && opRate > 0) {
-      totalRubAmount += opAmount;
-      totalUsdEquivalent += opAmount / opRate;
-    }
-  }
-  const avgRate = totalUsdEquivalent > 0 ? totalRubAmount / totalUsdEquivalent : 1;
-
   await db.transaction(async (tx) => {
-    // RUB kassa xarajat
-    if (totalRub > 0) {
-      await tx.insert(cashOperations).values({
-        currency: "rub",
-        type: "expense",
-        amount: String(-totalRub),
-        exchangeRate: String(avgRate),
-        transportId: id,
-        description: `Transport tushirildi #${transport.number ?? id}`,
-      });
-
-      // Rossiya ta'minotchisi balansi
-      if (transport.supplierId && avgRate > 0) {
-        const totalUsd = totalRub / avgRate;
-        await tx.insert(partnerBalances).values({
-          partnerId: transport.supplierId,
-          amount: String(-totalUsd),
-          currency: "usd",
-          transportId: id,
-          description: `Yog'och to'lovi — transport ${transport.number ?? id}`,
-        });
-      }
-    }
-
     // Standart xarajatlar balanslarini yaratish
     type ExpenseEntry = {
       amount: typeof transport.expenseNds;
@@ -366,7 +303,59 @@ export async function closeTransport(id: number) {
 
   const today = new Date().toISOString().split("T")[0];
 
+  // Ta'minotchi soni (supplierCount) bo'yicha RUB to'lov hisoblash
+  let totalCubSupplier = 0;
+  for (const timber of transport.timbers) {
+    const supplierCount = timber.supplierCount ?? timber.tashkentCount ?? 0;
+    totalCubSupplier += (timber.thicknessMm / 1000) * (timber.widthMm / 1000) * Number(timber.lengthM) * supplierCount;
+  }
+
+  const rubPricePerCubic = Number(transport.rubPricePerCubic ?? 0);
+  const totalRub = totalCubSupplier * rubPricePerCubic;
+
+  // O'rtacha RUB kursi hisoblash
+  const rubIncomeOps = await db
+    .select({ amount: cashOperations.amount, exchangeRate: cashOperations.exchangeRate })
+    .from(cashOperations)
+    .where(eq(cashOperations.currency, "rub"));
+
+  let totalRubAmount = 0;
+  let totalUsdEquivalent = 0;
+  for (const op of rubIncomeOps) {
+    const opAmount = Number(op.amount);
+    const opRate = Number(op.exchangeRate ?? 0);
+    if (opAmount > 0 && opRate > 0) {
+      totalRubAmount += opAmount;
+      totalUsdEquivalent += opAmount / opRate;
+    }
+  }
+  const avgRate = totalUsdEquivalent > 0 ? totalRubAmount / totalUsdEquivalent : 1;
+
   await db.transaction(async (tx) => {
+    // RUB kassadan ta'minotchiga to'lov
+    if (totalRub > 0) {
+      await tx.insert(cashOperations).values({
+        currency: "rub",
+        type: "expense",
+        amount: String(-totalRub),
+        exchangeRate: String(avgRate),
+        transportId: id,
+        description: `Ta'minotchiga to'lov — transport #${transport.number ?? id}`,
+      });
+
+      // Rossiya ta'minotchisi balansi (USD ekvivalenti)
+      if (transport.supplierId && avgRate > 0) {
+        const totalUsd = totalRub / avgRate;
+        await tx.insert(partnerBalances).values({
+          partnerId: transport.supplierId,
+          amount: String(-totalUsd),
+          currency: "usd",
+          transportId: id,
+          description: `Yog'och to'lovi (ta'minotchi soni) — transport #${transport.number ?? id}`,
+        });
+      }
+    }
+
     await tx
       .update(transports)
       .set({ status: "closed", closedAt: today })
