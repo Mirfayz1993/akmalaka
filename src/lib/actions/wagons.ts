@@ -332,28 +332,35 @@ export async function closeTransport(id: number) {
   const avgRate = totalUsdEquivalent > 0 ? totalRubAmount / totalUsdEquivalent : 1;
 
   await db.transaction(async (tx) => {
-    // RUB kassadan ta'minotchiga to'lov
-    if (totalRub > 0) {
+    if (totalRub > 0 && transport.supplierId) {
+      // 1. Qarz: biz ta'minotchiga shu transport uchun shuncha RUB qarzamiz
+      await tx.insert(partnerBalances).values({
+        partnerId: transport.supplierId,
+        amount: String(-totalRub),
+        currency: "rub",
+        transportId: id,
+        description: `Yog'och qarzi — transport #${transport.number ?? id} (${totalCubSupplier.toFixed(3)} m³ × ${rubPricePerCubic} ₽)`,
+      });
+
+      // 2. To'lov: kassadan shu miqdor RUB to'landi
+      await tx.insert(partnerBalances).values({
+        partnerId: transport.supplierId,
+        amount: String(totalRub),
+        currency: "rub",
+        transportId: id,
+        description: `Kassadan to'lov — transport #${transport.number ?? id}`,
+      });
+
+      // Kassadan RUB chiqariladi
       await tx.insert(cashOperations).values({
         currency: "rub",
         type: "expense",
         amount: String(-totalRub),
         exchangeRate: String(avgRate),
         transportId: id,
+        partnerId: transport.supplierId,
         description: `Ta'minotchiga to'lov — transport #${transport.number ?? id}`,
       });
-
-      // Rossiya ta'minotchisi balansi (USD ekvivalenti)
-      if (transport.supplierId && avgRate > 0) {
-        const totalUsd = totalRub / avgRate;
-        await tx.insert(partnerBalances).values({
-          partnerId: transport.supplierId,
-          amount: String(-totalUsd),
-          currency: "usd",
-          transportId: id,
-          description: `Yog'och to'lovi (ta'minotchi soni) — transport #${transport.number ?? id}`,
-        });
-      }
     }
 
     await tx
