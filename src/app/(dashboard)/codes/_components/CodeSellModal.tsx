@@ -24,6 +24,7 @@ export default function CodeSellModal({
   const [type, setType] = useState<"kz" | "uz" | "afgon">("kz");
   const [codeId, setCodeId] = useState<string>("");
   const [customerId, setCustomerId] = useState<string>("");
+  const [wagonNumber, setWagonNumber] = useState<string>("");
   const [tonnage, setTonnage] = useState<string>("");
   const [buyPricePerTon, setBuyPricePerTon] = useState<string>("");
   const [sellPricePerTon, setSellPricePerTon] = useState<string>("");
@@ -81,6 +82,7 @@ export default function CodeSellModal({
         tonnage: tonnageNum,
         buyPricePerTon: buyNum,
         sellPricePerTon: sellNum,
+        wagonNumber: wagonNumber.trim() || undefined,
       });
       onSuccess();
       handleClose();
@@ -95,6 +97,7 @@ export default function CodeSellModal({
     setType("kz");
     setCodeId("");
     setCustomerId("");
+    setWagonNumber("");
     setTonnage("");
     setBuyPricePerTon("");
     setSellPricePerTon("");
@@ -161,6 +164,20 @@ export default function CodeSellModal({
               </option>
             ))}
           </select>
+        </div>
+
+        {/* Vagon raqami */}
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1.5">
+            Vagon raqami <span className="text-slate-400 font-normal">(ixtiyoriy)</span>
+          </label>
+          <input
+            type="text"
+            placeholder="Masalan: 12345678"
+            value={wagonNumber}
+            onChange={(e) => setWagonNumber(e.target.value)}
+            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+          />
         </div>
 
         {/* Tonnaj */}

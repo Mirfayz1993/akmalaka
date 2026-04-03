@@ -119,22 +119,20 @@ export async function sellCode(data: {
   tonnage: number;
   buyPricePerTon: number;
   sellPricePerTon: number;
+  wagonNumber?: string;
 }) {
+  const wagonInfo = data.wagonNumber ? ` — Vagon #${data.wagonNumber}` : "";
+
   await db.transaction(async (tx) => {
-    // Kodni topib supplierId ni ol
     const code = await tx.query.codes.findFirst({
       where: eq(codes.id, data.codeId),
     });
 
-    if (!code) {
-      throw new Error("Kod topilmadi");
-    }
+    if (!code) throw new Error("Kod topilmadi");
 
-    // TZ qoida #1: buyCostUsd = tonnage × buyPricePerTon
     const buyCostUsd = data.tonnage * data.buyPricePerTon;
     const sellPriceUsd = data.tonnage * data.sellPricePerTon;
 
-    // Kodni yangilash
     await tx
       .update(codes)
       .set({
@@ -148,38 +146,34 @@ export async function sellCode(data: {
       })
       .where(eq(codes.id, data.codeId));
 
-    // Ta'minotchi balansida manfiy yozuv: biz ularga qarz
     await tx.insert(partnerBalances).values({
       partnerId: code.supplierId,
       amount: String(-buyCostUsd),
       currency: "usd",
-      description: `Kod sotildi (mijoz #${data.customerId})`,
+      description: `Kod sotildi${wagonInfo}`,
     });
 
-    // Mijoz balansida musbat yozuv: ular bizga qarz
     await tx.insert(partnerBalances).values({
       partnerId: data.customerId,
       amount: String(sellPriceUsd),
       currency: "usd",
-      description: `Kod sotib olindi`,
+      description: `Kod sotib olindi${wagonInfo}`,
     });
 
-    // USD Kassa: xarajat (kod xaridi narxi)
     await tx.insert(cashOperations).values({
       currency: "usd",
       type: "expense",
       amount: String(-buyCostUsd),
       partnerId: code.supplierId,
-      description: `Kod xarajati (ta'minotchi)`,
+      description: `Kod xarajati${wagonInfo}`,
     });
 
-    // USD Kassa: daromad (kod sotuvi)
     await tx.insert(cashOperations).values({
       currency: "usd",
       type: "income",
       amount: String(sellPriceUsd),
       partnerId: data.customerId,
-      description: `Kod sotuvi daromadi`,
+      description: `Kod sotuvi${wagonInfo}`,
     });
   });
 
