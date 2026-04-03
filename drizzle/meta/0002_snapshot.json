@@ -1,0 +1,1598 @@
+{
+  "id": "29cf0987-9f8e-4707-856c-5d99a4c64ae6",
+  "prevId": "71a3ff2e-eb7d-4f5b-bf6c-f6cd22c9d33b",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.cash_logs": {
+      "name": "cash_logs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "cash_operation_id": {
+          "name": "cash_operation_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "action": {
+          "name": "action",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "details": {
+          "name": "details",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "cash_logs_cash_operation_id_cash_operations_id_fk": {
+          "name": "cash_logs_cash_operation_id_cash_operations_id_fk",
+          "tableFrom": "cash_logs",
+          "tableTo": "cash_operations",
+          "columnsFrom": [
+            "cash_operation_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.cash_operations": {
+      "name": "cash_operations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "cash_currency",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "operation_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount": {
+          "name": "amount",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "exchange_rate": {
+          "name": "exchange_rate",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "partner_id": {
+          "name": "partner_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "transport_id": {
+          "name": "transport_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "doc_number": {
+          "name": "doc_number",
+          "type": "varchar(4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "cash_operations_partner_id_partners_id_fk": {
+          "name": "cash_operations_partner_id_partners_id_fk",
+          "tableFrom": "cash_operations",
+          "tableTo": "partners",
+          "columnsFrom": [
+            "partner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "cash_operations_transport_id_transports_id_fk": {
+          "name": "cash_operations_transport_id_transports_id_fk",
+          "tableFrom": "cash_operations",
+          "tableTo": "transports",
+          "columnsFrom": [
+            "transport_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.code_logs": {
+      "name": "code_logs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "code_id": {
+          "name": "code_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "action": {
+          "name": "action",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "details": {
+          "name": "details",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "code_logs_code_id_codes_id_fk": {
+          "name": "code_logs_code_id_codes_id_fk",
+          "tableFrom": "code_logs",
+          "tableTo": "codes",
+          "columnsFrom": [
+            "code_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.codes": {
+      "name": "codes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "code_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "supplier_id": {
+          "name": "supplier_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "code_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'available'"
+        },
+        "buy_cost_usd": {
+          "name": "buy_cost_usd",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sell_price_usd": {
+          "name": "sell_price_usd",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "buy_price_per_ton": {
+          "name": "buy_price_per_ton",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sell_price_per_ton": {
+          "name": "sell_price_per_ton",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tonnage": {
+          "name": "tonnage",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "used_in_transport_id": {
+          "name": "used_in_transport_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sold_to_partner_id": {
+          "name": "sold_to_partner_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "used_at": {
+          "name": "used_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "codes_supplier_id_partners_id_fk": {
+          "name": "codes_supplier_id_partners_id_fk",
+          "tableFrom": "codes",
+          "tableTo": "partners",
+          "columnsFrom": [
+            "supplier_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "codes_used_in_transport_id_transports_id_fk": {
+          "name": "codes_used_in_transport_id_transports_id_fk",
+          "tableFrom": "codes",
+          "tableTo": "transports",
+          "columnsFrom": [
+            "used_in_transport_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "codes_sold_to_partner_id_partners_id_fk": {
+          "name": "codes_sold_to_partner_id_partners_id_fk",
+          "tableFrom": "codes",
+          "tableTo": "partners",
+          "columnsFrom": [
+            "sold_to_partner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.partner_balances": {
+      "name": "partner_balances",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "partner_id": {
+          "name": "partner_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount": {
+          "name": "amount",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'usd'"
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "doc_number": {
+          "name": "doc_number",
+          "type": "varchar(4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "transport_id": {
+          "name": "transport_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "partner_balances_partner_id_partners_id_fk": {
+          "name": "partner_balances_partner_id_partners_id_fk",
+          "tableFrom": "partner_balances",
+          "tableTo": "partners",
+          "columnsFrom": [
+            "partner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "partner_balances_transport_id_transports_id_fk": {
+          "name": "partner_balances_transport_id_transports_id_fk",
+          "tableFrom": "partner_balances",
+          "tableTo": "transports",
+          "columnsFrom": [
+            "transport_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.partners": {
+      "name": "partners",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "partner_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "phone": {
+          "name": "phone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sale_items": {
+      "name": "sale_items",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "sale_id": {
+          "name": "sale_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "timber_id": {
+          "name": "timber_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "warehouse_id": {
+          "name": "warehouse_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "transport_id": {
+          "name": "transport_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "thickness_mm": {
+          "name": "thickness_mm",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "width_mm": {
+          "name": "width_mm",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "length_m": {
+          "name": "length_m",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sent_count": {
+          "name": "sent_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "received_count": {
+          "name": "received_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "price_per_cubic_usd": {
+          "name": "price_per_cubic_usd",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "total_usd": {
+          "name": "total_usd",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "sale_items_sale_id_sales_id_fk": {
+          "name": "sale_items_sale_id_sales_id_fk",
+          "tableFrom": "sale_items",
+          "tableTo": "sales",
+          "columnsFrom": [
+            "sale_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "sale_items_timber_id_timbers_id_fk": {
+          "name": "sale_items_timber_id_timbers_id_fk",
+          "tableFrom": "sale_items",
+          "tableTo": "timbers",
+          "columnsFrom": [
+            "timber_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "sale_items_warehouse_id_warehouse_id_fk": {
+          "name": "sale_items_warehouse_id_warehouse_id_fk",
+          "tableFrom": "sale_items",
+          "tableTo": "warehouse",
+          "columnsFrom": [
+            "warehouse_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "sale_items_transport_id_transports_id_fk": {
+          "name": "sale_items_transport_id_transports_id_fk",
+          "tableFrom": "sale_items",
+          "tableTo": "transports",
+          "columnsFrom": [
+            "transport_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sale_logs": {
+      "name": "sale_logs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "sale_id": {
+          "name": "sale_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "action": {
+          "name": "action",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "details": {
+          "name": "details",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "sale_logs_sale_id_sales_id_fk": {
+          "name": "sale_logs_sale_id_sales_id_fk",
+          "tableFrom": "sale_logs",
+          "tableTo": "sales",
+          "columnsFrom": [
+            "sale_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sales": {
+      "name": "sales",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "customer_id": {
+          "name": "customer_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "sale_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'sent'"
+        },
+        "payment_type": {
+          "name": "payment_type",
+          "type": "payment_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "total_sent_usd": {
+          "name": "total_sent_usd",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0'"
+        },
+        "total_received_usd": {
+          "name": "total_received_usd",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0'"
+        },
+        "paid_amount": {
+          "name": "paid_amount",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0'"
+        },
+        "doc_number": {
+          "name": "doc_number",
+          "type": "varchar(4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sent_at": {
+          "name": "sent_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "received_at": {
+          "name": "received_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "sales_customer_id_partners_id_fk": {
+          "name": "sales_customer_id_partners_id_fk",
+          "tableFrom": "sales",
+          "tableTo": "partners",
+          "columnsFrom": [
+            "customer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.timbers": {
+      "name": "timbers",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "transport_id": {
+          "name": "transport_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "thickness_mm": {
+          "name": "thickness_mm",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "width_mm": {
+          "name": "width_mm",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "length_m": {
+          "name": "length_m",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "russia_count": {
+          "name": "russia_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "tashkent_count": {
+          "name": "tashkent_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "supplier_count": {
+          "name": "supplier_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "customer_count": {
+          "name": "customer_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "timbers_transport_id_transports_id_fk": {
+          "name": "timbers_transport_id_transports_id_fk",
+          "tableFrom": "timbers",
+          "tableTo": "transports",
+          "columnsFrom": [
+            "transport_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.transport_expenses": {
+      "name": "transport_expenses",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "transport_id": {
+          "name": "transport_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount": {
+          "name": "amount",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "partner_id": {
+          "name": "partner_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "transport_expenses_transport_id_transports_id_fk": {
+          "name": "transport_expenses_transport_id_transports_id_fk",
+          "tableFrom": "transport_expenses",
+          "tableTo": "transports",
+          "columnsFrom": [
+            "transport_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "transport_expenses_partner_id_partners_id_fk": {
+          "name": "transport_expenses_partner_id_partners_id_fk",
+          "tableFrom": "transport_expenses",
+          "tableTo": "partners",
+          "columnsFrom": [
+            "partner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.transport_logs": {
+      "name": "transport_logs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "transport_id": {
+          "name": "transport_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "action": {
+          "name": "action",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "transport_logs_transport_id_transports_id_fk": {
+          "name": "transport_logs_transport_id_transports_id_fk",
+          "tableFrom": "transport_logs",
+          "tableTo": "transports",
+          "columnsFrom": [
+            "transport_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.transports": {
+      "name": "transports",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "transport_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "number": {
+          "name": "number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "from_location": {
+          "name": "from_location",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "to_location": {
+          "name": "to_location",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sent_at": {
+          "name": "sent_at",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "arrived_at": {
+          "name": "arrived_at",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "unloaded_at": {
+          "name": "unloaded_at",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "closed_at": {
+          "name": "closed_at",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tonnage": {
+          "name": "tonnage",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "transport_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'in_transit'"
+        },
+        "supplier_id": {
+          "name": "supplier_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "code_uz_supplier_id": {
+          "name": "code_uz_supplier_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "code_uz_price_per_ton": {
+          "name": "code_uz_price_per_ton",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "code_kz_supplier_id": {
+          "name": "code_kz_supplier_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "code_kz_price_per_ton": {
+          "name": "code_kz_price_per_ton",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "truck_owner_id": {
+          "name": "truck_owner_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "truck_owner_payment": {
+          "name": "truck_owner_payment",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rub_price_per_cubic": {
+          "name": "rub_price_per_cubic",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rub_exchange_rate": {
+          "name": "rub_exchange_rate",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expense_nds": {
+          "name": "expense_nds",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0'"
+        },
+        "expense_usluga": {
+          "name": "expense_usluga",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0'"
+        },
+        "expense_tupik": {
+          "name": "expense_tupik",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0'"
+        },
+        "expense_xrannei": {
+          "name": "expense_xrannei",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0'"
+        },
+        "expense_ortish": {
+          "name": "expense_ortish",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0'"
+        },
+        "expense_tushurish": {
+          "name": "expense_tushurish",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0'"
+        },
+        "expense_nds_partner_id": {
+          "name": "expense_nds_partner_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expense_usluga_partner_id": {
+          "name": "expense_usluga_partner_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expense_tupik_partner_id": {
+          "name": "expense_tupik_partner_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expense_xrannei_partner_id": {
+          "name": "expense_xrannei_partner_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expense_ortish_partner_id": {
+          "name": "expense_ortish_partner_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expense_tushurish_partner_id": {
+          "name": "expense_tushurish_partner_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "transports_supplier_id_partners_id_fk": {
+          "name": "transports_supplier_id_partners_id_fk",
+          "tableFrom": "transports",
+          "tableTo": "partners",
+          "columnsFrom": [
+            "supplier_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "transports_code_uz_supplier_id_partners_id_fk": {
+          "name": "transports_code_uz_supplier_id_partners_id_fk",
+          "tableFrom": "transports",
+          "tableTo": "partners",
+          "columnsFrom": [
+            "code_uz_supplier_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "transports_code_kz_supplier_id_partners_id_fk": {
+          "name": "transports_code_kz_supplier_id_partners_id_fk",
+          "tableFrom": "transports",
+          "tableTo": "partners",
+          "columnsFrom": [
+            "code_kz_supplier_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "transports_truck_owner_id_partners_id_fk": {
+          "name": "transports_truck_owner_id_partners_id_fk",
+          "tableFrom": "transports",
+          "tableTo": "partners",
+          "columnsFrom": [
+            "truck_owner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "transports_expense_nds_partner_id_partners_id_fk": {
+          "name": "transports_expense_nds_partner_id_partners_id_fk",
+          "tableFrom": "transports",
+          "tableTo": "partners",
+          "columnsFrom": [
+            "expense_nds_partner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "transports_expense_usluga_partner_id_partners_id_fk": {
+          "name": "transports_expense_usluga_partner_id_partners_id_fk",
+          "tableFrom": "transports",
+          "tableTo": "partners",
+          "columnsFrom": [
+            "expense_usluga_partner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "transports_expense_tupik_partner_id_partners_id_fk": {
+          "name": "transports_expense_tupik_partner_id_partners_id_fk",
+          "tableFrom": "transports",
+          "tableTo": "partners",
+          "columnsFrom": [
+            "expense_tupik_partner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "transports_expense_xrannei_partner_id_partners_id_fk": {
+          "name": "transports_expense_xrannei_partner_id_partners_id_fk",
+          "tableFrom": "transports",
+          "tableTo": "partners",
+          "columnsFrom": [
+            "expense_xrannei_partner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "transports_expense_ortish_partner_id_partners_id_fk": {
+          "name": "transports_expense_ortish_partner_id_partners_id_fk",
+          "tableFrom": "transports",
+          "tableTo": "partners",
+          "columnsFrom": [
+            "expense_ortish_partner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "transports_expense_tushurish_partner_id_partners_id_fk": {
+          "name": "transports_expense_tushurish_partner_id_partners_id_fk",
+          "tableFrom": "transports",
+          "tableTo": "partners",
+          "columnsFrom": [
+            "expense_tushurish_partner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.warehouse": {
+      "name": "warehouse",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "timber_id": {
+          "name": "timber_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "transport_id": {
+          "name": "transport_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "thickness_mm": {
+          "name": "thickness_mm",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "width_mm": {
+          "name": "width_mm",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "length_m": {
+          "name": "length_m",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quantity": {
+          "name": "quantity",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "warehouse_timber_id_timbers_id_fk": {
+          "name": "warehouse_timber_id_timbers_id_fk",
+          "tableFrom": "warehouse",
+          "tableTo": "timbers",
+          "columnsFrom": [
+            "timber_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "warehouse_transport_id_transports_id_fk": {
+          "name": "warehouse_transport_id_transports_id_fk",
+          "tableFrom": "warehouse",
+          "tableTo": "transports",
+          "columnsFrom": [
+            "transport_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.cash_currency": {
+      "name": "cash_currency",
+      "schema": "public",
+      "values": [
+        "usd",
+        "rub"
+      ]
+    },
+    "public.code_status": {
+      "name": "code_status",
+      "schema": "public",
+      "values": [
+        "available",
+        "used",
+        "sold"
+      ]
+    },
+    "public.code_type": {
+      "name": "code_type",
+      "schema": "public",
+      "values": [
+        "kz",
+        "uz",
+        "afgon"
+      ]
+    },
+    "public.operation_type": {
+      "name": "operation_type",
+      "schema": "public",
+      "values": [
+        "income",
+        "expense",
+        "exchange",
+        "debt_give",
+        "debt_take"
+      ]
+    },
+    "public.partner_type": {
+      "name": "partner_type",
+      "schema": "public",
+      "values": [
+        "russia_supplier",
+        "code_supplier",
+        "code_buyer",
+        "wood_buyer",
+        "service_provider",
+        "truck_owner",
+        "personal",
+        "exchanger",
+        "partner"
+      ]
+    },
+    "public.payment_type": {
+      "name": "payment_type",
+      "schema": "public",
+      "values": [
+        "cash",
+        "debt",
+        "mixed"
+      ]
+    },
+    "public.sale_status": {
+      "name": "sale_status",
+      "schema": "public",
+      "values": [
+        "sent",
+        "received"
+      ]
+    },
+    "public.transport_status": {
+      "name": "transport_status",
+      "schema": "public",
+      "values": [
+        "in_transit",
+        "at_border",
+        "arrived",
+        "unloaded",
+        "closed"
+      ]
+    },
+    "public.transport_type": {
+      "name": "transport_type",
+      "schema": "public",
+      "values": [
+        "wagon",
+        "truck"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

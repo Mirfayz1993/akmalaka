@@ -15,6 +15,13 @@
       "when": 1774806399584,
       "tag": "0001_add_status_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1775216625817,
+      "tag": "0002_solid_molecule_man",
+      "breakpoints": true
     }
   ]
 }
