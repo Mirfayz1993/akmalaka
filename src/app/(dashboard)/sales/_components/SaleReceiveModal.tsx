@@ -208,23 +208,48 @@ export default function SaleReceiveModal({
 
           {newItems.length > 0 && (
             <div className="mb-3 space-y-1">
-              {newItems.map((item, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm"
-                >
-                  <span className="text-slate-700">
-                    {item.thicknessMm}&times;{item.widthMm}&times;{item.lengthM}m —{" "}
-                    {item.sentCount} dona — ${item.pricePerCubicUsd}/m³
-                  </span>
-                  <button
-                    onClick={() => setNewItems((prev) => prev.filter((_, i) => i !== idx))}
-                    className="text-red-400 hover:text-red-600 ml-3"
+              {newItems.map((item, idx) => {
+                const itemCub = (item.thicknessMm / 1000) * (item.widthMm / 1000) * item.lengthM * item.sentCount;
+                const itemTotal = itemCub * item.pricePerCubicUsd;
+                return (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm"
                   >
-                    ✕
-                  </button>
-                </div>
-              ))}
+                    <span className="text-slate-700">
+                      {item.thicknessMm}&times;{item.widthMm}&times;{item.lengthM}m —{" "}
+                      {item.sentCount} dona — ${item.pricePerCubicUsd}/m³ —{" "}
+                      <span className="font-medium text-green-700">{itemCub.toFixed(3)} m³</span>{" "}
+                      — <span className="font-semibold text-blue-700">${itemTotal.toFixed(2)}</span>
+                    </span>
+                    <button
+                      onClick={() => setNewItems((prev) => prev.filter((_, i) => i !== idx))}
+                      className="text-red-400 hover:text-red-600 ml-3"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                );
+              })}
+              {/* Jami qo'shimcha */}
+              {(() => {
+                const totalCub = newItems.reduce((sum, item) =>
+                  sum + (item.thicknessMm / 1000) * (item.widthMm / 1000) * item.lengthM * item.sentCount, 0);
+                const totalPay = newItems.reduce((sum, item) => {
+                  const cub = (item.thicknessMm / 1000) * (item.widthMm / 1000) * item.lengthM * item.sentCount;
+                  return sum + cub * item.pricePerCubicUsd;
+                }, 0);
+                return (
+                  <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-sm mt-2">
+                    <span className="text-slate-600 font-medium">Jami qo'shimcha:</span>
+                    <span>
+                      <span className="font-semibold text-green-700">{totalCub.toFixed(3)} m³</span>
+                      {" — "}
+                      <span className="font-bold text-blue-700">${totalPay.toFixed(2)}</span>
+                    </span>
+                  </div>
+                );
+              })()}
             </div>
           )}
 

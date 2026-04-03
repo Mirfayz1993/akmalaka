@@ -8,6 +8,13 @@
       "when": 1774806399583,
       "tag": "0000_fair_fenris",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1774806399584,
+      "tag": "0001_add_status_fields",
+      "breakpoints": true
     }
   ]
 }

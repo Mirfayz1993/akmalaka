@@ -759,19 +759,34 @@ export default function WagonEditModal({
                 <div className="mb-3">
                   <p className="text-xs font-medium text-slate-500 mb-2">Toshkent soni (statik)</p>
                   <div className="space-y-1">
+                    <div className="grid grid-cols-[1fr_80px_80px_90px_80px_90px] gap-2 text-xs text-slate-400 font-medium px-1">
+                      <span>O'lcham</span>
+                      <span className="text-center">Toshkent</span>
+                      <span className="text-center">Kub m³</span>
+                      <span className="text-center text-orange-500">Mijoz</span>
+                      <span className="text-center text-orange-500">Kub m³</span>
+                      <span />
+                    </div>
                     {timberList.map((timber) => (
-                      <div key={timber.id} className="grid grid-cols-[1fr_80px_80px_90px] gap-2 items-center bg-slate-50 rounded-lg px-3 py-2">
+                      <div key={timber.id} className="grid grid-cols-[1fr_80px_80px_90px_80px_90px] gap-2 items-center bg-slate-50 rounded-lg px-3 py-2">
                         <span className="text-sm font-medium text-slate-700">{timber.thicknessMm}×{timber.widthMm}×{timber.lengthM}m</span>
                         <span className="text-sm text-center text-slate-600">{timber.tashkentCount ?? 0}</span>
-                        <span className="text-xs text-center text-slate-400">Toshkent</span>
                         <span className="text-sm text-center font-medium text-slate-700">
-                          {calcCub(timber.thicknessMm, timber.widthMm, timber.lengthM, timber.tashkentCount ?? 0).toFixed(3)} m³
+                          {calcCub(timber.thicknessMm, timber.widthMm, timber.lengthM, timber.tashkentCount ?? 0).toFixed(3)}
                         </span>
+                        <span className="text-sm text-center text-orange-600 font-medium">{timber.customerCount ?? 0}</span>
+                        <span className="text-sm text-center text-orange-700 font-medium">
+                          {calcCub(timber.thicknessMm, timber.widthMm, timber.lengthM, timber.customerCount ?? 0).toFixed(3)}
+                        </span>
+                        <span />
                       </div>
                     ))}
                   </div>
-                  <div className="pt-1 mt-1 text-sm text-slate-600">
-                    {t.wagons.totalCubTashkent}: <span className="font-semibold">{totalCubTashkent.toFixed(3)} m³</span>
+                  <div className="pt-1 mt-1 flex gap-4 text-sm text-slate-600">
+                    <span>{t.wagons.totalCubTashkent}: <span className="font-semibold">{totalCubTashkent.toFixed(3)} m³</span></span>
+                    <span className="text-orange-600">Mijoz qabul: <span className="font-semibold">
+                      {timberList.reduce((sum, t) => sum + calcCub(t.thicknessMm, t.widthMm, t.lengthM, t.customerCount ?? 0), 0).toFixed(3)} m³
+                    </span></span>
                   </div>
                 </div>
 
