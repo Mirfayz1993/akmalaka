@@ -193,15 +193,7 @@ export async function recordExchange(data: {
       description: data.description ?? null,
     });
 
-    // Ayrboshlash: biz hamkorga dollar berdik → partnerBalances ga yoziladi
-    if (data.partnerId) {
-      await tx.insert(partnerBalances).values({
-        partnerId: data.partnerId,
-        amount: String(-data.usdAmount),
-        currency: "usd",
-        description: data.description ?? "Pul ayrboshlash",
-      });
-    }
+    // Ayrboshlash to'liq tranzaksiya: dollar berdik + rubl oldik → qarz yo'q, balance o'zgarmaydi
   });
 
   revalidatePath("/cash");
