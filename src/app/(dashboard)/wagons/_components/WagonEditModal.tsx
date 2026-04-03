@@ -206,6 +206,7 @@ export default function WagonEditModal({
   // Status o'zgartirish ogohlantirish modali
   const [pendingStatus, setPendingStatus] = useState<TransportStatus | null>(null);
   const [isStatusLoading, setIsStatusLoading] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
 
   // Moliyaviy hisobot (closed status uchun)
   const [summary, setSummary] = useState<TransportSummary | null>(null);
@@ -299,6 +300,7 @@ export default function WagonEditModal({
   async function confirmStatusChange() {
     if (!pendingStatus || !transport) return;
     setIsStatusLoading(true);
+    setStatusError(null);
     try {
       if (pendingStatus === "arrived") {
         await arriveTransport(transport.id);
@@ -309,9 +311,10 @@ export default function WagonEditModal({
       }
       toast.success(`Status "${STATUS_WARNINGS[pendingStatus]?.title}" ga o'zgartirildi`);
       setPendingStatus(null);
+      setStatusError(null);
       onSuccess();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Xatolik yuz berdi");
+      setStatusError(err instanceof Error ? err.message : "Xatolik yuz berdi");
     } finally {
       setIsStatusLoading(false);
     }
@@ -1148,13 +1151,21 @@ export default function WagonEditModal({
                 {STATUS_WARNINGS[pendingStatus].title}
               </h3>
             </div>
-            <p className="text-sm text-slate-600 mb-5 leading-relaxed">
+            <p className="text-sm text-slate-600 mb-4 leading-relaxed">
               {STATUS_WARNINGS[pendingStatus].message}
             </p>
+
+            {statusError && (
+              <div className="mb-4 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+                <p className="text-sm font-semibold text-red-700 mb-1">Xatolik — status o'zgarmadi:</p>
+                <p className="text-sm text-red-600 whitespace-pre-line">{statusError}</p>
+              </div>
+            )}
+
             <div className="flex gap-3">
               <button
                 disabled={isStatusLoading}
-                onClick={() => setPendingStatus(null)}
+                onClick={() => { setPendingStatus(null); setStatusError(null); }}
                 className="flex-1 px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 text-slate-700 disabled:opacity-50"
               >
                 Bekor qilish
