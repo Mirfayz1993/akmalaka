@@ -173,8 +173,15 @@ export async function getTransportFinancialSummary(transportId: number): Promise
 
   const totalExpensesUsd = expenseBreakdown.reduce((s, e) => s + e.amountUsd, 0);
 
-  // 5. Daromad
-  const totalIncomeUsd = transportSaleItems.reduce((s, item) => s + Number(item.totalUsd ?? 0), 0);
+  // 5. Daromad — qabul qilingan soni bo'yicha
+  const totalIncomeUsd = transportSaleItems.reduce((s, item) => {
+    const received = item.receivedCount ?? 0;
+    if (!item.thicknessMm || !item.widthMm || !item.lengthM || !item.pricePerCubicUsd || received === 0) {
+      return s;
+    }
+    const kub = (item.thicknessMm / 1000) * (item.widthMm / 1000) * Number(item.lengthM) * received;
+    return s + kub * Number(item.pricePerCubicUsd);
+  }, 0);
 
   const netProfitUsd = totalIncomeUsd - totalExpensesUsd;
 
