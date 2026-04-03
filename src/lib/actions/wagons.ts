@@ -146,12 +146,51 @@ export async function updateTransport(
 export async function arriveTransport(id: number) {
   const transport = await db.query.transports.findFirst({
     where: eq(transports.id, id),
-    with: { timbers: true },
+    with: {
+      timbers: true,
+      codeUzSupplier: true,
+      codeKzSupplier: true,
+    },
   });
 
   if (!transport) throw new Error("Transport topilmadi");
   if (transport.status !== "in_transit") {
     throw new Error("Faqat 'Yo'lda' statusidagi transportni 'Yetib kelgan'ga o'tkazish mumkin");
+  }
+
+  // ── Kod mavjudligini tekshirish ─────────────────────────────────────────────
+  let uzCodeId: number | null = null;
+  let kzCodeId: number | null = null;
+  const missingCodes: string[] = [];
+
+  if (transport.codeUzSupplierId) {
+    const uzCode = await db.query.codes.findFirst({
+      where: (c, { eq, and }) =>
+        and(eq(c.type, "uz"), eq(c.supplierId, transport.codeUzSupplierId!), eq(c.status, "available")),
+    });
+    if (!uzCode) {
+      const name = transport.codeUzSupplier?.name ?? `ID:${transport.codeUzSupplierId}`;
+      missingCodes.push(`UZ kod — "${name}" ta'minotchisida mavjud emas`);
+    } else {
+      uzCodeId = uzCode.id;
+    }
+  }
+
+  if (transport.codeKzSupplierId) {
+    const kzCode = await db.query.codes.findFirst({
+      where: (c, { eq, and }) =>
+        and(eq(c.type, "kz"), eq(c.supplierId, transport.codeKzSupplierId!), eq(c.status, "available")),
+    });
+    if (!kzCode) {
+      const name = transport.codeKzSupplier?.name ?? `ID:${transport.codeKzSupplierId}`;
+      missingCodes.push(`KZ kod — "${name}" ta'minotchisida mavjud emas`);
+    } else {
+      kzCodeId = kzCode.id;
+    }
+  }
+
+  if (missingCodes.length > 0) {
+    throw new Error(`Kod yetishmayapti:\n${missingCodes.join("\n")}\n\nAvval "Kodlar" bo'limidan qo'shing.`);
   }
 
   const today = new Date().toISOString().split("T")[0];
@@ -163,6 +202,32 @@ export async function arriveTransport(id: number) {
       .update(transports)
       .set({ status: "arrived", arrivedAt: transport.arrivedAt ?? today })
       .where(eq(transports.id, id));
+
+    // UZ kodni ishlatilgan deb belgilash
+    if (uzCodeId) {
+      const buyCost = tonnage * Number(transport.codeUzPricePerTon ?? 0);
+      await tx.update(codes).set({
+        status: "used",
+        usedAt: new Date(),
+        usedInTransportId: id,
+        buyPricePerTon: String(transport.codeUzPricePerTon ?? 0),
+        buyCostUsd: String(buyCost),
+        sellPriceUsd: String(buyCost),
+      }).where(eq(codes.id, uzCodeId));
+    }
+
+    // KZ kodni ishlatilgan deb belgilash
+    if (kzCodeId) {
+      const buyCost = tonnage * Number(transport.codeKzPricePerTon ?? 0);
+      await tx.update(codes).set({
+        status: "used",
+        usedAt: new Date(),
+        usedInTransportId: id,
+        buyPricePerTon: String(transport.codeKzPricePerTon ?? 0),
+        buyCostUsd: String(buyCost),
+        sellPriceUsd: String(buyCost),
+      }).where(eq(codes.id, kzCodeId));
+    }
 
     // Kod UZ uchun partner_balances
     if (transport.codeUzSupplierId && transport.codeUzPricePerTon) {
