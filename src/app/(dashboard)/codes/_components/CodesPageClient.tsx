@@ -32,6 +32,9 @@ export default function CodesPageClient({
   const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
   const [isSellModalOpen, setIsSellModalOpen] = useState(false);
 
+  const soldCodes = history.filter((c) => c.status === "sold");
+  const usedCodes = history.filter((c) => c.status === "used");
+
   async function handleDelete(id: number) {
     try {
       await deleteCode(id);
@@ -51,7 +54,7 @@ export default function CodesPageClient({
             onClick={() => setIsSellModalOpen(true)}
             className="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
           >
-            Sotish
+            Sotish / Ishlatish
           </button>
           <button
             onClick={() => setIsBuyModalOpen(true)}
@@ -63,27 +66,36 @@ export default function CodesPageClient({
       </div>
 
       <div className="space-y-8">
+        {/* Mavjud kodlar */}
         <section>
           <h2 className="text-base font-semibold text-slate-700 mb-3">
             Mavjud kodlar
-            <span className="ml-2 text-sm font-normal text-slate-400">
-              ({inventory.length})
-            </span>
+            <span className="ml-2 text-sm font-normal text-slate-400">({inventory.length})</span>
           </h2>
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <CodeInventoryTable codes={inventory} onDelete={handleDelete} />
           </div>
         </section>
 
+        {/* Sotilgan kodlar */}
         <section>
           <h2 className="text-base font-semibold text-slate-700 mb-3">
-            Tarix
-            <span className="ml-2 text-sm font-normal text-slate-400">
-              ({history.length})
-            </span>
+            Sotilgan kodlar
+            <span className="ml-2 text-sm font-normal text-slate-400">({soldCodes.length})</span>
           </h2>
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <CodeHistoryTable codes={history} />
+            <CodeHistoryTable codes={soldCodes} mode="sold" />
+          </div>
+        </section>
+
+        {/* O'z vagonimizga ishlatilgan kodlar */}
+        <section>
+          <h2 className="text-base font-semibold text-slate-700 mb-3">
+            O&apos;z vagonimizga ishlatilgan kodlar
+            <span className="ml-2 text-sm font-normal text-slate-400">({usedCodes.length})</span>
+          </h2>
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <CodeHistoryTable codes={usedCodes} mode="used" />
           </div>
         </section>
       </div>
