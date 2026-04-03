@@ -302,19 +302,26 @@ export default function WagonEditModal({
     setIsStatusLoading(true);
     setStatusError(null);
     try {
+      let result: { ok: true } | { ok: false; error: string };
       if (pendingStatus === "arrived") {
-        await arriveTransport(transport.id);
+        result = await arriveTransport(transport.id);
       } else if (pendingStatus === "unloaded") {
-        await unloadTransport(transport.id);
+        result = await unloadTransport(transport.id);
       } else if (pendingStatus === "closed") {
-        await closeTransport(transport.id);
+        result = await closeTransport(transport.id);
+      } else {
+        return;
       }
-      toast.success(`Status "${STATUS_WARNINGS[pendingStatus]?.title}" ga o'zgartirildi`);
+      if (!result.ok) {
+        setStatusError(result.error);
+        return;
+      }
+      toast.success(`Status muvaffaqiyatli o'zgartirildi`);
       setPendingStatus(null);
       setStatusError(null);
       onSuccess();
-    } catch (err) {
-      setStatusError(err instanceof Error ? err.message : "Xatolik yuz berdi");
+    } catch {
+      setStatusError("Kutilmagan xatolik yuz berdi. Qayta urinib ko'ring.");
     } finally {
       setIsStatusLoading(false);
     }

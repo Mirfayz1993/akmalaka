@@ -143,7 +143,12 @@ export async function updateTransport(
 
 // ─── ARRIVE TRANSPORT (Yo'lda → Yetib kelgan) ─────────────────────────────────
 
-export async function arriveTransport(id: number) {
+export async function arriveTransport(id: number): Promise<{ ok: true } | { ok: false; error: string }> {
+  try { return await _arriveTransport(id); }
+  catch (err) { return { ok: false, error: err instanceof Error ? err.message : "Xatolik yuz berdi" }; }
+}
+
+async function _arriveTransport(id: number): Promise<{ ok: true }> {
   const transport = await db.query.transports.findFirst({
     where: eq(transports.id, id),
     with: {
@@ -282,11 +287,17 @@ export async function arriveTransport(id: number) {
   });
 
   revalidatePath("/wagons");
+  return { ok: true as const };
 }
 
 // ─── UNLOAD TRANSPORT (Yetib kelgan → Tushurilgan) ─────────────────────────────
 
-export async function unloadTransport(id: number) {
+export async function unloadTransport(id: number): Promise<{ ok: true } | { ok: false; error: string }> {
+  try { return await _unloadTransport(id); }
+  catch (err) { return { ok: false, error: err instanceof Error ? err.message : "Xatolik yuz berdi" }; }
+}
+
+async function _unloadTransport(id: number): Promise<{ ok: true }> {
   const transport = await db.query.transports.findFirst({
     where: eq(transports.id, id),
     with: { timbers: true },
@@ -351,11 +362,17 @@ export async function unloadTransport(id: number) {
   });
 
   revalidatePath("/wagons");
+  return { ok: true as const };
 }
 
 // ─── CLOSE TRANSPORT (Tushurilgan → Yopilgan) ──────────────────────────────────
 
-export async function closeTransport(id: number) {
+export async function closeTransport(id: number): Promise<{ ok: true } | { ok: false; error: string }> {
+  try { return await _closeTransport(id); }
+  catch (err) { return { ok: false, error: err instanceof Error ? err.message : "Xatolik yuz berdi" }; }
+}
+
+async function _closeTransport(id: number): Promise<{ ok: true }> {
   const transport = await db.query.transports.findFirst({
     where: eq(transports.id, id),
     with: { timbers: true },
@@ -443,6 +460,7 @@ export async function closeTransport(id: number) {
 
   revalidatePath("/wagons");
   revalidatePath("/warehouse");
+  return { ok: true as const };
 }
 
 // ─── DELETE TRANSPORT ──────────────────────────────────────────────────────────
