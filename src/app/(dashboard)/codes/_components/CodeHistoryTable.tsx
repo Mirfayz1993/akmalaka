@@ -116,6 +116,9 @@ export default function CodeHistoryTable({ codes, mode }: Props) {
     const totalTonnage = parseFloat(kzItem?.tonnage ?? "0");
     const types = [...new Set(items.map((c) => c.type))];
     const suppliers = [...new Set(items.map((c) => c.supplier?.name).filter(Boolean))] as string[];
+    // notes formatidan vagon raqamini ol: "batchId|wagonNumber"
+    const notesStr = items[0].notes ?? "";
+    const wagonNumber = notesStr.includes("|") ? notesStr.split("|")[1] : null;
     return {
       key,
       codes: items,
@@ -126,7 +129,7 @@ export default function CodeHistoryTable({ codes, mode }: Props) {
       types,
       suppliers,
       customer: items[0].soldToPartner?.name ?? "—",
-      transport: "—",
+      transport: wagonNumber ? `#${wagonNumber}` : "—",
     };
   });
 
@@ -141,6 +144,7 @@ export default function CodeHistoryTable({ codes, mode }: Props) {
             <th className="text-right py-3 px-4 font-semibold text-slate-600">Tonnaj (t)</th>
             <th className="text-right py-3 px-4 font-semibold text-slate-600">To'langan ($)</th>
             <th className="text-left py-3 px-4 font-semibold text-slate-600">Kimga sotildi</th>
+            <th className="text-left py-3 px-4 font-semibold text-slate-600">Vagon</th>
             <th className="text-right py-3 px-4 font-semibold text-slate-600">Sotilgan narx ($)</th>
           </tr>
         </thead>
@@ -161,6 +165,7 @@ export default function CodeHistoryTable({ codes, mode }: Props) {
               <td className="py-3 px-4 text-right text-slate-600">{group.totalTonnage.toFixed(1)} t</td>
               <td className="py-3 px-4 text-right text-slate-700">{formatUsd(group.totalBuyCost)}</td>
               <td className="py-3 px-4 text-slate-700">{group.customer}</td>
+              <td className="py-3 px-4 text-slate-500 font-mono text-xs">{group.transport}</td>
               <td className="py-3 px-4 text-right font-medium text-green-600">{formatUsd(group.totalSellPrice)}</td>
             </tr>
           ))}

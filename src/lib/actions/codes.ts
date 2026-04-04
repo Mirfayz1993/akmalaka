@@ -190,7 +190,7 @@ export async function sellCodesBatch(data: {
 }) {
   const wagonInfo = data.wagonNumber ? ` — Vagon #${data.wagonNumber}` : "";
   const soldAt = data.date ? new Date(data.date) : new Date();
-  const batchId = Date.now().toString();
+  const batchId = `${Date.now()}${data.wagonNumber ? `|${data.wagonNumber}` : ""}`;
 
   await db.transaction(async (tx) => {
     // Har bir kodni alohida yangilash + supplier bo'yicha xarajatni yig'ish
