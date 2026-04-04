@@ -97,8 +97,10 @@ export async function recordPayment(data: {
   currency: "usd" | "rub";
   description?: string;
   docNumber?: string;
+  date?: string; // ISO date string, e.g. "2026-04-05"
 }) {
   if (data.amount === 0) throw new Error("Summa nol bo'lishi mumkin emas");
+  const createdAt = data.date ? new Date(data.date) : undefined;
   await db.transaction(async (tx) => {
     // amount < 0 → biz ularga to'ladik (expense) → kassa chiqim, balans musbat (qarz kamayadi)
     // amount > 0 → biz ulardan oldik (income) → kassa kirim, balans manfiy (ularning qarzi kamayadi)
@@ -111,6 +113,7 @@ export async function recordPayment(data: {
       partnerId: data.partnerId,
       description: data.description,
       docNumber: data.docNumber,
+      ...(createdAt ? { createdAt } : {}),
     });
 
     // Kassa bilan teskari: biz to'lasak (amount < 0) → balans musbat (qarz kamayadi)
@@ -120,6 +123,7 @@ export async function recordPayment(data: {
       currency: data.currency,
       description: data.description,
       docNumber: data.docNumber,
+      ...(createdAt ? { createdAt } : {}),
     });
   });
 

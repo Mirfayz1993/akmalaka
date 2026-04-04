@@ -24,6 +24,7 @@ export default function PaymentModal({
   const [currency, setCurrency] = useState<"usd" | "rub">("usd");
   const [description, setDescription] = useState("");
   const [docNumber, setDocNumber] = useState("");
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [loading, setLoading] = useState(false);
 
   function handleClose() {
@@ -32,6 +33,7 @@ export default function PaymentModal({
     setCurrency("usd");
     setDescription("");
     setDocNumber("");
+    setDate(new Date().toISOString().slice(0, 10));
     onClose();
   }
 
@@ -50,6 +52,7 @@ export default function PaymentModal({
         currency,
         description: description.trim() || undefined,
         docNumber: docNumber.trim() || undefined,
+        date: date || undefined,
       });
       toast.success("To'lov saqlandi");
       handleClose();
@@ -172,6 +175,19 @@ export default function PaymentModal({
             }}
             placeholder="0001"
             maxLength={4}
+            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+          />
+        </div>
+
+        {/* Date */}
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">
+            Sana
+          </label>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
             className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
           />
         </div>
