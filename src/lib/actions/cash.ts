@@ -25,7 +25,7 @@ export async function getRubState(): Promise<{
   const allOps = await db.query.cashOperations.findMany({
     where: eq(cashOperations.currency, "rub"),
     columns: { amount: true, exchangeRate: true, type: true },
-    orderBy: (t, { asc }) => [asc(t.createdAt), asc(t.id)],
+    orderBy: (t, { asc }) => [asc(t.id)],
   });
 
   // Xronologik o'rtacha kurs: qoldiq × eski kurs + kirim × yangi kurs / yangi qoldiq
@@ -65,7 +65,7 @@ export async function getUsdOperations() {
   return await db.query.cashOperations.findMany({
     where: eq(cashOperations.currency, "usd"),
     with: { partner: true },
-    orderBy: (t, { desc }) => [desc(t.createdAt)],
+    orderBy: (t, { desc }) => [desc(t.id)],
   });
 }
 
@@ -75,7 +75,7 @@ export async function getRubOperations() {
   return await db.query.cashOperations.findMany({
     where: eq(cashOperations.currency, "rub"),
     with: { partner: true },
-    orderBy: (t, { desc }) => [desc(t.createdAt)],
+    orderBy: (t, { desc }) => [desc(t.id)],
   });
 }
 
@@ -85,7 +85,7 @@ export async function getExchangeHistory() {
   return await db.query.cashOperations.findMany({
     where: eq(cashOperations.type, "exchange"),
     with: { partner: true },
-    orderBy: (t, { desc }) => [desc(t.createdAt)],
+    orderBy: (t, { desc }) => [desc(t.id)],
   });
 }
 

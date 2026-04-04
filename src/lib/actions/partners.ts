@@ -22,7 +22,7 @@ export async function getAllPartnersWithBalances() {
     with: {
       balances: {
         with: { transport: true },
-        orderBy: (b, { desc }) => [desc(b.createdAt)],
+        orderBy: (b, { desc }) => [desc(b.id)],
       },
     },
     orderBy: (p, { asc }) => [asc(p.name)],
@@ -46,7 +46,7 @@ export async function getPartnerWithBalance(id: number) {
     with: {
       transport: true,
     },
-    orderBy: (b, { desc }) => [desc(b.createdAt)],
+    orderBy: (b, { desc }) => [desc(b.id)],
   });
 
   const currentBalance = balances.reduce(

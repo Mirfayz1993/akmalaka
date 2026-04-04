@@ -16,7 +16,7 @@ type PartnerWithBalance = Awaited<ReturnType<typeof getAllPartnersWithBalances>>
 function AllPartnersSummary({ partners }: { partners: PartnerWithBalance[] }) {
   const allOps = partners
     .flatMap((p) => p.balances.map((b) => ({ ...b, partnerName: p.name, partnerType: p.type })))
-    .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
+    .sort((a, b) => b.id - a.id);
 
   // USD hisobi
   const usdOurDebt = partners.reduce((s, p) => s + (p.usdBalance < 0 ? Math.abs(p.usdBalance) : 0), 0);
