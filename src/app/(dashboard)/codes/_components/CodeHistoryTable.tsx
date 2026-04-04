@@ -138,6 +138,7 @@ export default function CodeHistoryTable({ codes, mode }: Props) {
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-slate-200 bg-slate-50">
+            <th className="text-left py-3 px-4 font-semibold text-slate-600">№</th>
             <th className="text-left py-3 px-4 font-semibold text-slate-600">Sana</th>
             <th className="text-left py-3 px-4 font-semibold text-slate-600">Tur</th>
             <th className="text-left py-3 px-4 font-semibold text-slate-600">Kimdan oldik</th>
@@ -150,8 +151,9 @@ export default function CodeHistoryTable({ codes, mode }: Props) {
           </tr>
         </thead>
         <tbody>
-          {groups.map((group) => (
+          {groups.map((group, idx) => (
             <tr key={group.key} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+              <td className="py-3 px-4 text-slate-400 text-xs">{idx + 1}</td>
               <td className="py-3 px-4 text-slate-500">{formatDate(group.date)}</td>
               <td className="py-3 px-4">
                 <div className="flex gap-1 flex-wrap">
@@ -188,7 +190,7 @@ export default function CodeHistoryTable({ codes, mode }: Props) {
             const totalProfit = totalSell - totalBuy;
             return (
               <tr className="bg-slate-50 border-t-2 border-slate-200">
-                <td colSpan={4} className="py-3 px-4 text-sm font-semibold text-slate-600">Jami</td>
+                <td colSpan={5} className="py-3 px-4 text-sm font-semibold text-slate-600">Jami</td>
                 <td className="py-3 px-4 text-right font-semibold text-slate-700">{formatUsd(totalBuy)}</td>
                 <td colSpan={2} />
                 <td className="py-3 px-4 text-right font-semibold text-green-600">{formatUsd(totalSell)}</td>

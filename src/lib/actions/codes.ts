@@ -27,7 +27,7 @@ export async function getCodeHistory() {
       usedInTransport: true,
       soldToPartner: true,
     },
-    orderBy: (t, { desc }) => [desc(t.createdAt)],
+    orderBy: (t, { asc }) => [asc(t.id)],
     limit: 100,
   });
 }
