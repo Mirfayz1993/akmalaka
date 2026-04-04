@@ -55,7 +55,7 @@ export default function CashPageClient({
   const [rubSubmitting, setRubSubmitting] = useState(false);
   const [rubError, setRubError] = useState("");
 
-  const [exchForm, setExchForm] = useState({ usdAmount: "", rubAmount: "", partnerId: "", description: "" });
+  const [exchForm, setExchForm] = useState({ usdAmount: "", rubAmount: "", partnerId: "", description: "", date: new Date().toISOString().slice(0, 10) });
   const [exchSubmitting, setExchSubmitting] = useState(false);
   const [exchError, setExchError] = useState("");
 
@@ -64,7 +64,7 @@ export default function CashPageClient({
 
   function openUsdModal() { setUsdForm({ type: "income", amount: "", partnerId: "", description: "" }); setUsdError(""); setIsUsdModalOpen(true); }
   function openRubModal() { setRubForm({ type: "income", amount: "", partnerId: "", description: "" }); setRubError(""); setIsRubModalOpen(true); }
-  function openExchangeModal() { setExchForm({ usdAmount: "", rubAmount: "", partnerId: "", description: "" }); setExchError(""); setIsExchangeModalOpen(true); }
+  function openExchangeModal() { setExchForm({ usdAmount: "", rubAmount: "", partnerId: "", description: "", date: new Date().toISOString().slice(0, 10) }); setExchError(""); setIsExchangeModalOpen(true); }
 
   async function handleUsdSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -111,7 +111,7 @@ export default function CashPageClient({
     if (!exchForm.rubAmount || isNaN(rub) || rub <= 0) { setExchError("RUB miqdorini kiriting"); return; }
     setExchSubmitting(true);
     try {
-      await recordExchange({ usdAmount: usd, rubAmount: rub, rate: rub / usd, partnerId: parseInt(exchForm.partnerId), description: exchForm.description || undefined });
+      await recordExchange({ usdAmount: usd, rubAmount: rub, rate: rub / usd, partnerId: parseInt(exchForm.partnerId), description: exchForm.description || undefined, date: exchForm.date || undefined });
       setIsExchangeModalOpen(false);
       startTransition(() => { router.refresh(); });
     } catch (err) {
@@ -242,6 +242,10 @@ export default function CashPageClient({
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Tavsif (ixtiyoriy)</label>
             <input type="text" value={exchForm.description} onChange={(e) => setExchForm((f) => ({ ...f, description: e.target.value }))} placeholder="Izoh..." className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Sana</label>
+            <input type="date" value={exchForm.date} onChange={(e) => setExchForm((f) => ({ ...f, date: e.target.value }))} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
           </div>
           {exchError && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{exchError}</p>}
           <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">

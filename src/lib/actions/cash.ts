@@ -226,10 +226,13 @@ export async function recordExchange(data: {
   rate: number;
   partnerId?: number;
   description?: string;
+  date?: string;
 }) {
   if (data.usdAmount <= 0 || data.rubAmount <= 0) {
     throw new Error("usdAmount va rubAmount musbat bo'lishi kerak");
   }
+
+  const createdAt = data.date ? new Date(data.date) : undefined;
 
   await db.transaction(async (tx) => {
     // USD kassasidan chiqim
@@ -240,6 +243,7 @@ export async function recordExchange(data: {
       partnerId: data.partnerId ?? null,
       exchangeRate: String(data.rate),
       description: data.description ?? null,
+      ...(createdAt ? { createdAt } : {}),
     });
 
     // RUB kassasiga kirim
@@ -250,6 +254,7 @@ export async function recordExchange(data: {
       partnerId: data.partnerId ?? null,
       exchangeRate: String(data.rate),
       description: data.description ?? null,
+      ...(createdAt ? { createdAt } : {}),
     });
 
     // Ayrboshlash to'liq tranzaksiya: dollar berdik + rubl oldik → qarz yo'q, balance o'zgarmaydi
