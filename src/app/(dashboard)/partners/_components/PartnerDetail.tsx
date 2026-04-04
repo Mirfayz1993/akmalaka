@@ -99,6 +99,60 @@ export default function PartnerDetail({
 
   const sortedBalances = [...partner.balances].sort((a, b) => b.id - a.id);
 
+  // "Kod sotuvi" va "Kod xarajati" yozuvlarini description+currency bo'yicha guruhlash
+  type BalanceItem = typeof sortedBalances[number];
+  type GroupedBalance = {
+    key: string;
+    ids: number[];
+    items: BalanceItem[];
+    totalAmount: number;
+    currency: string | null;
+    description: string | null;
+    createdAt: BalanceItem["createdAt"];
+    transport: BalanceItem["transport"];
+  };
+
+  const isCodeEntry = (desc: string | null) =>
+    desc?.startsWith("Kod sotuvi") || desc?.startsWith("Kod xarajati");
+
+  const groupedRows: GroupedBalance[] = [];
+  const groupMap = new Map<string, GroupedBalance>();
+
+  for (const b of sortedBalances) {
+    if (isCodeEntry(b.description)) {
+      const key = `${b.description}__${b.currency}`;
+      if (!groupMap.has(key)) {
+        const g: GroupedBalance = {
+          key,
+          ids: [],
+          items: [],
+          totalAmount: 0,
+          currency: b.currency,
+          description: b.description,
+          createdAt: b.createdAt,
+          transport: b.transport,
+        };
+        groupMap.set(key, g);
+        groupedRows.push(g);
+      }
+      const g = groupMap.get(key)!;
+      g.ids.push(b.id);
+      g.items.push(b);
+      g.totalAmount += Number(b.amount);
+    } else {
+      groupedRows.push({
+        key: String(b.id),
+        ids: [b.id],
+        items: [b],
+        totalAmount: Number(b.amount),
+        currency: b.currency,
+        description: b.description,
+        createdAt: b.createdAt,
+        transport: b.transport,
+      });
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
       {/* Header */}
@@ -158,54 +212,61 @@ export default function PartnerDetail({
           Operatsiyalar
         </h3>
 
-        {sortedBalances.length === 0 ? (
+        {groupedRows.length === 0 ? (
           <p className="text-sm text-slate-400 text-center py-6">
             Operatsiyalar yo&apos;q
           </p>
         ) : (
           <div className="flex flex-col gap-1">
-            {sortedBalances.map((b) => (
-              <div
-                key={b.id}
-                className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-slate-50 text-sm"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-slate-400 text-xs whitespace-nowrap">
-                    {formatDate(b.createdAt)}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-slate-600">
-                      {b.description ?? "—"}
+            {groupedRows.map((g) => {
+              const n = g.totalAmount;
+              const sign = n >= 0 ? "+" : "−";
+              const abs = Math.abs(n);
+              const formatted = g.currency === "rub"
+                ? `${sign}${abs.toLocaleString("ru-RU", { maximumFractionDigits: 0 })} ₽`
+                : `${sign}$${abs.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+              const colorClass = n > 0 ? "text-green-600" : n < 0 ? "text-red-600" : "text-slate-500";
+              const isDeleting = g.ids.some((id) => deletingId === id);
+              return (
+                <div
+                  key={g.key}
+                  className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-slate-50 text-sm"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-slate-400 text-xs whitespace-nowrap">
+                      {formatDate(g.createdAt)}
                     </span>
-                    {b.transport?.number && (
-                      <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded font-mono">
-                        {b.transport.number}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-600">{g.description ?? "—"}</span>
+                      {g.transport?.number && (
+                        <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded font-mono">
+                          {g.transport.number}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`font-semibold whitespace-nowrap ${colorClass}`}>{formatted}</span>
+                    <button
+                      onClick={async () => {
+                        setDeletingId(g.ids[0]);
+                        try {
+                          for (const id of g.ids) await deletePartnerBalance(id);
+                          startTransition(() => router.refresh());
+                        } finally {
+                          setDeletingId(null);
+                        }
+                      }}
+                      disabled={isDeleting}
+                      className="p-1 text-slate-300 hover:text-red-500 transition-colors disabled:opacity-40"
+                      title="O'chirish"
+                    >
+                      <Trash2 size={13} />
+                    </button>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className={`font-semibold whitespace-nowrap ${amountColorClass(b.amount)}`}>
-                    {(() => {
-                      const n = Number(b.amount);
-                      const sign = n >= 0 ? "+" : "−";
-                      const abs = Math.abs(n);
-                      return b.currency === "rub"
-                        ? `${sign}${abs.toLocaleString("ru-RU", { maximumFractionDigits: 0 })} ₽`
-                        : `${sign}$${abs.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                    })()}
-                  </span>
-                  <button
-                    onClick={() => handleDeleteBalance(b.id)}
-                    disabled={deletingId === b.id}
-                    className="p-1 text-slate-300 hover:text-red-500 transition-colors disabled:opacity-40"
-                    title="O'chirish"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
