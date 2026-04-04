@@ -12,6 +12,7 @@ type WarehouseItem = {
   widthMm: number;
   lengthM: string;
   quantity: number;
+  transportId?: number | null;
 };
 
 type TimberInfo = {
@@ -75,32 +76,34 @@ export default function SaleModal({
 
   const woodBuyers = partners.filter((p) => p.type === "wood_buyer");
 
-  // Faqat yetib kelgan vagonlar sotish uchun (tushurilgan va yopilgan → ombor orqali)
+  // Yetib kelgan (arrived) va tushurilgan (unloaded) vagonlar — yopilgungacha sotish mumkin
   const saleableTransports = transports.filter(
-    (t) => t.status === "arrived"
+    (t) => t.status === "arrived" || t.status === "unloaded"
   );
 
   const selectedTransport = saleableTransports.find((t) => t.id === transportId);
 
-  // Vagon o'zgarganda timberlar avtomatik chiqadi
+  // Vagon o'zgarganda timberlar avtomatik chiqadi (faqat "arrived" uchun)
   useEffect(() => {
     if (!selectedTransport) {
       setCart([]);
       return;
     }
+    // Tushurilgan vagon — taxtalar omborda, cart bo'sh qoladi (ombordan qo'shiladi)
+    if (selectedTransport.status === "unloaded") {
+      setCart([]);
+      return;
+    }
     const rows: CartRow[] = selectedTransport.timbers
       .filter((timber) => (timber.tashkentCount ?? 0) > 0)
-      .map((timber) => {
-        const available = timber.tashkentCount ?? 0;
-        return {
-          timberId: timber.id,
-          thicknessMm: timber.thicknessMm,
-          widthMm: timber.widthMm,
-          lengthM: String(timber.lengthM),
-          availableCount: available,
-          sentCount: "",
-        };
-      });
+      .map((timber) => ({
+        timberId: timber.id,
+        thicknessMm: timber.thicknessMm,
+        widthMm: timber.widthMm,
+        lengthM: String(timber.lengthM),
+        availableCount: timber.tashkentCount ?? 0,
+        sentCount: "",
+      }));
     setCart(rows);
   }, [transportId]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -233,7 +236,7 @@ export default function SaleModal({
             )}
             {saleableTransports.map((tr) => (
               <option key={tr.id} value={tr.id}>
-                {tr.number ?? `#${tr.id}`} — Yetib kelgan
+                {tr.number ?? `#${tr.id}`} — {tr.status === "arrived" ? "Yetib kelgan" : "Tushurilgan"}
               </option>
             ))}
           </select>
@@ -349,8 +352,8 @@ export default function SaleModal({
           )}
         </div>
 
-        {/* Ombordan qo'shish */}
-        {warehouseItems.filter((w) => w.quantity > 0).length > 0 && (
+        {/* Ombordan qo'shish — vagon tanlanganda har doim ko'rinadi */}
+        {transportId && (
           <div className="pt-3 border-t border-slate-200">
             <p className="text-sm font-medium text-slate-700 mb-2">
               Ombordan qo&apos;shish
@@ -366,7 +369,14 @@ export default function SaleModal({
               >
                 <option value="">— O&apos;lcham tanlang —</option>
                 {warehouseItems
-                  .filter((w) => w.quantity > 0)
+                  .filter((w) => {
+                    if (w.quantity <= 0) return false;
+                    // Tushurilgan vagon uchun faqat o'sha vagonning ombor itemlari
+                    if (selectedTransport?.status === "unloaded") {
+                      return w.transportId === Number(transportId);
+                    }
+                    return true;
+                  })
                   .map((w) => (
                     <option key={w.id} value={w.id}>
                       {w.thicknessMm}×{w.widthMm}×{w.lengthM}m ({w.quantity} dona)
