@@ -10,7 +10,7 @@ import {
   addTransportExpense,
   deleteTransportExpense,
   arriveTransport,
-  unloadTransport,
+  unloadTransportWithWarehouse,
   closeTransport,
 } from "@/lib/actions/wagons";
 import { createTimber, updateTimber, deleteTimber } from "@/lib/actions/timbers";
@@ -45,6 +45,14 @@ interface TimberItem {
 
 // at_border is legacy (kept in DB enum), UI uses only 4 statuses
 type TransportStatus = "in_transit" | "at_border" | "arrived" | "unloaded" | "closed";
+
+type UnloadItem = {
+  timberId: number;
+  thicknessMm: number;
+  widthMm: number;
+  lengthM: string;
+  quantity: number;
+};
 
 interface FullTransport {
   id: number;
@@ -207,6 +215,7 @@ export default function WagonEditModal({
   const [pendingStatus, setPendingStatus] = useState<TransportStatus | null>(null);
   const [isStatusLoading, setIsStatusLoading] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
+  const [unloadItems, setUnloadItems] = useState<UnloadItem[]>([]);
 
   // Moliyaviy hisobot (closed status uchun)
   const [summary, setSummary] = useState<TransportSummary | null>(null);
@@ -294,6 +303,19 @@ export default function WagonEditModal({
   function handleStatusChange(newStatus: TransportStatus) {
     const next = NEXT_STATUS[status];
     if (newStatus !== next) return; // Faqat bitta keyingiga
+    if (newStatus === "unloaded") {
+      // Toshkent sonini default qilib omborga tushurish ro'yxatini to'ldirish
+      const items: UnloadItem[] = timberList
+        .filter((t) => (t.tashkentCount ?? 0) > 0)
+        .map((t) => ({
+          timberId: t.id,
+          thicknessMm: t.thicknessMm,
+          widthMm: t.widthMm,
+          lengthM: String(t.lengthM),
+          quantity: t.tashkentCount ?? 0,
+        }));
+      setUnloadItems(items);
+    }
     setPendingStatus(newStatus);
   }
 
@@ -306,7 +328,16 @@ export default function WagonEditModal({
       if (pendingStatus === "arrived") {
         result = await arriveTransport(transport.id);
       } else if (pendingStatus === "unloaded") {
-        result = await unloadTransport(transport.id);
+        result = await unloadTransportWithWarehouse(
+          transport.id,
+          unloadItems.map((i) => ({
+            timberId: i.timberId,
+            thicknessMm: i.thicknessMm,
+            widthMm: i.widthMm,
+            lengthM: parseFloat(i.lengthM),
+            quantity: i.quantity,
+          }))
+        );
       } else if (pendingStatus === "closed") {
         result = await closeTransport(transport.id);
       } else {
@@ -1148,8 +1179,85 @@ export default function WagonEditModal({
         </div>
       </Modal>
 
-      {/* Status o'zgartirish ogohlantirish modali */}
-      {pendingStatus && STATUS_WARNINGS[pendingStatus] && (
+      {/* Omborxonaga tushurish modali (faqat unloaded uchun) */}
+      {pendingStatus === "unloaded" && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
+          <div className="bg-white rounded-xl p-6 w-full max-w-lg shadow-2xl mx-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Lock size={18} className="text-orange-500" />
+              <h3 className="text-base font-semibold text-slate-800">Omborxonaga tushurish</h3>
+            </div>
+            <p className="text-sm text-slate-600 mb-4">
+              Quyidagi o&apos;lchamlar omborxonaga tushiriladi. Kerak bo&apos;lmaganlarni o&apos;chirib tashlang.
+            </p>
+            {unloadItems.length === 0 ? (
+              <p className="text-sm text-slate-400 text-center py-4 border border-dashed border-slate-200 rounded-lg mb-4">
+                Toshkent soni kiritilgan taxtalar topilmadi
+              </p>
+            ) : (
+              <div className="border border-slate-200 rounded-lg overflow-hidden mb-4">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200">
+                      <th className="text-left px-3 py-2 font-medium text-slate-600">O&apos;lcham</th>
+                      <th className="text-right px-3 py-2 font-medium text-slate-600">Soni (dona)</th>
+                      <th className="w-10"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {unloadItems.map((item) => (
+                      <tr key={item.timberId} className="border-b border-slate-100 last:border-0">
+                        <td className="px-3 py-2.5 font-medium text-slate-700">
+                          {item.thicknessMm}×{item.widthMm}×{item.lengthM}m
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-semibold text-slate-800">
+                          {item.quantity}
+                        </td>
+                        <td className="px-2 py-2.5 text-center">
+                          <button
+                            type="button"
+                            onClick={() => setUnloadItems((prev) => prev.filter((i) => i.timberId !== item.timberId))}
+                            className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {statusError && (
+              <div className="mb-4 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+                <p className="text-sm font-semibold text-red-700 mb-1">Xatolik — status o&apos;zgarmadi:</p>
+                <p className="text-sm text-red-600 whitespace-pre-line">{statusError}</p>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                disabled={isStatusLoading}
+                onClick={() => { setPendingStatus(null); setStatusError(null); }}
+                className="flex-1 px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 text-slate-700 disabled:opacity-50"
+              >
+                Bekor qilish
+              </button>
+              <button
+                disabled={isStatusLoading}
+                onClick={confirmStatusChange}
+                className="flex-1 px-4 py-2 text-sm bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50"
+              >
+                {isStatusLoading ? "Bajarilmoqda..." : "Tasdiqlash"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Status o'zgartirish ogohlantirish modali (arrived, closed uchun) */}
+      {pendingStatus && pendingStatus !== "unloaded" && STATUS_WARNINGS[pendingStatus] && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
           <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl mx-4">
             <div className="flex items-center gap-2 mb-3">

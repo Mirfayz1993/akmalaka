@@ -75,9 +75,9 @@ export default function SaleModal({
 
   const woodBuyers = partners.filter((p) => p.type === "wood_buyer");
 
-  // arrived yoki unloaded vagonlar (sotish mumkin bo'lganlar)
+  // Faqat yetib kelgan vagonlar sotish uchun (tushurilgan va yopilgan → ombor orqali)
   const saleableTransports = transports.filter(
-    (t) => t.status === "arrived" || t.status === "unloaded"
+    (t) => t.status === "arrived"
   );
 
   const selectedTransport = saleableTransports.find((t) => t.id === transportId);
@@ -89,19 +89,9 @@ export default function SaleModal({
       return;
     }
     const rows: CartRow[] = selectedTransport.timbers
-      .filter((timber) => {
-        // arrived: tashkentCount bor, unloaded: supplierCount bor
-        const count =
-          selectedTransport.status === "unloaded"
-            ? (timber.supplierCount ?? timber.tashkentCount ?? 0)
-            : (timber.tashkentCount ?? 0);
-        return count > 0;
-      })
+      .filter((timber) => (timber.tashkentCount ?? 0) > 0)
       .map((timber) => {
-        const available =
-          selectedTransport.status === "unloaded"
-            ? (timber.supplierCount ?? timber.tashkentCount ?? 0)
-            : (timber.tashkentCount ?? 0);
+        const available = timber.tashkentCount ?? 0;
         return {
           timberId: timber.id,
           thicknessMm: timber.thicknessMm,
@@ -238,13 +228,12 @@ export default function SaleModal({
             <option value="">— Vagonni tanlang (majburiy) —</option>
             {saleableTransports.length === 0 && (
               <option disabled value="">
-                Yetib kelgan yoki tushurilgan vagon yo&apos;q
+                Yetib kelgan vagon yo&apos;q
               </option>
             )}
             {saleableTransports.map((tr) => (
               <option key={tr.id} value={tr.id}>
-                {tr.number ?? `#${tr.id}`}
-                {tr.status === "arrived" ? " — Yetib kelgan" : " — Tushurilgan"}
+                {tr.number ?? `#${tr.id}`} — Yetib kelgan
               </option>
             ))}
           </select>

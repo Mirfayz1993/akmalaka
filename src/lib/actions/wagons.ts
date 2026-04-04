@@ -365,6 +365,23 @@ async function _unloadTransport(id: number): Promise<{ ok: true }> {
   return { ok: true as const };
 }
 
+// ─── UNLOAD TRANSPORT WITH WAREHOUSE (Yetib kelgan → Tushurilgan + Omborga) ───
+
+export async function unloadTransportWithWarehouse(
+  id: number,
+  items: { timberId: number; thicknessMm: number; widthMm: number; lengthM: number; quantity: number }[]
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const result = await _unloadTransport(id);
+    if (items.length > 0) {
+      await addToWarehouse(items.map((item) => ({ ...item, transportId: id })));
+    }
+    return result;
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Xatolik yuz berdi" };
+  }
+}
+
 // ─── CLOSE TRANSPORT (Tushurilgan → Yopilgan) ──────────────────────────────────
 
 export async function closeTransport(id: number): Promise<{ ok: true } | { ok: false; error: string }> {
