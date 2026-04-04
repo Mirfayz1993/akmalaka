@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { Plus, Trash2 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import NumberInput from "@/components/ui/NumberInput";
 import { sellCode, type CodeWithSupplier } from "@/lib/actions/codes";
@@ -14,6 +15,27 @@ interface CodeSellModalProps {
   availableCodes: CodeWithSupplier[];
 }
 
+type CodeType = "kz" | "uz" | "afgon";
+
+type SellItem = {
+  id: number; // local key
+  type: CodeType;
+  codeId: string;
+  tonnage: string;
+  buyPricePerTon: string;
+  sellPricePerTon: string;
+};
+
+const ALL_TYPES: CodeType[] = ["kz", "uz", "afgon"];
+const TYPE_LABELS: Record<CodeType, string> = { kz: "KZ", uz: "UZ", afgon: "Avg'on" };
+
+let _id = 0;
+function nextId() { return ++_id; }
+
+function emptyItem(type: CodeType): SellItem {
+  return { id: nextId(), type, codeId: "", tonnage: "", buyPricePerTon: "", sellPricePerTon: "" };
+}
+
 export default function CodeSellModal({
   isOpen,
   onClose,
@@ -21,69 +43,83 @@ export default function CodeSellModal({
   partners,
   availableCodes,
 }: CodeSellModalProps) {
-  const [type, setType] = useState<"kz" | "uz" | "afgon">("kz");
-  const [codeId, setCodeId] = useState<string>("");
-  const [customerId, setCustomerId] = useState<string>("");
-  const [wagonNumber, setWagonNumber] = useState<string>("");
-  const [tonnage, setTonnage] = useState<string>("");
-  const [buyPricePerTon, setBuyPricePerTon] = useState<string>("");
-  const [sellPricePerTon, setSellPricePerTon] = useState<string>("");
+  const [customerId, setCustomerId] = useState("");
+  const [wagonNumber, setWagonNumber] = useState("");
+  const [items, setItems] = useState<SellItem[]>([emptyItem("kz")]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const codeBuyers = partners.filter((p) => p.type === "code_buyer");
 
-  const filteredCodes = useMemo(
-    () => availableCodes.filter((c) => c.type === type),
-    [availableCodes, type]
-  );
-
-  const tonnageNum = parseFloat(tonnage) || 0;
-  const buyNum = parseFloat(buyPricePerTon) || 0;
-  const sellNum = parseFloat(sellPricePerTon) || 0;
-
-  const totalCost = tonnageNum * buyNum;
-  const totalRevenue = tonnageNum * sellNum;
-  const profit = totalRevenue - totalCost;
-
-  function handleTypeChange(newType: "kz" | "uz" | "afgon") {
-    setType(newType);
-    setCodeId("");
+  // Har bir item uchun filtrlangan kodlar
+  function filteredCodes(type: CodeType, currentCodeId: string) {
+    const usedCodeIds = items
+      .filter((i) => i.codeId && i.codeId !== currentCodeId)
+      .map((i) => i.codeId);
+    return availableCodes.filter((c) => c.type === type && !usedCodeIds.includes(String(c.id)));
   }
+
+  // Foydalanilmagan turlar (yangi kod qo'shish uchun)
+  const usedTypes = items.map((i) => i.type);
+  const availableTypes = ALL_TYPES.filter((t) => !usedTypes.includes(t));
+
+  function addItem() {
+    if (availableTypes.length === 0) return;
+    setItems((prev) => [...prev, emptyItem(availableTypes[0])]);
+  }
+
+  function removeItem(id: number) {
+    setItems((prev) => prev.filter((i) => i.id !== id));
+  }
+
+  function updateItem(id: number, patch: Partial<SellItem>) {
+    setItems((prev) => prev.map((i) => {
+      if (i.id !== id) return i;
+      const updated = { ...i, ...patch };
+      // Tur o'zgarganda kodni tozala
+      if (patch.type && patch.type !== i.type) updated.codeId = "";
+      return updated;
+    }));
+  }
+
+  // Jami hisob
+  const totals = items.map((item) => {
+    const t = parseFloat(item.tonnage) || 0;
+    const buy = parseFloat(item.buyPricePerTon) || 0;
+    const sell = parseFloat(item.sellPricePerTon) || 0;
+    return { cost: t * buy, revenue: t * sell };
+  });
+  const totalCost = totals.reduce((s, t) => s + t.cost, 0);
+  const totalRevenue = totals.reduce((s, t) => s + t.revenue, 0);
+  const profit = totalRevenue - totalCost;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!codeId) {
-      setError("Kod tanlang");
-      return;
+    if (!customerId) { setError("Mijoz tanlang"); return; }
+
+    for (const item of items) {
+      if (!item.codeId) { setError(`${TYPE_LABELS[item.type]} kodi tanlanmagan`); return; }
+      const t = parseFloat(item.tonnage);
+      const buy = parseFloat(item.buyPricePerTon);
+      const sell = parseFloat(item.sellPricePerTon);
+      if (!t || t <= 0) { setError(`${TYPE_LABELS[item.type]}: tonnaj kiriting`); return; }
+      if (!buy || buy <= 0) { setError(`${TYPE_LABELS[item.type]}: sotib olish narxini kiriting`); return; }
+      if (!sell || sell <= 0) { setError(`${TYPE_LABELS[item.type]}: sotish narxini kiriting`); return; }
     }
-    if (!customerId) {
-      setError("Mijoz tanlang");
-      return;
-    }
-    if (!tonnage || tonnageNum <= 0) {
-      setError("Tonnaj kiriting");
-      return;
-    }
-    if (!buyPricePerTon || buyNum <= 0) {
-      setError("Sotib olish narxini kiriting");
-      return;
-    }
-    if (!sellPricePerTon || sellNum <= 0) {
-      setError("Sotish narxini kiriting");
-      return;
-    }
+
     setError(null);
     setIsLoading(true);
     try {
-      await sellCode({
-        codeId: Number(codeId),
-        customerId: Number(customerId),
-        tonnage: tonnageNum,
-        buyPricePerTon: buyNum,
-        sellPricePerTon: sellNum,
-        wagonNumber: wagonNumber.trim() || undefined,
-      });
+      for (const item of items) {
+        await sellCode({
+          codeId: Number(item.codeId),
+          customerId: Number(customerId),
+          tonnage: parseFloat(item.tonnage),
+          buyPricePerTon: parseFloat(item.buyPricePerTon),
+          sellPricePerTon: parseFloat(item.sellPricePerTon),
+          wagonNumber: wagonNumber.trim() || undefined,
+        });
+      }
       onSuccess();
       handleClose();
     } catch (err) {
@@ -94,13 +130,9 @@ export default function CodeSellModal({
   }
 
   function handleClose() {
-    setType("kz");
-    setCodeId("");
     setCustomerId("");
     setWagonNumber("");
-    setTonnage("");
-    setBuyPricePerTon("");
-    setSellPricePerTon("");
+    setItems([emptyItem("kz")]);
     setError(null);
     onClose();
   }
@@ -108,160 +140,182 @@ export default function CodeSellModal({
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Kod sotish" size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          {/* Tur */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              Tur
-            </label>
-            <select
-              value={type}
-              onChange={(e) =>
-                handleTypeChange(e.target.value as "kz" | "uz" | "afgon")
-              }
-              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-            >
-              <option value="kz">KZ</option>
-              <option value="uz">UZ</option>
-              <option value="afgon">Afgon</option>
-            </select>
-          </div>
 
-          {/* Kod ID */}
+        {/* Mijoz */}
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              Kod ID
-            </label>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Mijoz</label>
             <select
-              value={codeId}
-              onChange={(e) => setCodeId(e.target.value)}
+              value={customerId}
+              onChange={(e) => setCustomerId(e.target.value)}
               className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
             >
-              <option value="">Kod tanlang</option>
-              {filteredCodes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  #{c.id} — {c.supplier?.name ?? "Ta'minotchisiz"}
-                </option>
+              <option value="">Mijoz tanlang</option>
+              {codeBuyers.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
           </div>
-        </div>
-
-        {/* Mijoz */}
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">
-            Mijoz
-          </label>
-          <select
-            value={customerId}
-            onChange={(e) => setCustomerId(e.target.value)}
-            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-          >
-            <option value="">Mijoz tanlang</option>
-            {codeBuyers.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Vagon raqami */}
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">
-            Vagon raqami <span className="text-slate-400 font-normal">(ixtiyoriy)</span>
-          </label>
-          <input
-            type="text"
-            placeholder="Masalan: 12345678"
-            value={wagonNumber}
-            onChange={(e) => setWagonNumber(e.target.value)}
-            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-          />
-        </div>
-
-        {/* Tonnaj */}
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">
-            Tonnaj (t)
-          </label>
-          <NumberInput
-            min={0}
-            step="0.01"
-            placeholder="0.00"
-            value={tonnage}
-            onChange={(e) => setTonnage(e.target.value)}
-            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          {/* Sotib olish narxi */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              Sotib olish narxi ($/t)
+              Vagon raqami <span className="text-slate-400 font-normal">(ixtiyoriy)</span>
             </label>
-            <NumberInput
-              min={0}
-              step="0.01"
-              placeholder="0.00"
-              value={buyPricePerTon}
-              onChange={(e) => setBuyPricePerTon(e.target.value)}
-              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-            />
-          </div>
-
-          {/* Sotish narxi */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              Sotish narxi ($/t)
-            </label>
-            <NumberInput
-              min={0}
-              step="0.01"
-              placeholder="0.00"
-              value={sellPricePerTon}
-              onChange={(e) => setSellPricePerTon(e.target.value)}
+            <input
+              type="text"
+              placeholder="Masalan: 12345678"
+              value={wagonNumber}
+              onChange={(e) => setWagonNumber(e.target.value)}
               className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
             />
           </div>
         </div>
 
-        {/* Avtomatik hisob */}
-        <div className="bg-slate-50 rounded-xl p-4 space-y-2 border border-slate-200">
-          <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-2 border-b border-slate-200">
-            Hisob
-          </h3>
-          <div className="flex justify-between text-sm">
-            <span className="text-slate-500">Jami xarajat ($):</span>
-            <span className="font-medium text-slate-700">
-              ${totalCost.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-slate-500">Jami daromad ($):</span>
-            <span className="font-medium text-green-600">
-              ${totalRevenue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
-          </div>
-          <div className="flex justify-between text-sm pt-2 border-t border-slate-200">
-            <span className="text-slate-500 font-medium">Foyda ($):</span>
-            <span
-              className={`font-semibold ${profit >= 0 ? "text-green-600" : "text-red-600"}`}
+        {/* Kodlar ro'yxati */}
+        <div className="space-y-3">
+          {items.map((item, idx) => {
+            const codes = filteredCodes(item.type, item.codeId);
+            const t = parseFloat(item.tonnage) || 0;
+            const buy = parseFloat(item.buyPricePerTon) || 0;
+            const sell = parseFloat(item.sellPricePerTon) || 0;
+            const cost = t * buy;
+            const revenue = t * sell;
+            const itemProfit = revenue - cost;
+
+            return (
+              <div key={item.id} className="border border-slate-200 rounded-xl p-4 bg-slate-50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-slate-700">
+                    {idx + 1}-kod
+                  </span>
+                  {items.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeItem(item.id)}
+                      className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Tur */}
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1">Tur</label>
+                    <select
+                      value={item.type}
+                      onChange={(e) => updateItem(item.id, { type: e.target.value as CodeType })}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                    >
+                      {/* Joriy turdagi variantlar + boshqalari ham */}
+                      {ALL_TYPES.map((t) => (
+                        <option key={t} value={t} disabled={usedTypes.includes(t) && t !== item.type}>
+                          {TYPE_LABELS[t]}{usedTypes.includes(t) && t !== item.type ? " (tanlangan)" : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Kod */}
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1">Kod</label>
+                    <select
+                      value={item.codeId}
+                      onChange={(e) => updateItem(item.id, { codeId: e.target.value })}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                    >
+                      <option value="">Kod tanlang</option>
+                      {codes.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          #{c.id} — {c.supplier?.name ?? "Ta'minotchisiz"}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1">Tonnaj (t)</label>
+                    <NumberInput
+                      min={0} step="0.01" placeholder="0.00"
+                      value={item.tonnage}
+                      onChange={(e) => updateItem(item.id, { tonnage: e.target.value })}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1">Sotib olish ($/t)</label>
+                    <NumberInput
+                      min={0} step="0.01" placeholder="0.00"
+                      value={item.buyPricePerTon}
+                      onChange={(e) => updateItem(item.id, { buyPricePerTon: e.target.value })}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1">Sotish ($/t)</label>
+                    <NumberInput
+                      min={0} step="0.01" placeholder="0.00"
+                      value={item.sellPricePerTon}
+                      onChange={(e) => updateItem(item.id, { sellPricePerTon: e.target.value })}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                    />
+                  </div>
+                </div>
+
+                {/* Mini hisob */}
+                {(cost > 0 || revenue > 0) && (
+                  <div className="flex items-center gap-4 text-xs pt-1 border-t border-slate-200">
+                    <span className="text-slate-500">Xarajat: <span className="font-medium text-slate-700">${cost.toFixed(2)}</span></span>
+                    <span className="text-slate-500">Daromad: <span className="font-medium text-green-600">${revenue.toFixed(2)}</span></span>
+                    <span className="text-slate-500">Foyda: <span className={`font-semibold ${itemProfit >= 0 ? "text-green-600" : "text-red-600"}`}>{itemProfit >= 0 ? "+" : ""}${itemProfit.toFixed(2)}</span></span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Kod qo'shish tugmasi */}
+          {availableTypes.length > 0 && items.length < 3 && (
+            <button
+              type="button"
+              onClick={addItem}
+              className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-slate-300 rounded-xl text-sm text-slate-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
             >
-              {profit >= 0 ? "+" : ""}$
-              {profit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
-          </div>
+              <Plus size={15} />
+              Kod qo&apos;shish ({availableTypes.map(t => TYPE_LABELS[t]).join(", ")})
+            </button>
+          )}
         </div>
 
-        {error && (
-          <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
-            {error}
-          </p>
+        {/* Jami hisob */}
+        {items.length > 1 && (
+          <div className="bg-slate-50 rounded-xl p-4 space-y-2 border border-slate-200">
+            <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-2 border-b border-slate-200">
+              Jami hisob ({items.length} ta kod)
+            </h3>
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-500">Jami xarajat ($):</span>
+              <span className="font-medium text-slate-700">${totalCost.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-500">Jami daromad ($):</span>
+              <span className="font-medium text-green-600">${totalRevenue.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-sm pt-2 border-t border-slate-200">
+              <span className="font-medium text-slate-500">Foyda ($):</span>
+              <span className={`font-semibold ${profit >= 0 ? "text-green-600" : "text-red-600"}`}>
+                {profit >= 0 ? "+" : ""}${profit.toFixed(2)}
+              </span>
+            </div>
+          </div>
         )}
 
-        {/* Footer */}
+        {error && (
+          <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+        )}
+
         <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
           <button
             type="button"
@@ -275,7 +329,7 @@ export default function CodeSellModal({
             disabled={isLoading}
             className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {isLoading ? "Yuklanmoqda..." : "Sotish"}
+            {isLoading ? "Yuklanmoqda..." : `Sotish (${items.length} ta kod)`}
           </button>
         </div>
       </form>
