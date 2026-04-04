@@ -86,6 +86,11 @@ export async function deletePartner(id: number) {
   revalidatePath("/partners");
 }
 
+export async function deletePartnerBalance(id: number) {
+  await db.delete(partnerBalances).where(eq(partnerBalances.id, id));
+  revalidatePath("/partners");
+}
+
 export async function recordPayment(data: {
   partnerId: number;
   amount: number;

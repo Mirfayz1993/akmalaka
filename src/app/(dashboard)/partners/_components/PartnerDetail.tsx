@@ -1,6 +1,9 @@
 "use client";
 
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
+import { deletePartnerBalance } from "@/lib/actions/partners";
 
 type PartnerWithBalance = {
   id: number;
@@ -72,6 +75,20 @@ export default function PartnerDetail({
   onPayment,
   onDelete,
 }: PartnerDetailProps) {
+  const router = useRouter();
+  const [, startTransition] = useTransition();
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  async function handleDeleteBalance(id: number) {
+    setDeletingId(id);
+    try {
+      await deletePartnerBalance(id);
+      startTransition(() => router.refresh());
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   if (!partner) {
     return (
       <div className="flex items-center justify-center h-full min-h-64 text-slate-400 text-sm">
@@ -171,16 +188,26 @@ export default function PartnerDetail({
                     )}
                   </div>
                 </div>
-                <span className={`font-semibold whitespace-nowrap ${amountColorClass(b.amount)}`}>
-                  {(() => {
-                    const n = Number(b.amount);
-                    const sign = n >= 0 ? "+" : "−";
-                    const abs = Math.abs(n);
-                    return b.currency === "rub"
-                      ? `${sign}${abs.toLocaleString("ru-RU", { maximumFractionDigits: 0 })} ₽`
-                      : `${sign}$${abs.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                  })()}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`font-semibold whitespace-nowrap ${amountColorClass(b.amount)}`}>
+                    {(() => {
+                      const n = Number(b.amount);
+                      const sign = n >= 0 ? "+" : "−";
+                      const abs = Math.abs(n);
+                      return b.currency === "rub"
+                        ? `${sign}${abs.toLocaleString("ru-RU", { maximumFractionDigits: 0 })} ₽`
+                        : `${sign}$${abs.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                    })()}
+                  </span>
+                  <button
+                    onClick={() => handleDeleteBalance(b.id)}
+                    disabled={deletingId === b.id}
+                    className="p-1 text-slate-300 hover:text-red-500 transition-colors disabled:opacity-40"
+                    title="O'chirish"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
