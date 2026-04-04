@@ -403,8 +403,10 @@ async function _closeTransport(id: number): Promise<{ ok: true }> {
 
   let totalRubAmount = 0;
   let totalUsdEquivalent = 0;
+  let rubCashBalance = 0;
   for (const op of rubIncomeOps) {
     const opAmount = Number(op.amount);
+    rubCashBalance += opAmount;
     const opRate = Number(op.exchangeRate ?? 0);
     if (opAmount > 0 && opRate > 0) {
       totalRubAmount += opAmount;
@@ -412,6 +414,13 @@ async function _closeTransport(id: number): Promise<{ ok: true }> {
     }
   }
   const avgRate = totalUsdEquivalent > 0 ? totalRubAmount / totalUsdEquivalent : 1;
+
+  // RUB balansini tekshirish
+  if (totalRub > 0 && rubCashBalance < totalRub) {
+    throw new Error(
+      `RUB kassangizda yetarli mablag' yo'q. Kerakli: ${totalRub.toLocaleString("ru-RU", { maximumFractionDigits: 0 })} ₽, Mavjud: ${rubCashBalance.toLocaleString("ru-RU", { maximumFractionDigits: 0 })} ₽`
+    );
+  }
 
   await db.transaction(async (tx) => {
     if (totalRub > 0 && transport.supplierId) {
@@ -447,7 +456,7 @@ async function _closeTransport(id: number): Promise<{ ok: true }> {
 
     await tx
       .update(transports)
-      .set({ status: "closed", closedAt: today })
+      .set({ status: "closed", closedAt: today, rubExchangeRate: avgRate > 0 ? String(avgRate) : undefined })
       .where(eq(transports.id, id));
 
     await tx.insert(transportLogs).values({
