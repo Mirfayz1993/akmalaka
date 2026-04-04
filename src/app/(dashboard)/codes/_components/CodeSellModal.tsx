@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import NumberInput from "@/components/ui/NumberInput";
@@ -82,13 +82,18 @@ export default function CodeSellModal({
     }));
   }
 
+  // Avg'on: aniq summa; KZ/UZ: tonnaj * narx
+  function calcCost(item: SellItem) {
+    if (item.type === "afgon") return parseFloat(item.buyPricePerTon) || 0;
+    return (parseFloat(item.tonnage) || 0) * (parseFloat(item.buyPricePerTon) || 0);
+  }
+  function calcRevenue(item: SellItem) {
+    if (item.type === "afgon") return parseFloat(item.sellPricePerTon) || 0;
+    return (parseFloat(item.tonnage) || 0) * (parseFloat(item.sellPricePerTon) || 0);
+  }
+
   // Jami hisob
-  const totals = items.map((item) => {
-    const t = parseFloat(item.tonnage) || 0;
-    const buy = parseFloat(item.buyPricePerTon) || 0;
-    const sell = parseFloat(item.sellPricePerTon) || 0;
-    return { cost: t * buy, revenue: t * sell };
-  });
+  const totals = items.map((item) => ({ cost: calcCost(item), revenue: calcRevenue(item) }));
   const totalCost = totals.reduce((s, t) => s + t.cost, 0);
   const totalRevenue = totals.reduce((s, t) => s + t.revenue, 0);
   const profit = totalRevenue - totalCost;
@@ -99,10 +104,12 @@ export default function CodeSellModal({
 
     for (const item of items) {
       if (!item.codeId) { setError(`${TYPE_LABELS[item.type]} kodi tanlanmagan`); return; }
-      const t = parseFloat(item.tonnage);
       const buy = parseFloat(item.buyPricePerTon);
       const sell = parseFloat(item.sellPricePerTon);
-      if (!t || t <= 0) { setError(`${TYPE_LABELS[item.type]}: tonnaj kiriting`); return; }
+      if (item.type !== "afgon") {
+        const t = parseFloat(item.tonnage);
+        if (!t || t <= 0) { setError(`${TYPE_LABELS[item.type]}: tonnaj kiriting`); return; }
+      }
       if (!buy || buy <= 0) { setError(`${TYPE_LABELS[item.type]}: sotib olish narxini kiriting`); return; }
       if (!sell || sell <= 0) { setError(`${TYPE_LABELS[item.type]}: sotish narxini kiriting`); return; }
     }
@@ -111,10 +118,11 @@ export default function CodeSellModal({
     setIsLoading(true);
     try {
       for (const item of items) {
+        // Avg'on uchun tonnage=1, buyPricePerTon=aniq summa (1×summa = summa)
         await sellCode({
           codeId: Number(item.codeId),
           customerId: Number(customerId),
-          tonnage: parseFloat(item.tonnage),
+          tonnage: item.type === "afgon" ? 1 : parseFloat(item.tonnage),
           buyPricePerTon: parseFloat(item.buyPricePerTon),
           sellPricePerTon: parseFloat(item.sellPricePerTon),
           wagonNumber: wagonNumber.trim() || undefined,
@@ -174,11 +182,9 @@ export default function CodeSellModal({
         <div className="space-y-3">
           {items.map((item, idx) => {
             const codes = filteredCodes(item.type, item.codeId);
-            const t = parseFloat(item.tonnage) || 0;
-            const buy = parseFloat(item.buyPricePerTon) || 0;
-            const sell = parseFloat(item.sellPricePerTon) || 0;
-            const cost = t * buy;
-            const revenue = t * sell;
+            const isAfgon = item.type === "afgon";
+            const cost = calcCost(item);
+            const revenue = calcRevenue(item);
             const itemProfit = revenue - cost;
 
             return (
@@ -234,18 +240,23 @@ export default function CodeSellModal({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
+                <div className={`grid gap-3 ${isAfgon ? "grid-cols-2" : "grid-cols-3"}`}>
+                  {/* Avg'on uchun tonnaj yo'q */}
+                  {!isAfgon && (
+                    <div>
+                      <label className="block text-xs text-slate-500 mb-1">Tonnaj (t)</label>
+                      <NumberInput
+                        min={0} step="0.01" placeholder="0.00"
+                        value={item.tonnage}
+                        onChange={(e) => updateItem(item.id, { tonnage: e.target.value })}
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                      />
+                    </div>
+                  )}
                   <div>
-                    <label className="block text-xs text-slate-500 mb-1">Tonnaj (t)</label>
-                    <NumberInput
-                      min={0} step="0.01" placeholder="0.00"
-                      value={item.tonnage}
-                      onChange={(e) => updateItem(item.id, { tonnage: e.target.value })}
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-slate-500 mb-1">Sotib olish ($/t)</label>
+                    <label className="block text-xs text-slate-500 mb-1">
+                      {isAfgon ? "Sotib olish ($)" : "Sotib olish ($/t)"}
+                    </label>
                     <NumberInput
                       min={0} step="0.01" placeholder="0.00"
                       value={item.buyPricePerTon}
@@ -254,7 +265,9 @@ export default function CodeSellModal({
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-slate-500 mb-1">Sotish ($/t)</label>
+                    <label className="block text-xs text-slate-500 mb-1">
+                      {isAfgon ? "Sotish ($)" : "Sotish ($/t)"}
+                    </label>
                     <NumberInput
                       min={0} step="0.01" placeholder="0.00"
                       value={item.sellPricePerTon}
