@@ -65,7 +65,11 @@ export default function SalesPageClient({
     if (!sale) return;
 
     // Vagon takhtalari va narxni topish
-    const transportId = sale.items[0]?.transportId ?? (sale.items[0] as any)?.timber?.transportId ?? null;
+    const transportId =
+      (sale.items[0] as any)?.transport?.id ??
+      sale.items[0]?.transportId ??
+      (sale.items[0] as any)?.timber?.transport?.id ??
+      null;
     const transport = transports.find((t) => t.id === transportId);
     const timbers = (transport?.timbers ?? []).map((t) => ({
       id: t.id,
