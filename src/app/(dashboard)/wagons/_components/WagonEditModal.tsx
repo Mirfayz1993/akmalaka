@@ -1329,8 +1329,18 @@ export default function WagonEditModal({
                         <td className="px-3 py-2.5 font-medium text-slate-700">
                           {item.thicknessMm}×{item.widthMm}×{item.lengthM}m
                         </td>
-                        <td className="px-3 py-2.5 text-right font-semibold text-slate-800">
-                          {item.quantity}
+                        <td className="px-3 py-2 text-right">
+                          <NumberInput
+                            min={1}
+                            value={item.quantity}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value) || 1;
+                              setUnloadItems((prev) =>
+                                prev.map((i) => i.timberId === item.timberId ? { ...i, quantity: val } : i)
+                              );
+                            }}
+                            className="w-24 border border-slate-300 rounded-lg px-2 py-1 text-sm text-right font-semibold outline-none focus:ring-2 focus:ring-blue-500 ml-auto"
+                          />
                         </td>
                         <td className="px-2 py-2.5 text-center">
                           <button
