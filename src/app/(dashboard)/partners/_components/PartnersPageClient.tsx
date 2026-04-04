@@ -12,6 +12,121 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 type PartnerWithBalance = Awaited<ReturnType<typeof getAllPartnersWithBalances>>[number];
 
+// ─── Jami statistika komponenti ───────────────────────────────────────────────
+function AllPartnersSummary({ partners }: { partners: PartnerWithBalance[] }) {
+  // Barcha operatsiyalarni yig'amiz
+  const allOps = partners
+    .flatMap((p) =>
+      p.balances.map((b) => ({
+        ...b,
+        partnerName: p.name,
+        partnerType: p.type,
+      }))
+    )
+    .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
+
+  // Bizning qarzimiz (manfiy balans — biz ularga qarzamiz)
+  const ourDebtTotal = partners.reduce((sum, p) => {
+    const bal = p.currentBalance;
+    return sum + (bal < 0 ? Math.abs(bal) : 0);
+  }, 0);
+
+  // Bizdan qarzdorlar (musbat balans — ular bizga qarz)
+  const theirDebtTotal = partners.reduce((sum, p) => {
+    const bal = p.currentBalance;
+    return sum + (bal > 0 ? bal : 0);
+  }, 0);
+
+  const netBalance = theirDebtTotal - ourDebtTotal;
+
+  function fmt(n: number) {
+    return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+
+  function fmtDate(d: Date | string | null) {
+    if (!d) return "—";
+    const dt = new Date(d);
+    return dt.toLocaleDateString("uz-UZ") + " " + dt.toLocaleTimeString("uz-UZ", { hour: "2-digit", minute: "2-digit" });
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Jami kartalar */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <p className="text-xs text-slate-500 mb-1">Bizning jami qarzimiz</p>
+          <p className="text-xl font-bold text-red-600">-{fmt(ourDebtTotal)}</p>
+          <p className="text-xs text-slate-400 mt-1">Biz hamkorlarga qarzamiz</p>
+        </div>
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+          <p className="text-xs text-slate-500 mb-1">Bizdan qarzdorlar</p>
+          <p className="text-xl font-bold text-green-600">+{fmt(theirDebtTotal)}</p>
+          <p className="text-xs text-slate-400 mt-1">Hamkorlar bizga qarz</p>
+        </div>
+        <div className={`border rounded-xl p-4 ${netBalance >= 0 ? "bg-blue-50 border-blue-200" : "bg-orange-50 border-orange-200"}`}>
+          <p className="text-xs text-slate-500 mb-1">Sof balans</p>
+          <p className={`text-xl font-bold ${netBalance >= 0 ? "text-blue-600" : "text-orange-600"}`}>
+            {netBalance >= 0 ? "+" : ""}{fmt(Math.abs(netBalance))}
+          </p>
+          <p className="text-xs text-slate-400 mt-1">{netBalance >= 0 ? "Foyda" : "Zarar"}</p>
+        </div>
+      </div>
+
+      {/* Barcha operatsiyalar */}
+      <div>
+        <h3 className="text-sm font-semibold text-slate-700 mb-3">
+          Barcha operatsiyalar
+          <span className="ml-2 text-xs font-normal text-slate-400">({allOps.length} ta)</span>
+        </h3>
+        {allOps.length === 0 ? (
+          <p className="text-sm text-slate-400 text-center py-8">Operatsiyalar yo&apos;q</p>
+        ) : (
+          <div className="border border-slate-200 rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="text-left px-4 py-2.5 font-medium text-slate-600">Sana</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-slate-600">Hamkor</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-slate-600">Tavsif</th>
+                  <th className="text-right px-4 py-2.5 font-medium text-slate-600">Summa</th>
+                </tr>
+              </thead>
+              <tbody>
+                {allOps.map((op) => {
+                  const amt = Number(op.amount);
+                  return (
+                    <tr key={op.id} className="border-b border-slate-100 hover:bg-slate-50">
+                      <td className="px-4 py-2.5 text-slate-500 text-xs whitespace-nowrap">
+                        {fmtDate(op.createdAt)}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <p className="font-medium text-slate-700">{op.partnerName}</p>
+                        <p className="text-xs text-slate-400">{partnerTypeLabels[op.partnerType] ?? op.partnerType}</p>
+                      </td>
+                      <td className="px-4 py-2.5 text-slate-500 text-xs">
+                        {op.description ?? "—"}
+                        {op.transport?.number && (
+                          <span className="ml-1 px-1.5 py-0.5 bg-slate-100 rounded text-slate-600">
+                            #{op.transport.number}
+                          </span>
+                        )}
+                      </td>
+                      <td className={`px-4 py-2.5 text-right font-semibold ${amt >= 0 ? "text-green-600" : "text-red-600"}`}>
+                        {amt >= 0 ? "+" : ""}{fmt(Math.abs(amt))}
+                        <span className="ml-1 text-xs font-normal text-slate-400">{op.currency?.toUpperCase()}</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const partnerTypeLabels: Record<string, string> = {
   russia_supplier: "Rossiya ta'minotchisi",
   code_supplier: "Kod ta'minotchisi",
@@ -135,12 +250,16 @@ export default function PartnersPageClient({
         </div>
 
         <div className="flex-1 bg-white rounded-xl border border-slate-200 p-5 overflow-y-auto">
-          <PartnerDetail
-            partner={selectedPartner}
-            onPayment={() => setIsPaymentModalOpen(true)}
-            onClose={() => setSelectedPartner(null)}
-            onDelete={() => selectedPartner && setDeleteTarget(selectedPartner)}
-          />
+          {!selectedPartner && filter === "all" ? (
+            <AllPartnersSummary partners={partners} />
+          ) : (
+            <PartnerDetail
+              partner={selectedPartner}
+              onPayment={() => setIsPaymentModalOpen(true)}
+              onClose={() => setSelectedPartner(null)}
+              onDelete={() => selectedPartner && setDeleteTarget(selectedPartner)}
+            />
+          )}
         </div>
       </div>
 
