@@ -100,11 +100,10 @@ export default function CodeHistoryTable({ codes, mode }: Props) {
     );
   }
 
-  // "sold" rejimida usedAt + soldToPartnerId bo'yicha guruhlash
+  // "sold" rejimida notes (batchId) bo'yicha guruhlash; yo'q bo'lsa id bo'yicha alohida
   const groupMap = new Map<string, CodeHistoryItem[]>();
   for (const code of codes) {
-    const usedAtKey = code.usedAt ? new Date(code.usedAt).toISOString() : `id-${code.id}`;
-    const key = `${usedAtKey}__${code.soldToPartnerId ?? "none"}`;
+    const key = code.notes ? `batch__${code.notes}` : `id-${code.id}`;
     if (!groupMap.has(key)) groupMap.set(key, []);
     groupMap.get(key)!.push(code);
   }

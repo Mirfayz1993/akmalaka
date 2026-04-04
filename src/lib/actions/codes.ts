@@ -190,6 +190,7 @@ export async function sellCodesBatch(data: {
 }) {
   const wagonInfo = data.wagonNumber ? ` — Vagon #${data.wagonNumber}` : "";
   const soldAt = data.date ? new Date(data.date) : new Date();
+  const batchId = Date.now().toString();
 
   await db.transaction(async (tx) => {
     // Har bir kodni alohida yangilash + supplier bo'yicha xarajatni yig'ish
@@ -212,6 +213,7 @@ export async function sellCodesBatch(data: {
         sellPricePerTon: String(item.sellPricePerTon),
         soldToPartnerId: data.customerId,
         usedAt: soldAt,
+        notes: batchId,
       }).where(eq(codes.id, item.codeId));
 
       supplierTotals[code.supplierId] = (supplierTotals[code.supplierId] ?? 0) + buyCostUsd;
