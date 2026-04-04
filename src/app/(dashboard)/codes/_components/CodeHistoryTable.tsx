@@ -181,6 +181,26 @@ export default function CodeHistoryTable({ codes, mode }: Props) {
             </tr>
           ))}
         </tbody>
+        <tfoot>
+          {(() => {
+            const totalBuy = groups.reduce((s, g) => s + g.totalBuyCost, 0);
+            const totalSell = groups.reduce((s, g) => s + g.totalSellPrice, 0);
+            const totalProfit = totalSell - totalBuy;
+            return (
+              <tr className="bg-slate-50 border-t-2 border-slate-200">
+                <td colSpan={4} className="py-3 px-4 text-sm font-semibold text-slate-600">Jami</td>
+                <td className="py-3 px-4 text-right font-semibold text-slate-700">{formatUsd(totalBuy)}</td>
+                <td colSpan={2} />
+                <td className="py-3 px-4 text-right font-semibold text-green-600">{formatUsd(totalSell)}</td>
+                <td className="py-3 px-4 text-right font-bold">
+                  <span className={totalProfit >= 0 ? "text-green-600" : "text-red-600"}>
+                    {totalProfit >= 0 ? "+" : "−"}{formatUsd(Math.abs(totalProfit))}
+                  </span>
+                </td>
+              </tr>
+            );
+          })()}
+        </tfoot>
       </table>
     </div>
   );
