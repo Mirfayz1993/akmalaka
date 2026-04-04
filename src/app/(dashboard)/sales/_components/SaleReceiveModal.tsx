@@ -15,6 +15,14 @@ type NewReceiveItem = {
   pricePerCubicUsd: number;
 };
 
+type WagonTimber = {
+  id: number;
+  thicknessMm: number;
+  widthMm: number;
+  lengthM: string | number;
+  tashkentCount?: number | null;
+};
+
 type SaleDetail = {
   id: number;
   docNumber: string | null;
@@ -37,6 +45,8 @@ interface SaleReceiveModalProps {
   onClose: () => void;
   onSuccess: () => void;
   sale: SaleDetail | null;
+  wagonTimbers?: WagonTimber[];
+  salePrice?: number;
 }
 
 export default function SaleReceiveModal({
@@ -44,16 +54,16 @@ export default function SaleReceiveModal({
   onClose,
   onSuccess,
   sale,
+  wagonTimbers,
+  salePrice,
 }: SaleReceiveModalProps) {
   const [receivedCounts, setReceivedCounts] = useState<Record<number, number>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [newItems, setNewItems] = useState<NewReceiveItem[]>([]);
-  const [newThicknessMm, setNewThicknessMm] = useState("");
-  const [newWidthMm, setNewWidthMm] = useState("");
-  const [newLengthM, setNewLengthM] = useState("");
-  const [newCount, setNewCount] = useState("");
-  const [newPrice, setNewPrice] = useState("");
+  // Wagon timber selector
+  const [selectedTimberId, setSelectedTimberId] = useState<number | "">("");
+  const [addCount, setAddCount] = useState("");
 
   useEffect(() => {
     if (sale) {
@@ -68,12 +78,6 @@ export default function SaleReceiveModal({
   // Savdodagi transport (bitta vagon)
   const saleTransportId = sale?.items[0]?.transportId ?? null;
 
-  const newCub =
-    (parseFloat(newThicknessMm) || 0) / 1000 *
-    (parseFloat(newWidthMm) || 0) / 1000 *
-    (parseFloat(newLengthM) || 0) *
-    (parseFloat(newCount) || 0);
-
   function handleCountChange(itemId: number, value: number) {
     const item = sale?.items.find((i) => i.id === itemId);
     const max = item?.sentCount ?? 0;
@@ -81,32 +85,33 @@ export default function SaleReceiveModal({
     setReceivedCounts((prev) => ({ ...prev, [itemId]: clamped }));
   }
 
-  function handleAddNewItem() {
-    const t = parseFloat(newThicknessMm);
-    const w = parseFloat(newWidthMm);
-    const l = parseFloat(newLengthM);
-    const c = parseInt(newCount);
-    const p = parseFloat(newPrice);
-    if (!t || !w || !l || !c || c < 1 || !p || p <= 0) return;
-
+  function handleAddFromWagon() {
+    const timber = wagonTimbers?.find((t) => t.id === selectedTimberId);
+    const count = parseInt(addCount);
+    if (!timber || !count || count < 1) return;
+    const price = salePrice ?? 0;
     setNewItems((prev) => [
       ...prev,
       {
-        timberId: undefined,
+        timberId: timber.id,
         transportId: saleTransportId ?? undefined,
-        thicknessMm: t,
-        widthMm: w,
-        lengthM: l,
-        sentCount: c,
-        pricePerCubicUsd: p,
+        thicknessMm: timber.thicknessMm,
+        widthMm: timber.widthMm,
+        lengthM: parseFloat(String(timber.lengthM)),
+        sentCount: count,
+        pricePerCubicUsd: price,
       },
     ]);
-    setNewThicknessMm("");
-    setNewWidthMm("");
-    setNewLengthM("");
-    setNewCount("");
-    setNewPrice("");
+    setSelectedTimberId("");
+    setAddCount("");
   }
+
+  const addCub = (() => {
+    const timber = wagonTimbers?.find((t) => t.id === selectedTimberId);
+    if (!timber || !addCount) return 0;
+    const count = parseInt(addCount) || 0;
+    return (timber.thicknessMm / 1000) * (timber.widthMm / 1000) * parseFloat(String(timber.lengthM)) * count;
+  })();
 
   async function handleSubmit() {
     if (!sale) return;
@@ -134,11 +139,8 @@ export default function SaleReceiveModal({
     setReceivedCounts({});
     setError(null);
     setNewItems([]);
-    setNewThicknessMm("");
-    setNewWidthMm("");
-    setNewLengthM("");
-    setNewCount("");
-    setNewPrice("");
+    setSelectedTimberId("");
+    setAddCount("");
     onClose();
   }
 
@@ -200,121 +202,95 @@ export default function SaleReceiveModal({
           </table>
         </div>
 
-        {/* ── Qo'shimcha qabul (qo'lda kiritish) ─────────── */}
-        <div className="pt-4 border-t border-slate-200">
-          <p className="text-sm font-semibold text-slate-700 mb-3">
-            Qo&apos;shimcha qabul
-          </p>
+        {/* ── Qo'shimcha qabul (vagondan) ─────────── */}
+        {wagonTimbers && wagonTimbers.length > 0 && (
+          <div className="pt-4 border-t border-slate-200">
+            <p className="text-sm font-semibold text-slate-700 mb-3">
+              Qo&apos;shimcha qabul
+              <span className="ml-2 text-xs font-normal text-slate-400">(vagondan, ${salePrice?.toFixed(2) ?? "—"}/m³ narxda)</span>
+            </p>
 
-          {newItems.length > 0 && (
-            <div className="mb-3 space-y-1">
-              {newItems.map((item, idx) => {
-                const itemCub = (item.thicknessMm / 1000) * (item.widthMm / 1000) * item.lengthM * item.sentCount;
-                const itemTotal = itemCub * item.pricePerCubicUsd;
-                return (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm"
-                  >
-                    <span className="text-slate-700">
-                      {item.thicknessMm}&times;{item.widthMm}&times;{item.lengthM}m —{" "}
-                      {item.sentCount} dona — ${item.pricePerCubicUsd}/m³ —{" "}
-                      <span className="font-medium text-green-700">{itemCub.toFixed(3)} m³</span>{" "}
-                      — <span className="font-semibold text-blue-700">${itemTotal.toFixed(2)}</span>
+            {newItems.length > 0 && (
+              <div className="mb-3 space-y-1">
+                {newItems.map((item, idx) => {
+                  const itemCub = (item.thicknessMm / 1000) * (item.widthMm / 1000) * item.lengthM * item.sentCount;
+                  const itemTotal = itemCub * item.pricePerCubicUsd;
+                  return (
+                    <div key={idx} className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm">
+                      <span className="text-slate-700">
+                        {item.thicknessMm}×{item.widthMm}×{item.lengthM}m —{" "}
+                        <span className="font-medium">{item.sentCount} dona</span> —{" "}
+                        <span className="text-green-700">{itemCub.toFixed(3)} m³</span> —{" "}
+                        <span className="font-semibold text-blue-700">${itemTotal.toFixed(2)}</span>
+                      </span>
+                      <button onClick={() => setNewItems((prev) => prev.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-600 ml-3">✕</button>
+                    </div>
+                  );
+                })}
+                <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-sm mt-1">
+                  <span className="text-slate-600 font-medium">Jami qo&apos;shimcha:</span>
+                  <span>
+                    <span className="font-semibold text-green-700">
+                      {newItems.reduce((s, i) => s + (i.thicknessMm / 1000) * (i.widthMm / 1000) * i.lengthM * i.sentCount, 0).toFixed(3)} m³
+                    </span>{" — "}
+                    <span className="font-bold text-blue-700">
+                      ${newItems.reduce((s, i) => { const c = (i.thicknessMm / 1000) * (i.widthMm / 1000) * i.lengthM * i.sentCount; return s + c * i.pricePerCubicUsd; }, 0).toFixed(2)}
                     </span>
-                    <button
-                      onClick={() => setNewItems((prev) => prev.filter((_, i) => i !== idx))}
-                      className="text-red-400 hover:text-red-600 ml-3"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                );
-              })}
-              {/* Jami qo'shimcha */}
-              {(() => {
-                const totalCub = newItems.reduce((sum, item) =>
-                  sum + (item.thicknessMm / 1000) * (item.widthMm / 1000) * item.lengthM * item.sentCount, 0);
-                const totalPay = newItems.reduce((sum, item) => {
-                  const cub = (item.thicknessMm / 1000) * (item.widthMm / 1000) * item.lengthM * item.sentCount;
-                  return sum + cub * item.pricePerCubicUsd;
-                }, 0);
-                return (
-                  <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-sm mt-2">
-                    <span className="text-slate-600 font-medium">Jami qo'shimcha:</span>
-                    <span>
-                      <span className="font-semibold text-green-700">{totalCub.toFixed(3)} m³</span>
-                      {" — "}
-                      <span className="font-bold text-blue-700">${totalPay.toFixed(2)}</span>
-                    </span>
-                  </div>
-                );
-              })()}
-            </div>
-          )}
-
-          <div className="flex items-end gap-2 flex-wrap">
-            <div>
-              <p className="text-xs text-slate-500 mb-1">Qalinligi (mm)</p>
-              <NumberInput
-                value={newThicknessMm}
-                placeholder="50"
-                onChange={(e) => setNewThicknessMm(e.target.value)}
-                className="w-20 border border-slate-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 mb-1">Eni (mm)</p>
-              <NumberInput
-                value={newWidthMm}
-                placeholder="100"
-                onChange={(e) => setNewWidthMm(e.target.value)}
-                className="w-20 border border-slate-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 mb-1">Uzunligi (m)</p>
-              <NumberInput
-                value={newLengthM}
-                placeholder="6"
-                onChange={(e) => setNewLengthM(e.target.value)}
-                className="w-20 border border-slate-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 mb-1">Soni</p>
-              <NumberInput
-                value={newCount}
-                placeholder="0"
-                onChange={(e) => setNewCount(e.target.value)}
-                className="w-20 border border-slate-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 mb-1">$/m³</p>
-              <NumberInput
-                value={newPrice}
-                placeholder="0"
-                onChange={(e) => setNewPrice(e.target.value)}
-                className="w-20 border border-slate-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 mb-1">Kub m³</p>
-              <div className="w-20 border border-slate-200 bg-slate-50 rounded-lg px-2 py-1.5 text-sm text-slate-600 text-right">
-                {newCub.toFixed(3)}
+                  </span>
+                </div>
               </div>
+            )}
+
+            <div className="flex items-end gap-2 flex-wrap">
+              <div>
+                <p className="text-xs text-slate-500 mb-1">O&apos;lcham (vagondan)</p>
+                <select
+                  value={selectedTimberId}
+                  onChange={(e) => setSelectedTimberId(e.target.value ? Number(e.target.value) : "")}
+                  className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">— O&apos;lcham tanlang —</option>
+                  {wagonTimbers.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.thicknessMm}×{t.widthMm}×{t.lengthM}m
+                      {t.tashkentCount ? ` (${t.tashkentCount} dona)` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Soni</p>
+                <NumberInput
+                  value={addCount}
+                  placeholder="0"
+                  min={1}
+                  onChange={(e) => setAddCount(e.target.value)}
+                  className="w-20 border border-slate-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Kub m³</p>
+                <div className="w-20 border border-slate-200 bg-slate-50 rounded-lg px-2 py-1.5 text-sm text-slate-600 text-right">
+                  {addCub.toFixed(3)}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Jami $</p>
+                <div className="w-24 border border-slate-200 bg-slate-50 rounded-lg px-2 py-1.5 text-sm text-blue-700 font-medium text-right">
+                  ${(addCub * (salePrice ?? 0)).toFixed(2)}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleAddFromWagon}
+                disabled={!selectedTimberId || !addCount || parseInt(addCount) < 1}
+                className="px-3 py-1.5 bg-green-700 text-white text-sm rounded-lg hover:bg-green-800 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                + Qo&apos;shish
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={handleAddNewItem}
-              disabled={!newThicknessMm || !newWidthMm || !newLengthM || !newCount || !newPrice}
-              className="px-3 py-1.5 bg-green-700 text-white text-sm rounded-lg hover:bg-green-800 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              + Qo&apos;shish
-            </button>
           </div>
-        </div>
+        )}
 
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-700">

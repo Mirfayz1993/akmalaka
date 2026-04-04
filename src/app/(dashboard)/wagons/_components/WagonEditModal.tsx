@@ -12,6 +12,7 @@ import {
   arriveTransport,
   unloadTransportWithWarehouse,
   closeTransport,
+  getTransportSaleItems,
 } from "@/lib/actions/wagons";
 import { createTimber, updateTimber, deleteTimber } from "@/lib/actions/timbers";
 import { getTransportFinancialSummary, type TransportSummary } from "@/lib/actions/transport-summary";
@@ -221,6 +222,11 @@ export default function WagonEditModal({
   const [summary, setSummary] = useState<TransportSummary | null>(null);
   const [isSummaryLoading, setIsSummaryLoading] = useState(false);
 
+  // Savdolar (arrived dan boshlab)
+  type TransportSaleItem = Awaited<ReturnType<typeof getTransportSaleItems>>[number];
+  const [wagonSales, setWagonSales] = useState<TransportSaleItem[]>([]);
+  const [isWagonSalesLoading, setIsWagonSalesLoading] = useState(false);
+
   // Transport o'zgarganda state larni to'ldirish
   useEffect(() => {
     if (!transport) return;
@@ -262,6 +268,17 @@ export default function WagonEditModal({
       .then(setSummary)
       .catch(() => setSummary(null))
       .finally(() => setIsSummaryLoading(false));
+  }, [transport]);
+
+  // Arrived/unloaded/closed da savdolarni yuklash
+  useEffect(() => {
+    const activeStatuses = ["arrived", "unloaded", "closed"];
+    if (!transport || !activeStatuses.includes(transport.status)) { setWagonSales([]); return; }
+    setIsWagonSalesLoading(true);
+    getTransportSaleItems(transport.id)
+      .then(setWagonSales)
+      .catch(() => setWagonSales([]))
+      .finally(() => setIsWagonSalesLoading(false));
   }, [transport]);
 
   // ── Partner listalari ──
@@ -1067,6 +1084,93 @@ export default function WagonEditModal({
             )}
           </section>
         </div>
+
+          {/* ── SAVDOLAR (arrived dan boshlab) ── */}
+          {(isArrived || isUnloaded || isClosed) && (
+            <section className="mt-6">
+              <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-2 border-b border-slate-200 flex items-center gap-2">
+                <TrendingUp size={15} className="text-blue-600" />
+                Savdolar
+                {wagonSales.length > 0 && (
+                  <span className="text-xs font-normal text-slate-400">({wagonSales.length} ta qator)</span>
+                )}
+              </h3>
+              {isWagonSalesLoading ? (
+                <p className="text-sm text-slate-400 text-center py-4">Yuklanmoqda...</p>
+              ) : wagonSales.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-4">Bu vagon bo&apos;yicha savdolar yo&apos;q</p>
+              ) : (() => {
+                // Sale bo'yicha guruhlash
+                const byId = new Map<number, { docNumber: string | null; customerName: string; status: string; items: typeof wagonSales }>();
+                for (const si of wagonSales) {
+                  const sid = si.sale?.id ?? 0;
+                  if (!byId.has(sid)) byId.set(sid, { docNumber: si.sale?.docNumber ?? null, customerName: si.sale?.customer?.name ?? "—", status: si.sale?.status ?? "", items: [] });
+                  byId.get(sid)!.items.push(si);
+                }
+                return (
+                  <div className="space-y-3">
+                    {Array.from(byId.entries()).map(([sid, sale]) => {
+                      const totalSentUsd = sale.items.reduce((s, i) => {
+                        const kub = (i.thicknessMm ?? 0) / 1000 * (i.widthMm ?? 0) / 1000 * parseFloat(i.lengthM ?? "0") * (i.sentCount ?? 0);
+                        return s + kub * parseFloat(i.pricePerCubicUsd ?? "0");
+                      }, 0);
+                      const totalReceivedUsd = sale.items.reduce((s, i) => {
+                        const kub = (i.thicknessMm ?? 0) / 1000 * (i.widthMm ?? 0) / 1000 * parseFloat(i.lengthM ?? "0") * (i.receivedCount ?? 0);
+                        return s + kub * parseFloat(i.pricePerCubicUsd ?? "0");
+                      }, 0);
+                      return (
+                        <div key={sid} className="border border-slate-200 rounded-lg overflow-hidden">
+                          <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-b border-slate-200">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-semibold text-slate-700">#{sale.docNumber ?? sid}</span>
+                              <span className="text-xs text-slate-500">{sale.customerName}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="text-xs text-slate-500">Jo&apos;n: <span className="font-medium text-slate-700">${totalSentUsd.toFixed(2)}</span></span>
+                              {sale.status === "received" && (
+                                <span className="text-xs text-slate-500">Qab: <span className="font-medium text-green-700">${totalReceivedUsd.toFixed(2)}</span></span>
+                              )}
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${sale.status === "received" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
+                                {sale.status === "received" ? "Qabul qilindi" : "Jo'natildi"}
+                              </span>
+                            </div>
+                          </div>
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="text-slate-400 font-medium border-b border-slate-100">
+                                <th className="text-left px-3 py-1.5">O&apos;lcham</th>
+                                <th className="text-right px-3 py-1.5">Jo&apos;n. dona</th>
+                                <th className="text-right px-3 py-1.5">Jo&apos;n. m³</th>
+                                <th className="text-right px-3 py-1.5">Qab. dona</th>
+                                <th className="text-right px-3 py-1.5">Qab. m³</th>
+                                <th className="text-right px-3 py-1.5">$/m³</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {sale.items.map((item) => {
+                                const sentKub = (item.thicknessMm ?? 0) / 1000 * (item.widthMm ?? 0) / 1000 * parseFloat(item.lengthM ?? "0") * (item.sentCount ?? 0);
+                                const recKub = (item.thicknessMm ?? 0) / 1000 * (item.widthMm ?? 0) / 1000 * parseFloat(item.lengthM ?? "0") * (item.receivedCount ?? 0);
+                                return (
+                                  <tr key={item.id} className="border-b border-slate-50 last:border-0">
+                                    <td className="px-3 py-1.5 font-medium text-slate-700">{item.thicknessMm}×{item.widthMm}×{item.lengthM}m</td>
+                                    <td className="px-3 py-1.5 text-right text-slate-600">{item.sentCount ?? 0}</td>
+                                    <td className="px-3 py-1.5 text-right text-slate-600">{sentKub.toFixed(3)}</td>
+                                    <td className="px-3 py-1.5 text-right text-slate-600">{item.receivedCount ?? 0}</td>
+                                    <td className="px-3 py-1.5 text-right text-green-700">{recKub.toFixed(3)}</td>
+                                    <td className="px-3 py-1.5 text-right text-slate-500">${parseFloat(item.pricePerCubicUsd ?? "0").toFixed(2)}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </section>
+          )}
 
           {/* ── MOLIYAVIY HISOBOT (faqat closed) ── */}
           {isClosed && (

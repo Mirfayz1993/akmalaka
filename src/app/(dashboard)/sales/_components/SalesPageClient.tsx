@@ -55,12 +55,29 @@ export default function SalesPageClient({
   const warehouseItems = initialWarehouse;
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [receiveTarget, setReceiveTarget] = useState<SaleDetail | null>(null);
+  const [receiveWagonTimbers, setReceiveWagonTimbers] = useState<{ id: number; thicknessMm: number; widthMm: number; lengthM: string; tashkentCount: number | null }[]>([]);
+  const [receiveSalePrice, setReceiveSalePrice] = useState<number>(0);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const handleReceive = (id: number) => {
     const sale = sales.find((s) => s.id === id);
     if (!sale) return;
+
+    // Vagon takhtalari va narxni topish
+    const transportId = sale.items[0]?.transportId ?? (sale.items[0] as any)?.timber?.transportId ?? null;
+    const transport = transports.find((t) => t.id === transportId);
+    const timbers = (transport?.timbers ?? []).map((t) => ({
+      id: t.id,
+      thicknessMm: t.thicknessMm,
+      widthMm: t.widthMm,
+      lengthM: String(t.lengthM),
+      tashkentCount: t.tashkentCount ?? null,
+    }));
+    const price = parseFloat((sale.items[0] as any)?.pricePerCubicUsd ?? "0") || 0;
+
+    setReceiveWagonTimbers(timbers);
+    setReceiveSalePrice(price);
     setReceiveTarget({
       id: sale.id,
       docNumber: sale.docNumber,
@@ -74,8 +91,8 @@ export default function SalesPageClient({
         sentCount: item.sentCount,
         receivedCount: item.receivedCount ?? 0,
         timberId: item.timberId ?? null,
-        transportId: item.transportId ?? item.timber?.transportId ?? null,
-        transportName: item.transport?.number ?? item.timber?.transport?.number ?? null,
+        transportId: item.transportId ?? (item as any).timber?.transportId ?? null,
+        transportName: item.transport?.number ?? (item as any).timber?.transport?.number ?? null,
       })),
     });
   };
@@ -127,6 +144,8 @@ export default function SalesPageClient({
         onClose={() => setReceiveTarget(null)}
         onSuccess={() => { setReceiveTarget(null); startTransition(() => { router.refresh(); }); }}
         sale={receiveTarget}
+        wagonTimbers={receiveWagonTimbers}
+        salePrice={receiveSalePrice}
       />
 
       <ConfirmDialog
