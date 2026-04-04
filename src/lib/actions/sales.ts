@@ -33,9 +33,9 @@ export async function getSales() {
       items: {
         with: {
           timber: {
-            with: { transport: true },
+            with: { transport: { with: { timbers: true } } },
           },
-          transport: true,
+          transport: { with: { timbers: true } },
         },
       },
     },
@@ -270,6 +270,7 @@ export async function receiveSale(
   });
 
   revalidatePath("/sales");
+  revalidatePath("/wagons");
 }
 
 // ─── DELETE: Savdoni o'chirish ────────────────────────────────────────────────

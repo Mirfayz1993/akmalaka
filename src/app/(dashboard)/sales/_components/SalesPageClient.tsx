@@ -64,14 +64,12 @@ export default function SalesPageClient({
     const sale = sales.find((s) => s.id === id);
     if (!sale) return;
 
-    // Vagon takhtalari va narxni topish
-    const transportId =
-      (sale.items[0] as any)?.transport?.id ??
-      sale.items[0]?.transportId ??
-      (sale.items[0] as any)?.timber?.transport?.id ??
-      null;
-    const transport = transports.find((t) => t.id === transportId);
-    const timbers = (transport?.timbers ?? []).map((t) => ({
+    // Vagon takhtalari va narxni topish — to'g'ridan-to'g'ri sale.items dan
+    const rawTimbers: any[] =
+      (sale.items[0] as any)?.transport?.timbers ??
+      (sale.items[0] as any)?.timber?.transport?.timbers ??
+      [];
+    const timbers = rawTimbers.map((t: any) => ({
       id: t.id,
       thicknessMm: t.thicknessMm,
       widthMm: t.widthMm,
