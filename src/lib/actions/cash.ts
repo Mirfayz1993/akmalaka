@@ -159,6 +159,54 @@ export async function deleteCashOperation(id: number) {
   revalidatePath("/cash");
 }
 
+// ─── WRITE: Boshlang'ich qoldiqlar ───────────────────────────────────────────
+
+export async function setOpeningBalances(data: {
+  usdCash: number;
+  rubCash: number;
+  partners: Array<{ partnerId: number; usdAmount: number; rubAmount: number }>;
+}) {
+  await db.transaction(async (tx) => {
+    if (data.usdCash !== 0) {
+      await tx.insert(cashOperations).values({
+        currency: "usd",
+        type: data.usdCash > 0 ? "income" : "expense",
+        amount: String(data.usdCash),
+        description: "Boshlang'ich qoldiq",
+      });
+    }
+    if (data.rubCash !== 0) {
+      await tx.insert(cashOperations).values({
+        currency: "rub",
+        type: data.rubCash > 0 ? "income" : "expense",
+        amount: String(data.rubCash),
+        description: "Boshlang'ich qoldiq",
+      });
+    }
+    for (const p of data.partners) {
+      if (p.usdAmount !== 0) {
+        await tx.insert(partnerBalances).values({
+          partnerId: p.partnerId,
+          amount: String(p.usdAmount),
+          currency: "usd",
+          description: "Boshlang'ich qoldiq",
+        });
+      }
+      if (p.rubAmount !== 0) {
+        await tx.insert(partnerBalances).values({
+          partnerId: p.partnerId,
+          amount: String(p.rubAmount),
+          currency: "rub",
+          description: "Boshlang'ich qoldiq",
+        });
+      }
+    }
+  });
+  revalidatePath("/cash");
+  revalidatePath("/partners");
+  revalidatePath("/sozlamalar");
+}
+
 // ─── WRITE: Record exchange ($ → RUB) ────────────────────────────────────────
 
 export async function recordExchange(data: {

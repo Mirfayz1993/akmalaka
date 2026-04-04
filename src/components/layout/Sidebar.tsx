@@ -12,6 +12,7 @@ import {
   ShoppingCart,
   Warehouse,
   BarChart3,
+  Settings,
   LogOut,
 } from "lucide-react";
 
@@ -24,6 +25,7 @@ const navItems = [
   { href: "/sales", label: "Savdo", icon: ShoppingCart },
   { href: "/warehouse", label: "Ombor", icon: Warehouse },
   { href: "/reports", label: "Hisobotlar", icon: BarChart3 },
+  { href: "/sozlamalar", label: "Sozlamalar", icon: Settings },
 ];
 
 export default function Sidebar() {

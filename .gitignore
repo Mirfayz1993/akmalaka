@@ -11,4 +11,5 @@ npm-debug.log*
 .DS_Store
 out/
 dist/
-drizzle/
+# drizzle migrations - git'da saqlanadi (VPS deploy uchun zarur)
+# drizzle/
