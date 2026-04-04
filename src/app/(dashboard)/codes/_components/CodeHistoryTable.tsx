@@ -112,7 +112,9 @@ export default function CodeHistoryTable({ codes, mode }: Props) {
   const groups: GroupedRow[] = Array.from(groupMap.entries()).map(([key, items]) => {
     const totalBuyCost = items.reduce((s, c) => s + parseFloat(c.buyCostUsd ?? "0"), 0);
     const totalSellPrice = items.reduce((s, c) => s + parseFloat(c.sellPriceUsd ?? "0"), 0);
-    const totalTonnage = items.reduce((s, c) => s + parseFloat(c.tonnage ?? "0"), 0);
+    // Tonnajni faqat KZ kodidan ol; yo'q bo'lsa UZ, yo'q bo'lsa birinchi kod
+    const kzItem = items.find((c) => c.type === "kz") ?? items.find((c) => c.type === "uz") ?? items[0];
+    const totalTonnage = parseFloat(kzItem?.tonnage ?? "0");
     const types = [...new Set(items.map((c) => c.type))];
     const suppliers = [...new Set(items.map((c) => c.supplier?.name).filter(Boolean))] as string[];
     return {
