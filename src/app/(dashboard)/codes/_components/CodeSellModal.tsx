@@ -45,6 +45,7 @@ export default function CodeSellModal({
 }: CodeSellModalProps) {
   const [customerId, setCustomerId] = useState("");
   const [wagonNumber, setWagonNumber] = useState("");
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [items, setItems] = useState<SellItem[]>([emptyItem("kz")]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -126,6 +127,7 @@ export default function CodeSellModal({
           buyPricePerTon: parseFloat(item.buyPricePerTon),
           sellPricePerTon: parseFloat(item.sellPricePerTon),
           wagonNumber: wagonNumber.trim() || undefined,
+          date: date || undefined,
         });
       }
       onSuccess();
@@ -140,6 +142,7 @@ export default function CodeSellModal({
   function handleClose() {
     setCustomerId("");
     setWagonNumber("");
+    setDate(new Date().toISOString().slice(0, 10));
     setItems([emptyItem("kz")]);
     setError(null);
     onClose();
@@ -150,7 +153,7 @@ export default function CodeSellModal({
       <form onSubmit={handleSubmit} className="space-y-4">
 
         {/* Mijoz */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Mijoz</label>
             <select
@@ -173,6 +176,15 @@ export default function CodeSellModal({
               placeholder="Masalan: 12345678"
               value={wagonNumber}
               onChange={(e) => setWagonNumber(e.target.value)}
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Sana</label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
               className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
             />
           </div>

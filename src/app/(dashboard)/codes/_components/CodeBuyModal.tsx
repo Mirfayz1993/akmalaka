@@ -22,6 +22,7 @@ export default function CodeBuyModal({
   const [type, setType] = useState<"kz" | "uz" | "afgon">("kz");
   const [supplierId, setSupplierId] = useState<string>("");
   const [quantity, setQuantity] = useState<number>(1);
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,6 +41,7 @@ export default function CodeBuyModal({
         type,
         supplierId: Number(supplierId),
         quantity,
+        date: date || undefined,
       });
       onSuccess();
       handleClose();
@@ -54,6 +56,7 @@ export default function CodeBuyModal({
     setType("kz");
     setSupplierId("");
     setQuantity(1);
+    setDate(new Date().toISOString().slice(0, 10));
     setError(null);
     onClose();
   }
@@ -106,6 +109,19 @@ export default function CodeBuyModal({
             max={100}
             value={quantity}
             onChange={(e) => setQuantity(Number(e.target.value))}
+            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+          />
+        </div>
+
+        {/* Sana */}
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1.5">
+            Sana
+          </label>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
             className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
           />
         </div>

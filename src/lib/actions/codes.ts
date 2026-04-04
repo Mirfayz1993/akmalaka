@@ -38,12 +38,15 @@ export async function buyCode(data: {
   type: "kz" | "uz" | "afgon";
   supplierId: number;
   quantity: number;
+  date?: string;
 }) {
+  const createdAt = data.date ? new Date(data.date) : undefined;
   const rows = Array.from({ length: data.quantity }, () => ({
     type: data.type,
     supplierId: data.supplierId,
     status: "available" as const,
     buyPricePerTon: null,
+    ...(createdAt ? { createdAt } : {}),
   }));
   await db.insert(codes).values(rows);
   revalidatePath("/codes");
@@ -120,8 +123,10 @@ export async function sellCode(data: {
   buyPricePerTon: number;
   sellPricePerTon: number;
   wagonNumber?: string;
+  date?: string;
 }) {
   const wagonInfo = data.wagonNumber ? ` — Vagon #${data.wagonNumber}` : "";
+  const soldAt = data.date ? new Date(data.date) : new Date();
 
   await db.transaction(async (tx) => {
     const code = await tx.query.codes.findFirst({
@@ -143,6 +148,7 @@ export async function sellCode(data: {
         sellPriceUsd: String(sellPriceUsd),
         sellPricePerTon: String(data.sellPricePerTon),
         soldToPartnerId: data.customerId,
+        usedAt: soldAt,
       })
       .where(eq(codes.id, data.codeId));
 
@@ -152,6 +158,7 @@ export async function sellCode(data: {
       amount: String(-buyCostUsd),
       currency: "usd",
       description: `Kod xarajati${wagonInfo}`,
+      createdAt: soldAt,
     });
 
     // Mijozdan daromad (ular bizga to'laydi)
@@ -160,6 +167,7 @@ export async function sellCode(data: {
       amount: String(sellPriceUsd),
       currency: "usd",
       description: `Kod sotuvi${wagonInfo}`,
+      createdAt: soldAt,
     });
   });
 
