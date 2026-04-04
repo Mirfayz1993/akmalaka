@@ -16,7 +16,8 @@ type PartnerWithBalance = {
     createdAt: Date | string | null;
     transport: { id: number; number: string | null; type: string } | null;
   }>;
-  currentBalance: number;
+  usdBalance?: number;
+  rubBalance?: number;
 };
 
 interface PartnerDetailProps {
@@ -104,13 +105,23 @@ export default function PartnerDetail({
 
         <div className="text-right">
           <p className="text-xs text-slate-500 mb-1">Joriy balans</p>
-          <p
-            className={`text-2xl font-bold ${balanceColorClass(partner.currentBalance)}`}
-          >
-            {partner.currentBalance > 0 ? "+" : ""}
-            {partner.currentBalance.toFixed(2)}
-          </p>
-          <div className="flex items-center gap-2 mt-2">
+          <div className="flex flex-col items-end gap-0.5 mb-2">
+            {(() => {
+              const usd = partner.usdBalance ?? partner.balances.filter(b => b.currency === "usd").reduce((s, b) => s + Number(b.amount), 0);
+              const rub = partner.rubBalance ?? partner.balances.filter(b => b.currency === "rub").reduce((s, b) => s + Number(b.amount), 0);
+              return (
+                <>
+                  <span className={`text-xl font-bold ${balanceColorClass(usd)}`}>
+                    {usd >= 0 ? "+" : ""}${Math.abs(usd).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                  <span className={`text-base font-semibold ${balanceColorClass(rub)}`}>
+                    {rub >= 0 ? "+" : "−"}{Math.abs(rub).toLocaleString("ru-RU", { maximumFractionDigits: 0 })} ₽
+                  </span>
+                </>
+              );
+            })()}
+          </div>
+          <div className="flex items-center gap-2">
             <button
               onClick={onPayment}
               className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -160,12 +171,15 @@ export default function PartnerDetail({
                     )}
                   </div>
                 </div>
-                <span
-                  className={`font-semibold whitespace-nowrap ${amountColorClass(b.amount)}`}
-                >
-                  {Number(b.amount) > 0 ? "+" : ""}
-                  {Number(b.amount).toFixed(2)}{" "}
-                  {b.currency ? b.currency.toUpperCase() : ""}
+                <span className={`font-semibold whitespace-nowrap ${amountColorClass(b.amount)}`}>
+                  {(() => {
+                    const n = Number(b.amount);
+                    const sign = n >= 0 ? "+" : "−";
+                    const abs = Math.abs(n);
+                    return b.currency === "rub"
+                      ? `${sign}${abs.toLocaleString("ru-RU", { maximumFractionDigits: 0 })} ₽`
+                      : `${sign}$${abs.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                  })()}
                 </span>
               </div>
             ))}

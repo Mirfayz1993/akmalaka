@@ -14,35 +14,34 @@ type PartnerWithBalance = Awaited<ReturnType<typeof getAllPartnersWithBalances>>
 
 // ─── Jami statistika komponenti ───────────────────────────────────────────────
 function AllPartnersSummary({ partners }: { partners: PartnerWithBalance[] }) {
-  // Barcha operatsiyalarni yig'amiz
   const allOps = partners
-    .flatMap((p) =>
-      p.balances.map((b) => ({
-        ...b,
-        partnerName: p.name,
-        partnerType: p.type,
-      }))
-    )
+    .flatMap((p) => p.balances.map((b) => ({ ...b, partnerName: p.name, partnerType: p.type })))
     .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
 
-  // Bizning qarzimiz (manfiy balans — biz ularga qarzamiz)
-  const ourDebtTotal = partners.reduce((sum, p) => {
-    const bal = p.currentBalance;
-    return sum + (bal < 0 ? Math.abs(bal) : 0);
-  }, 0);
+  // USD hisobi
+  const usdOurDebt = partners.reduce((s, p) => s + (p.usdBalance < 0 ? Math.abs(p.usdBalance) : 0), 0);
+  const usdTheirDebt = partners.reduce((s, p) => s + (p.usdBalance > 0 ? p.usdBalance : 0), 0);
+  const usdNet = usdTheirDebt - usdOurDebt;
 
-  // Bizdan qarzdorlar (musbat balans — ular bizga qarz)
-  const theirDebtTotal = partners.reduce((sum, p) => {
-    const bal = p.currentBalance;
-    return sum + (bal > 0 ? bal : 0);
-  }, 0);
+  // RUB hisobi
+  const rubOurDebt = partners.reduce((s, p) => s + (p.rubBalance < 0 ? Math.abs(p.rubBalance) : 0), 0);
+  const rubTheirDebt = partners.reduce((s, p) => s + (p.rubBalance > 0 ? p.rubBalance : 0), 0);
+  const rubNet = rubTheirDebt - rubOurDebt;
 
-  const netBalance = theirDebtTotal - ourDebtTotal;
-
-  function fmt(n: number) {
+  function fmtUsd(n: number) {
     return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
-
+  function fmtRub(n: number) {
+    return `${n.toLocaleString("ru-RU", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ₽`;
+  }
+  function fmtAmt(amount: string, currency: string | null) {
+    const n = Number(amount);
+    const abs = Math.abs(n);
+    const sign = n >= 0 ? "+" : "−";
+    return currency === "rub"
+      ? `${sign}${fmtRub(abs)}`
+      : `${sign}${fmtUsd(abs)}`;
+  }
   function fmtDate(d: Date | string | null) {
     if (!d) return "—";
     const dt = new Date(d);
@@ -51,24 +50,45 @@ function AllPartnersSummary({ partners }: { partners: PartnerWithBalance[] }) {
 
   return (
     <div className="space-y-5">
-      {/* Jami kartalar */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-          <p className="text-xs text-slate-500 mb-1">Bizning jami qarzimiz</p>
-          <p className="text-xl font-bold text-red-600">-{fmt(ourDebtTotal)}</p>
-          <p className="text-xs text-slate-400 mt-1">Biz hamkorlarga qarzamiz</p>
+      {/* USD kartalar */}
+      <div>
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Dollar (USD)</p>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+            <p className="text-xs text-slate-500 mb-1">Bizning qarzimiz</p>
+            <p className="text-lg font-bold text-red-600">−{fmtUsd(usdOurDebt)}</p>
+          </div>
+          <div className="bg-green-50 border border-green-200 rounded-xl p-3">
+            <p className="text-xs text-slate-500 mb-1">Bizdan qarzdorlar</p>
+            <p className="text-lg font-bold text-green-600">+{fmtUsd(usdTheirDebt)}</p>
+          </div>
+          <div className={`border rounded-xl p-3 ${usdNet >= 0 ? "bg-blue-50 border-blue-200" : "bg-orange-50 border-orange-200"}`}>
+            <p className="text-xs text-slate-500 mb-1">Sof balans</p>
+            <p className={`text-lg font-bold ${usdNet >= 0 ? "text-blue-600" : "text-orange-600"}`}>
+              {usdNet >= 0 ? "+" : "−"}{fmtUsd(Math.abs(usdNet))}
+            </p>
+          </div>
         </div>
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-          <p className="text-xs text-slate-500 mb-1">Bizdan qarzdorlar</p>
-          <p className="text-xl font-bold text-green-600">+{fmt(theirDebtTotal)}</p>
-          <p className="text-xs text-slate-400 mt-1">Hamkorlar bizga qarz</p>
-        </div>
-        <div className={`border rounded-xl p-4 ${netBalance >= 0 ? "bg-blue-50 border-blue-200" : "bg-orange-50 border-orange-200"}`}>
-          <p className="text-xs text-slate-500 mb-1">Sof balans</p>
-          <p className={`text-xl font-bold ${netBalance >= 0 ? "text-blue-600" : "text-orange-600"}`}>
-            {netBalance >= 0 ? "+" : ""}{fmt(Math.abs(netBalance))}
-          </p>
-          <p className="text-xs text-slate-400 mt-1">{netBalance >= 0 ? "Foyda" : "Zarar"}</p>
+      </div>
+
+      {/* RUB kartalar */}
+      <div>
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Rubl (RUB)</p>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+            <p className="text-xs text-slate-500 mb-1">Bizning qarzimiz</p>
+            <p className="text-lg font-bold text-red-600">−{fmtRub(rubOurDebt)}</p>
+          </div>
+          <div className="bg-green-50 border border-green-200 rounded-xl p-3">
+            <p className="text-xs text-slate-500 mb-1">Bizdan qarzdorlar</p>
+            <p className="text-lg font-bold text-green-600">+{fmtRub(rubTheirDebt)}</p>
+          </div>
+          <div className={`border rounded-xl p-3 ${rubNet >= 0 ? "bg-blue-50 border-blue-200" : "bg-orange-50 border-orange-200"}`}>
+            <p className="text-xs text-slate-500 mb-1">Sof balans</p>
+            <p className={`text-lg font-bold ${rubNet >= 0 ? "text-blue-600" : "text-orange-600"}`}>
+              {rubNet >= 0 ? "+" : "−"}{fmtRub(Math.abs(rubNet))}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -96,9 +116,7 @@ function AllPartnersSummary({ partners }: { partners: PartnerWithBalance[] }) {
                   const amt = Number(op.amount);
                   return (
                     <tr key={op.id} className="border-b border-slate-100 hover:bg-slate-50">
-                      <td className="px-4 py-2.5 text-slate-500 text-xs whitespace-nowrap">
-                        {fmtDate(op.createdAt)}
-                      </td>
+                      <td className="px-4 py-2.5 text-slate-500 text-xs whitespace-nowrap">{fmtDate(op.createdAt)}</td>
                       <td className="px-4 py-2.5">
                         <p className="font-medium text-slate-700">{op.partnerName}</p>
                         <p className="text-xs text-slate-400">{partnerTypeLabels[op.partnerType] ?? op.partnerType}</p>
@@ -106,14 +124,11 @@ function AllPartnersSummary({ partners }: { partners: PartnerWithBalance[] }) {
                       <td className="px-4 py-2.5 text-slate-500 text-xs">
                         {op.description ?? "—"}
                         {op.transport?.number && (
-                          <span className="ml-1 px-1.5 py-0.5 bg-slate-100 rounded text-slate-600">
-                            #{op.transport.number}
-                          </span>
+                          <span className="ml-1 px-1.5 py-0.5 bg-slate-100 rounded text-slate-600">#{op.transport.number}</span>
                         )}
                       </td>
-                      <td className={`px-4 py-2.5 text-right font-semibold ${amt >= 0 ? "text-green-600" : "text-red-600"}`}>
-                        {amt >= 0 ? "+" : ""}{fmt(Math.abs(amt))}
-                        <span className="ml-1 text-xs font-normal text-slate-400">{op.currency?.toUpperCase()}</span>
+                      <td className={`px-4 py-2.5 text-right font-semibold whitespace-nowrap ${amt >= 0 ? "text-green-600" : "text-red-600"}`}>
+                        {fmtAmt(op.amount, op.currency ?? null)}
                       </td>
                     </tr>
                   );

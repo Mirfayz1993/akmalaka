@@ -29,7 +29,8 @@ export async function getAllPartnersWithBalances() {
   });
   return all.map((p) => ({
     ...p,
-    currentBalance: p.balances.reduce((sum, b) => sum + Number(b.amount), 0),
+    usdBalance: p.balances.filter((b) => b.currency === "usd").reduce((sum, b) => sum + Number(b.amount), 0),
+    rubBalance: p.balances.filter((b) => b.currency === "rub").reduce((sum, b) => sum + Number(b.amount), 0),
   }));
 }
 
