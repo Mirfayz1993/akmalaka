@@ -440,24 +440,32 @@ async function _closeTransport(id: number): Promise<{ ok: true }> {
   const totalRub = totalCubSupplier * rubPricePerCubic;
 
   // O'rtacha RUB kursi hisoblash
-  const rubIncomeOps = await db
+  const allRubOps = await db
     .select({ amount: cashOperations.amount, exchangeRate: cashOperations.exchangeRate })
     .from(cashOperations)
-    .where(eq(cashOperations.currency, "rub"));
+    .where(eq(cashOperations.currency, "rub"))
+    .orderBy(cashOperations.createdAt, cashOperations.id);
 
-  let totalRubAmount = 0;
-  let totalUsdEquivalent = 0;
+  // Xronologik o'rtacha kurs (qoldiq × eski kurs + kirim × yangi kurs / yangi qoldiq)
   let rubCashBalance = 0;
-  for (const op of rubIncomeOps) {
-    const opAmount = Number(op.amount);
-    rubCashBalance += opAmount;
-    const opRate = Number(op.exchangeRate ?? 0);
-    if (opAmount > 0 && opRate > 0) {
-      totalRubAmount += opAmount;
-      totalUsdEquivalent += opAmount / opRate;
+  let runningAvgRate = 0;
+  for (const op of allRubOps) {
+    const amount = Number(op.amount);
+    if (amount > 0) {
+      const rate = Number(op.exchangeRate ?? 0);
+      const newBalance = rubCashBalance + amount;
+      if (rate > 0 && newBalance > 0) {
+        runningAvgRate = (rubCashBalance * runningAvgRate + amount * rate) / newBalance;
+      }
+      rubCashBalance = newBalance;
+    } else {
+      rubCashBalance += amount;
+      if (rubCashBalance <= 0) { rubCashBalance = 0; runningAvgRate = 0; }
     }
   }
-  const avgRate = totalUsdEquivalent > 0 ? totalRubAmount / totalUsdEquivalent : 1;
+  // Haqiqiy balans (manfiy bo'lishi mumkin)
+  rubCashBalance = allRubOps.reduce((s, op) => s + Number(op.amount), 0);
+  const avgRate = runningAvgRate > 0 ? runningAvgRate : 1;
 
   // RUB balansini tekshirish
   if (totalRub > 0 && rubCashBalance < totalRub) {

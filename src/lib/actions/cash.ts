@@ -21,34 +21,42 @@ export async function getRubState(): Promise<{
   rubBalance: number;
   avgRate: number;
 }> {
-  // SQL SUM for balance
-  const balanceResult = await db
-    .select({ total: sql<string>`COALESCE(SUM(${cashOperations.amount}), 0)` })
-    .from(cashOperations)
-    .where(eq(cashOperations.currency, "rub"));
-  const rubBalance = parseFloat(balanceResult[0]?.total ?? "0");
-
-  // Only income rows with exchangeRate for weighted avg rate
-  const incomeRows = await db.query.cashOperations.findMany({
-    where: and(
-      eq(cashOperations.currency, "rub"),
-      eq(cashOperations.type, "income"),
-      sql`${cashOperations.exchangeRate} IS NOT NULL AND ${cashOperations.exchangeRate}::numeric > 0 AND ${cashOperations.amount}::numeric > 0`
-    ),
-    columns: { amount: true, exchangeRate: true },
+  // Barcha RUB operatsiyalarni xronologik tartibda olish
+  const allOps = await db.query.cashOperations.findMany({
+    where: eq(cashOperations.currency, "rub"),
+    columns: { amount: true, exchangeRate: true, type: true },
+    orderBy: (t, { asc }) => [asc(t.createdAt), asc(t.id)],
   });
 
-  let avgRate = 0;
-  if (incomeRows.length > 0) {
-    const sumAmount = incomeRows.reduce((sum, row) => sum + parseFloat(row.amount), 0);
-    const sumAmountDivRate = incomeRows.reduce(
-      (sum, row) => sum + parseFloat(row.amount) / parseFloat(row.exchangeRate!),
-      0
-    );
-    avgRate = sumAmountDivRate > 0 ? sumAmount / sumAmountDivRate : 0;
+  // Xronologik o'rtacha kurs: qoldiq × eski kurs + kirim × yangi kurs / yangi qoldiq
+  let runningBalance = 0;
+  let runningAvgRate = 0;
+
+  for (const op of allOps) {
+    const amount = parseFloat(op.amount);
+    if (amount > 0) {
+      // Kirim: o'rtacha kursni yangilash
+      const rate = op.exchangeRate ? parseFloat(op.exchangeRate) : 0;
+      const newBalance = runningBalance + amount;
+      if (rate > 0 && newBalance > 0) {
+        runningAvgRate = (runningBalance * runningAvgRate + amount * rate) / newBalance;
+      }
+      runningBalance = newBalance;
+    } else {
+      // Chiqim: qoldiqni kamaytirish, kurs o'zgarmaydi
+      runningBalance += amount; // amount manfiy
+      if (runningBalance <= 0) {
+        // Qoldiq tugagan — kursni nolga tushirish
+        runningBalance = 0;
+        runningAvgRate = 0;
+      }
+    }
   }
 
-  return { rubBalance, avgRate };
+  // Haqiqiy balans (manfiy bo'lishi mumkin — kassadan qarz bo'lsa)
+  const rubBalance = allOps.reduce((s, op) => s + parseFloat(op.amount), 0);
+
+  return { rubBalance, avgRate: runningAvgRate };
 }
 
 // ─── GET: USD operations list ─────────────────────────────────────────────────
