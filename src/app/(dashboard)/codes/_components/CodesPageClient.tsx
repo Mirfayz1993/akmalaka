@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -31,6 +32,9 @@ export default function CodesPageClient({
   const history = initialHistory;
   const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
   const [isSellModalOpen, setIsSellModalOpen] = useState(false);
+  const [showInventory, setShowInventory] = useState(true);
+  const [showSold, setShowSold] = useState(true);
+  const [showUsed, setShowUsed] = useState(true);
 
   const soldCodes = history.filter((c) => c.status === "sold");
   const usedCodes = history.filter((c) => c.status === "used");
@@ -65,38 +69,68 @@ export default function CodesPageClient({
         </div>
       </div>
 
-      <div className="space-y-8">
+      <div className="space-y-6">
         {/* Mavjud kodlar */}
         <section>
-          <h2 className="text-base font-semibold text-slate-700 mb-3">
-            Mavjud kodlar
-            <span className="ml-2 text-sm font-normal text-slate-400">({inventory.length})</span>
-          </h2>
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <CodeInventoryTable codes={inventory} onDelete={handleDelete} />
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-semibold text-slate-700">
+              Mavjud kodlar
+              <span className="ml-2 text-sm font-normal text-slate-400">({inventory.length})</span>
+            </h2>
+            <button
+              onClick={() => setShowInventory((v) => !v)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+            >
+              {showInventory ? <><ChevronUp size={13} /> Qisqartirish</> : <><ChevronDown size={13} /> Ko&apos;proq ko&apos;rsatish</>}
+            </button>
           </div>
+          {showInventory && (
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+              <CodeInventoryTable codes={inventory} onDelete={handleDelete} />
+            </div>
+          )}
         </section>
 
         {/* Sotilgan kodlar */}
         <section>
-          <h2 className="text-base font-semibold text-slate-700 mb-3">
-            Sotilgan kodlar
-            <span className="ml-2 text-sm font-normal text-slate-400">({soldCodes.length})</span>
-          </h2>
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <CodeHistoryTable codes={soldCodes} mode="sold" />
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-semibold text-slate-700">
+              Sotilgan kodlar
+              <span className="ml-2 text-sm font-normal text-slate-400">({soldCodes.length})</span>
+            </h2>
+            <button
+              onClick={() => setShowSold((v) => !v)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+            >
+              {showSold ? <><ChevronUp size={13} /> Qisqartirish</> : <><ChevronDown size={13} /> Ko&apos;proq ko&apos;rsatish</>}
+            </button>
           </div>
+          {showSold && (
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+              <CodeHistoryTable codes={soldCodes} mode="sold" />
+            </div>
+          )}
         </section>
 
         {/* O'z vagonimizga ishlatilgan kodlar */}
         <section>
-          <h2 className="text-base font-semibold text-slate-700 mb-3">
-            O&apos;z vagonimizga ishlatilgan kodlar
-            <span className="ml-2 text-sm font-normal text-slate-400">({usedCodes.length})</span>
-          </h2>
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <CodeHistoryTable codes={usedCodes} mode="used" />
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-semibold text-slate-700">
+              O&apos;z vagonimizga ishlatilgan kodlar
+              <span className="ml-2 text-sm font-normal text-slate-400">({usedCodes.length})</span>
+            </h2>
+            <button
+              onClick={() => setShowUsed((v) => !v)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+            >
+              {showUsed ? <><ChevronUp size={13} /> Qisqartirish</> : <><ChevronDown size={13} /> Ko&apos;proq ko&apos;rsatish</>}
+            </button>
           </div>
+          {showUsed && (
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+              <CodeHistoryTable codes={usedCodes} mode="used" />
+            </div>
+          )}
         </section>
       </div>
 
