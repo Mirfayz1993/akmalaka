@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import NumberInput from "@/components/ui/NumberInput";
-import { sellCode, type CodeWithSupplier } from "@/lib/actions/codes";
+import { sellCodesBatch, type CodeWithSupplier } from "@/lib/actions/codes";
 import type { Partner } from "@/lib/actions/partners";
 
 interface CodeSellModalProps {
@@ -118,18 +118,18 @@ export default function CodeSellModal({
     setError(null);
     setIsLoading(true);
     try {
-      for (const item of items) {
-        // Avg'on uchun tonnage=1, buyPricePerTon=aniq summa (1×summa = summa)
-        await sellCode({
+      await sellCodesBatch({
+        items: items.map((item) => ({
           codeId: Number(item.codeId),
-          customerId: Number(customerId),
+          type: item.type,
           tonnage: item.type === "afgon" ? 1 : parseFloat(item.tonnage),
           buyPricePerTon: parseFloat(item.buyPricePerTon),
           sellPricePerTon: parseFloat(item.sellPricePerTon),
-          wagonNumber: wagonNumber.trim() || undefined,
-          date: date || undefined,
-        });
-      }
+        })),
+        customerId: Number(customerId),
+        wagonNumber: wagonNumber.trim() || undefined,
+        date: date || undefined,
+      });
       onSuccess();
       handleClose();
     } catch (err) {

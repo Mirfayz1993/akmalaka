@@ -174,6 +174,75 @@ export async function sellCode(data: {
   revalidatePath("/codes");
 }
 
+// ─── SELL BATCH: Bir nechta kodni bitta operatsiyada sotish ──────────────────
+
+export async function sellCodesBatch(data: {
+  items: Array<{
+    codeId: number;
+    type: "kz" | "uz" | "afgon";
+    tonnage: number;
+    buyPricePerTon: number;
+    sellPricePerTon: number;
+  }>;
+  customerId: number;
+  wagonNumber?: string;
+  date?: string;
+}) {
+  const wagonInfo = data.wagonNumber ? ` — Vagon #${data.wagonNumber}` : "";
+  const soldAt = data.date ? new Date(data.date) : new Date();
+
+  await db.transaction(async (tx) => {
+    // Har bir kodni alohida yangilash + supplier bo'yicha xarajatni yig'ish
+    const supplierTotals: Record<number, number> = {};
+    let totalSellPrice = 0;
+
+    for (const item of data.items) {
+      const code = await tx.query.codes.findFirst({ where: eq(codes.id, item.codeId) });
+      if (!code) throw new Error(`Kod #${item.codeId} topilmadi`);
+
+      const buyCostUsd = item.tonnage * item.buyPricePerTon;
+      const sellPriceUsd = item.tonnage * item.sellPricePerTon;
+
+      await tx.update(codes).set({
+        status: "sold",
+        tonnage: String(item.tonnage),
+        buyPricePerTon: String(item.buyPricePerTon),
+        buyCostUsd: String(buyCostUsd),
+        sellPriceUsd: String(sellPriceUsd),
+        sellPricePerTon: String(item.sellPricePerTon),
+        soldToPartnerId: data.customerId,
+        usedAt: soldAt,
+      }).where(eq(codes.id, item.codeId));
+
+      supplierTotals[code.supplierId] = (supplierTotals[code.supplierId] ?? 0) + buyCostUsd;
+      totalSellPrice += sellPriceUsd;
+    }
+
+    // Har bir ta'minotchi uchun bitta yozuv
+    for (const [supplierId, total] of Object.entries(supplierTotals)) {
+      await tx.insert(partnerBalances).values({
+        partnerId: Number(supplierId),
+        amount: String(-total),
+        currency: "usd",
+        description: `Kod xarajati${wagonInfo}`,
+        createdAt: soldAt,
+      });
+    }
+
+    // Mijoz uchun bitta yozuv (jami summa)
+    await tx.insert(partnerBalances).values({
+      partnerId: data.customerId,
+      amount: String(totalSellPrice),
+      currency: "usd",
+      description: `Kod sotuvi${wagonInfo}`,
+      createdAt: soldAt,
+    });
+  });
+
+  revalidatePath("/codes");
+  revalidatePath("/partners");
+}
+
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
 export type CodeWithSupplier = Awaited<ReturnType<typeof getCodeInventory>>[number];
