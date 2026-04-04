@@ -146,39 +146,24 @@ export async function sellCode(data: {
       })
       .where(eq(codes.id, data.codeId));
 
+    // Ta'minotchiga qarz (biz ularga to'laymiz)
     await tx.insert(partnerBalances).values({
       partnerId: code.supplierId,
       amount: String(-buyCostUsd),
       currency: "usd",
-      description: `Kod sotildi${wagonInfo}`,
-    });
-
-    await tx.insert(partnerBalances).values({
-      partnerId: data.customerId,
-      amount: String(sellPriceUsd),
-      currency: "usd",
-      description: `Kod sotib olindi${wagonInfo}`,
-    });
-
-    await tx.insert(cashOperations).values({
-      currency: "usd",
-      type: "expense",
-      amount: String(-buyCostUsd),
-      partnerId: code.supplierId,
       description: `Kod xarajati${wagonInfo}`,
     });
 
-    await tx.insert(cashOperations).values({
-      currency: "usd",
-      type: "income",
-      amount: String(sellPriceUsd),
+    // Mijozdan daromad (ular bizga to'laydi)
+    await tx.insert(partnerBalances).values({
       partnerId: data.customerId,
+      amount: String(sellPriceUsd),
+      currency: "usd",
       description: `Kod sotuvi${wagonInfo}`,
     });
   });
 
   revalidatePath("/codes");
-  revalidatePath("/cash");
 }
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
