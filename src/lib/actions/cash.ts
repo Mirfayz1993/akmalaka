@@ -165,7 +165,7 @@ export async function setOpeningBalances(data: {
   usdCash: number;
   rubCash: number;
   rubRate?: number;
-  partners: Array<{ partnerId: number; usdAmount: number; rubAmount: number }>;
+  partners: Array<{ partnerId: number; usdAmount: number; rubAmount: number; description?: string }>;
 }) {
   await db.transaction(async (tx) => {
     if (data.usdCash !== 0) {
@@ -186,12 +186,13 @@ export async function setOpeningBalances(data: {
       });
     }
     for (const p of data.partners) {
+      const desc = p.description || "Boshlang'ich qoldiq";
       if (p.usdAmount !== 0) {
         await tx.insert(partnerBalances).values({
           partnerId: p.partnerId,
           amount: String(p.usdAmount),
           currency: "usd",
-          description: "Boshlang'ich qoldiq",
+          description: desc,
         });
       }
       if (p.rubAmount !== 0) {
@@ -199,7 +200,7 @@ export async function setOpeningBalances(data: {
           partnerId: p.partnerId,
           amount: String(p.rubAmount),
           currency: "rub",
-          description: "Boshlang'ich qoldiq",
+          description: desc,
         });
       }
     }

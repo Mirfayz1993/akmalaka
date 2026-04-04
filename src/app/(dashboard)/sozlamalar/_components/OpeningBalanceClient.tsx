@@ -18,6 +18,7 @@ type PartnerRow = {
   type: string;
   usdAmount: string;
   rubAmount: string;
+  description: string;
 };
 
 export default function OpeningBalanceClient({
@@ -37,11 +38,12 @@ export default function OpeningBalanceClient({
       type: p.type,
       usdAmount: "",
       rubAmount: "",
+      description: "",
     }))
   );
   const [saving, setSaving] = useState(false);
 
-  function updateRow(partnerId: number, field: "usdAmount" | "rubAmount", value: string) {
+  function updateRow(partnerId: number, field: "usdAmount" | "rubAmount" | "description", value: string) {
     setRows((prev) =>
       prev.map((r) => (r.partnerId === partnerId ? { ...r, [field]: value } : r))
     );
@@ -56,6 +58,7 @@ export default function OpeningBalanceClient({
         partnerId: r.partnerId,
         usdAmount: parseFloat(r.usdAmount) || 0,
         rubAmount: parseFloat(r.rubAmount) || 0,
+        description: r.description || undefined,
       }))
       .filter((r) => r.usdAmount !== 0 || r.rubAmount !== 0);
 
@@ -71,7 +74,7 @@ export default function OpeningBalanceClient({
       setUsdCash("");
       setRubCash("");
       setRubRate("");
-      setRows((prev) => prev.map((r) => ({ ...r, usdAmount: "", rubAmount: "" })));
+      setRows((prev) => prev.map((r) => ({ ...r, usdAmount: "", rubAmount: "", description: "" })));
       startTransition(() => router.refresh());
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Xatolik yuz berdi");
@@ -165,7 +168,8 @@ export default function OpeningBalanceClient({
                   <th className="text-left pb-2 font-medium text-slate-600 pr-4">Hamkor</th>
                   <th className="text-left pb-2 font-medium text-slate-600 pr-4">Turi</th>
                   <th className="text-center pb-2 font-medium text-slate-600 pr-2">USD ($)</th>
-                  <th className="text-center pb-2 font-medium text-slate-600">RUB (₽)</th>
+                  <th className="text-center pb-2 font-medium text-slate-600 pr-2">RUB (₽)</th>
+                  <th className="text-left pb-2 font-medium text-slate-600">Izoh</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -182,13 +186,22 @@ export default function OpeningBalanceClient({
                         className="w-28 border border-slate-300 rounded-lg px-2 py-1 text-sm text-right outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </td>
-                    <td className="py-1">
+                    <td className="py-1 pr-2">
                       <input
                         type="number"
                         value={row.rubAmount}
                         onChange={(e) => updateRow(row.partnerId, "rubAmount", e.target.value)}
                         placeholder="0"
                         className="w-32 border border-slate-300 rounded-lg px-2 py-1 text-sm text-right outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </td>
+                    <td className="py-1">
+                      <input
+                        type="text"
+                        value={row.description}
+                        onChange={(e) => updateRow(row.partnerId, "description", e.target.value)}
+                        placeholder="Izoh..."
+                        className="w-40 border border-slate-300 rounded-lg px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </td>
                   </tr>
