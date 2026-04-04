@@ -402,6 +402,31 @@ async function _closeTransport(id: number): Promise<{ ok: true }> {
     throw new Error("Faqat 'Tushurilgan' statusidagi transportni 'Yopilgan'ga o'tkazish mumkin");
   }
 
+  // 1. Omborxona: shu vagondan kelgan barcha taxtalar soni 0 bo'lishi kerak
+  const warehouseRemainders = await db
+    .select({ id: warehouse.id, quantity: warehouse.quantity, thicknessMm: warehouse.thicknessMm, widthMm: warehouse.widthMm, lengthM: warehouse.lengthM })
+    .from(warehouse)
+    .where(eq(warehouse.transportId, id));
+
+  const unsoldWarehouse = warehouseRemainders.filter((w) => (w.quantity ?? 0) > 0);
+  if (unsoldWarehouse.length > 0) {
+    const dims = unsoldWarehouse
+      .map((w) => `${w.thicknessMm}×${w.widthMm}×${w.lengthM}m (${w.quantity} dona)`)
+      .join(", ");
+    throw new Error(`Omborxonada sotilmagan taxtalar bor: ${dims}. Barchasini soting yoki o'chiring.`);
+  }
+
+  // 2. Savdolar: shu vagonning barcha savdolari mijoz tomonidan qabul qilingan bo'lishi kerak
+  const unreceived = await db
+    .select({ id: saleItems.id, thicknessMm: saleItems.thicknessMm, widthMm: saleItems.widthMm, lengthM: saleItems.lengthM, sentCount: saleItems.sentCount, receivedCount: saleItems.receivedCount })
+    .from(saleItems)
+    .where(eq(saleItems.transportId, id));
+
+  const notReceived = unreceived.filter((si) => (si.receivedCount ?? 0) < (si.sentCount ?? 0));
+  if (notReceived.length > 0) {
+    throw new Error(`Shu vagondan ${notReceived.length} ta savdo qatori mijoz tomonidan hali qabul qilinmagan. Avval savdolarni yakunlang.`);
+  }
+
   const today = new Date().toISOString().split("T")[0];
 
   // Ta'minotchi soni (supplierCount) bo'yicha RUB to'lov hisoblash
