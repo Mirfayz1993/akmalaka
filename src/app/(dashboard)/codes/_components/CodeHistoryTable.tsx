@@ -146,6 +146,7 @@ export default function CodeHistoryTable({ codes, mode }: Props) {
             <th className="text-left py-3 px-4 font-semibold text-slate-600">Kimga sotildi</th>
             <th className="text-left py-3 px-4 font-semibold text-slate-600">Vagon</th>
             <th className="text-right py-3 px-4 font-semibold text-slate-600">Sotilgan narx ($)</th>
+            <th className="text-right py-3 px-4 font-semibold text-slate-600">Foyda ($)</th>
           </tr>
         </thead>
         <tbody>
@@ -167,6 +168,16 @@ export default function CodeHistoryTable({ codes, mode }: Props) {
               <td className="py-3 px-4 text-slate-700">{group.customer}</td>
               <td className="py-3 px-4 text-slate-500 font-mono text-xs">{group.transport}</td>
               <td className="py-3 px-4 text-right font-medium text-green-600">{formatUsd(group.totalSellPrice)}</td>
+              <td className="py-3 px-4 text-right font-semibold">
+                {(() => {
+                  const profit = group.totalSellPrice - group.totalBuyCost;
+                  return (
+                    <span className={profit >= 0 ? "text-green-600" : "text-red-600"}>
+                      {profit >= 0 ? "+" : "−"}{formatUsd(Math.abs(profit))}
+                    </span>
+                  );
+                })()}
+              </td>
             </tr>
           ))}
         </tbody>
