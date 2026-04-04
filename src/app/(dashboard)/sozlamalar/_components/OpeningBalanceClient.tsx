@@ -29,6 +29,7 @@ export default function OpeningBalanceClient({
   const [, startTransition] = useTransition();
   const [usdCash, setUsdCash] = useState("");
   const [rubCash, setRubCash] = useState("");
+  const [rubRate, setRubRate] = useState("");
   const [rows, setRows] = useState<PartnerRow[]>(
     partners.map((p) => ({
       partnerId: p.id,
@@ -49,6 +50,7 @@ export default function OpeningBalanceClient({
   async function handleSubmit() {
     const usd = parseFloat(usdCash) || 0;
     const rub = parseFloat(rubCash) || 0;
+    const rate = parseFloat(rubRate) || 0;
     const partnerEntries = rows
       .map((r) => ({
         partnerId: r.partnerId,
@@ -64,10 +66,11 @@ export default function OpeningBalanceClient({
 
     setSaving(true);
     try {
-      await setOpeningBalances({ usdCash: usd, rubCash: rub, partners: partnerEntries });
+      await setOpeningBalances({ usdCash: usd, rubCash: rub, rubRate: rate, partners: partnerEntries });
       toast.success("Boshlang'ich qoldiqlar saqlandi");
       setUsdCash("");
       setRubCash("");
+      setRubRate("");
       setRows((prev) => prev.map((r) => ({ ...r, usdAmount: "", rubAmount: "" })));
       startTransition(() => router.refresh());
     } catch (e) {
@@ -110,22 +113,37 @@ export default function OpeningBalanceClient({
               className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          <div>
-            <label className="block text-sm text-slate-600 mb-1">
-              Rubl kassa (₽)
-              {currentRubBalance !== 0 && (
-                <span className="ml-2 text-xs text-slate-400">
-                  Hozirgi: {currentRubBalance.toLocaleString("ru-RU")} ₽
-                </span>
-              )}
-            </label>
-            <input
-              type="number"
-              value={rubCash}
-              onChange={(e) => setRubCash(e.target.value)}
-              placeholder="0"
-              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-            />
+          <div className="space-y-2">
+            <div>
+              <label className="block text-sm text-slate-600 mb-1">
+                Rubl kassa (₽)
+                {currentRubBalance !== 0 && (
+                  <span className="ml-2 text-xs text-slate-400">
+                    Hozirgi: {currentRubBalance.toLocaleString("ru-RU")} ₽
+                  </span>
+                )}
+              </label>
+              <input
+                type="number"
+                value={rubCash}
+                onChange={(e) => setRubCash(e.target.value)}
+                placeholder="0"
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-slate-600 mb-1">
+                O&apos;rtacha kurs (₽/$)
+                <span className="ml-1 text-xs text-slate-400">— o'rtacha kurs hisoblash uchun</span>
+              </label>
+              <input
+                type="number"
+                value={rubRate}
+                onChange={(e) => setRubRate(e.target.value)}
+                placeholder="0"
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
           </div>
         </div>
       </div>

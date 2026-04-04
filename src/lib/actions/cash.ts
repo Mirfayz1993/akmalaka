@@ -164,6 +164,7 @@ export async function deleteCashOperation(id: number) {
 export async function setOpeningBalances(data: {
   usdCash: number;
   rubCash: number;
+  rubRate?: number;
   partners: Array<{ partnerId: number; usdAmount: number; rubAmount: number }>;
 }) {
   await db.transaction(async (tx) => {
@@ -180,6 +181,7 @@ export async function setOpeningBalances(data: {
         currency: "rub",
         type: data.rubCash > 0 ? "income" : "expense",
         amount: String(data.rubCash),
+        exchangeRate: data.rubRate && data.rubRate > 0 ? String(data.rubRate) : null,
         description: "Boshlang'ich qoldiq",
       });
     }
