@@ -48,6 +48,8 @@ export default function CodeHistoryTable({ codes, mode }: Props) {
             <th className="text-left py-3 px-4 font-semibold text-slate-600">Sana</th>
             <th className="text-left py-3 px-4 font-semibold text-slate-600">Tur</th>
             <th className="text-left py-3 px-4 font-semibold text-slate-600">Kimdan oldik</th>
+            <th className="text-right py-3 px-4 font-semibold text-slate-600">Tonnaj (t)</th>
+            <th className="text-right py-3 px-4 font-semibold text-slate-600">Narx ($/t)</th>
             <th className="text-right py-3 px-4 font-semibold text-slate-600">To'langan ($)</th>
             <th className="text-left py-3 px-4 font-semibold text-slate-600">
               {mode === "sold" ? "Kimga sotildi" : "Qaysi vagon"}
@@ -67,6 +69,12 @@ export default function CodeHistoryTable({ codes, mode }: Props) {
                 </span>
               </td>
               <td className="py-3 px-4 text-slate-700">{code.supplier?.name ?? "—"}</td>
+              <td className="py-3 px-4 text-right text-slate-600">
+                {code.tonnage ? `${parseFloat(code.tonnage).toFixed(1)} t` : "—"}
+              </td>
+              <td className="py-3 px-4 text-right text-slate-600">
+                {code.buyPricePerTon ? `$${parseFloat(code.buyPricePerTon).toFixed(2)}` : "—"}
+              </td>
               <td className="py-3 px-4 text-right text-slate-700">{formatUsd(code.buyCostUsd)}</td>
               <td className="py-3 px-4 text-slate-700">
                 {mode === "used"
