@@ -115,6 +115,7 @@ export default function CodeSellModal({
       if (!sell || sell <= 0) { setError(`${TYPE_LABELS[item.type]}: sotish narxini kiriting`); return; }
     }
 
+    if (!wagonNumber.trim()) { setError("Vagon raqami majburiy"); return; }
     setError(null);
     setIsLoading(true);
     try {

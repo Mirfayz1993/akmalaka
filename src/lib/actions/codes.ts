@@ -245,10 +245,20 @@ export async function sellCodesBatch(data: {
   revalidatePath("/partners");
 }
 
+// ─── GET: Hamkor uchun sotilgan kodlar (code_buyer) ──────────────────────────
+
+export async function getPartnerSoldCodes(partnerId: number) {
+  return await db.query.codes.findMany({
+    where: (t, { eq, and }) => and(eq(t.status, "sold"), eq(t.soldToPartnerId, partnerId)),
+    orderBy: (t, { asc }) => [asc(t.usedAt), asc(t.id)],
+  });
+}
+
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
 export type CodeWithSupplier = Awaited<ReturnType<typeof getCodeInventory>>[number];
 export type CodeHistoryItem = Awaited<ReturnType<typeof getCodeHistory>>[number];
+export type PartnerSoldCode = Awaited<ReturnType<typeof getPartnerSoldCodes>>[number];
 
 // ─── DELETE: Kodni o'chirish (faqat available) ────────────────────────────────
 
