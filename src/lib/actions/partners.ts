@@ -1,7 +1,7 @@
 "use server";
 import { db } from "@/db";
 import { partners, partnerBalances, cashOperations } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 export type Partner = typeof partners.$inferSelect;
@@ -87,8 +87,39 @@ export async function deletePartner(id: number) {
 }
 
 export async function deletePartnerBalance(id: number) {
-  await db.delete(partnerBalances).where(eq(partnerBalances.id, id));
+  await db.transaction(async (tx) => {
+    const balance = await tx.query.partnerBalances.findFirst({
+      where: eq(partnerBalances.id, id),
+    });
+    if (!balance) return;
+
+    await tx.delete(partnerBalances).where(eq(partnerBalances.id, id));
+
+    // recordPayment orqali yaratilgan bo'lsa kassadagi mos yozuvni ham o'chir
+    // cashOp.amount = -balance.amount (teskari ishoralar)
+    const [cashOp] = await tx
+      .select()
+      .from(cashOperations)
+      .where(
+        and(
+          eq(cashOperations.partnerId, balance.partnerId),
+          balance.description != null
+            ? eq(cashOperations.description, balance.description)
+            : isNull(cashOperations.description),
+          balance.docNumber != null
+            ? eq(cashOperations.docNumber, balance.docNumber)
+            : isNull(cashOperations.docNumber),
+        )
+      )
+      .limit(1);
+
+    if (cashOp && Math.abs(Number(cashOp.amount) + Number(balance.amount)) < 0.01) {
+      await tx.delete(cashOperations).where(eq(cashOperations.id, cashOp.id));
+    }
+  });
+
   revalidatePath("/partners");
+  revalidatePath("/cash");
 }
 
 export async function recordPayment(data: {
