@@ -11,6 +11,7 @@ import type { PartnerSoldCode } from "@/lib/actions/codes";
 import PartnerModal from "./PartnerModal";
 import PaymentModal from "./PaymentModal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { useDeleteConfirm } from "@/components/ui/DeleteConfirm";
 import CodeSalesTable from "./CodeSalesTable";
 
 type PartnerWithBalance = Awaited<ReturnType<typeof getAllPartnersWithBalances>>[number];
@@ -70,6 +71,8 @@ export default function PartnersPageClient({
 
   const filteredByType = selectedType === "all" ? partners : partners.filter((p) => p.type === selectedType);
   const selectedPartner = filteredByType.find((p) => String(p.id) === selectedPartnerId) ?? null;
+
+  const { confirm: confirmDelete, dialog: deleteBalanceDialog } = useDeleteConfirm();
 
   function handleSuccess() {
     setSelectedPartnerId("");
@@ -231,7 +234,7 @@ export default function PartnersPageClient({
                       <div className="flex items-center gap-1.5 shrink-0 ml-2">
                         <span className="font-semibold text-green-600 whitespace-nowrap">{fmtAmt(String(g.totalAmount), g.currency)}</span>
                         <button
-                          onClick={async () => { setDeletingBalanceId(g.ids[0]); try { for (const id of g.ids) await handleDeleteBalance(id); } finally { setDeletingBalanceId(null); } }}
+                          onClick={() => confirmDelete(async () => { setDeletingBalanceId(g.ids[0]); try { for (const id of g.ids) await handleDeleteBalance(id); } finally { setDeletingBalanceId(null); } })}
                           disabled={g.ids.some((id) => deletingBalanceId === id)}
                           className="p-1 text-slate-300 hover:text-red-500 transition-colors disabled:opacity-40"
                         >
@@ -267,7 +270,7 @@ export default function PartnersPageClient({
                       <div className="flex items-center gap-1.5 shrink-0 ml-2">
                         <span className="font-semibold text-red-600 whitespace-nowrap">{fmtAmt(String(g.totalAmount), g.currency)}</span>
                         <button
-                          onClick={async () => { setDeletingBalanceId(g.ids[0]); try { for (const id of g.ids) await handleDeleteBalance(id); } finally { setDeletingBalanceId(null); } }}
+                          onClick={() => confirmDelete(async () => { setDeletingBalanceId(g.ids[0]); try { for (const id of g.ids) await handleDeleteBalance(id); } finally { setDeletingBalanceId(null); } })}
                           disabled={g.ids.some((id) => deletingBalanceId === id)}
                           className="p-1 text-slate-300 hover:text-red-500 transition-colors disabled:opacity-40"
                         >
@@ -309,6 +312,7 @@ export default function PartnersPageClient({
         onSuccess={() => { setIsPaymentModalOpen(false); handleSuccess(); }}
         partner={selectedPartner ? { id: selectedPartner.id, name: selectedPartner.name, type: selectedPartner.type } : null}
       />
+      {deleteBalanceDialog}
     </div>
   );
 }

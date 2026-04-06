@@ -10,6 +10,7 @@ import {
   type CodeWithSupplier,
   type CodeHistoryItem,
 } from "@/lib/actions/codes";
+import { useDeleteConfirm } from "@/components/ui/DeleteConfirm";
 import type { Partner } from "@/lib/actions/partners";
 import CodeInventoryTable from "./CodeInventoryTable";
 import CodeHistoryTable from "./CodeHistoryTable";
@@ -31,6 +32,7 @@ export default function CodesPageClient({
   const [, startTransition] = useTransition();
   const inventory = initialInventory;
   const history = initialHistory;
+  const { confirm: confirmDelete, dialog: deleteDialog } = useDeleteConfirm();
   const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
   const [isSellModalOpen, setIsSellModalOpen] = useState(false);
   const [showInventory, setShowInventory] = useState(true);
@@ -40,25 +42,28 @@ export default function CodesPageClient({
   const soldCodes = history.filter((c) => c.status === "sold");
   const usedCodes = history.filter((c) => c.status === "used");
 
-  async function handleDelete(id: number) {
-    try {
-      await deleteCode(id);
-      toast.success("Kod o'chirildi");
-      startTransition(() => { router.refresh(); });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Xatolik yuz berdi");
-    }
+  function handleDelete(id: number) {
+    confirmDelete(async () => {
+      try {
+        await deleteCode(id);
+        toast.success("Kod o'chirildi");
+        startTransition(() => { router.refresh(); });
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Xatolik yuz berdi");
+      }
+    });
   }
 
-  async function handleDeleteSoldBatch(codeIds: number[]) {
-    if (!confirm("Bu vagon sotuv yozuvini o'chirishni tasdiqlaysizmi? Hamkor balanslari avtomatik teskari yozuv bilan bekor qilinadi.")) return;
-    try {
-      await deleteSoldCodesBatch(codeIds);
-      toast.success("Sotuv o'chirildi");
-      startTransition(() => { router.refresh(); });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Xatolik yuz berdi");
-    }
+  function handleDeleteSoldBatch(codeIds: number[]) {
+    confirmDelete(async () => {
+      try {
+        await deleteSoldCodesBatch(codeIds);
+        toast.success("Sotuv o'chirildi");
+        startTransition(() => { router.refresh(); });
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Xatolik yuz berdi");
+      }
+    });
   }
 
   return (
@@ -159,6 +164,7 @@ export default function CodesPageClient({
         partners={partners}
         availableCodes={inventory}
       />
+      {deleteDialog}
     </div>
   );
 }

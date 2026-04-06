@@ -8,6 +8,7 @@ import {
   getUsdOperations, getRubOperations, getExchangeHistory,
 } from "@/lib/actions/cash";
 import { type Partner } from "@/lib/actions/partners";
+import { useDeleteConfirm } from "@/components/ui/DeleteConfirm";
 import Modal from "@/components/ui/Modal";
 import NumberInput from "@/components/ui/NumberInput";
 import UsdTab from "./UsdTab";
@@ -43,6 +44,8 @@ export default function CashPageClient({
   const rubOperations = initialRubOps;
   const exchangeHistory = initialExchanges;
 
+  const { confirm: confirmDelete, dialog: deleteDialog } = useDeleteConfirm();
+
   const [isUsdModalOpen, setIsUsdModalOpen] = useState(false);
   const [isRubModalOpen, setIsRubModalOpen] = useState(false);
   const [isExchangeModalOpen, setIsExchangeModalOpen] = useState(false);
@@ -59,8 +62,8 @@ export default function CashPageClient({
   const [exchSubmitting, setExchSubmitting] = useState(false);
   const [exchError, setExchError] = useState("");
 
-  async function handleDeleteUsd(id: number) { await deleteCashOperation(id); startTransition(() => { router.refresh(); }); }
-  async function handleDeleteRub(id: number) { await deleteCashOperation(id); startTransition(() => { router.refresh(); }); }
+  function handleDeleteUsd(id: number) { confirmDelete(async () => { await deleteCashOperation(id); startTransition(() => { router.refresh(); }); }); }
+  function handleDeleteRub(id: number) { confirmDelete(async () => { await deleteCashOperation(id); startTransition(() => { router.refresh(); }); }); }
 
   function openUsdModal() { setUsdForm({ type: "income", amount: "", partnerId: "", description: "" }); setUsdError(""); setIsUsdModalOpen(true); }
   function openRubModal() { setRubForm({ type: "income", amount: "", partnerId: "", description: "" }); setRubError(""); setIsRubModalOpen(true); }
@@ -254,6 +257,7 @@ export default function CashPageClient({
           </div>
         </form>
       </Modal>
+      {deleteDialog}
     </div>
   );
 }

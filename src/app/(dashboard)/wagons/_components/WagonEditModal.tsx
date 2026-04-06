@@ -17,6 +17,7 @@ import {
 import { createTimber, updateTimber, deleteTimber } from "@/lib/actions/timbers";
 import { getTransportFinancialSummary, type TransportSummary } from "@/lib/actions/transport-summary";
 import { t } from "@/i18n/uz";
+import { useDeleteConfirm } from "@/components/ui/DeleteConfirm";
 
 // ─── Tiplar ───────────────────────────────────────────────────────────────────
 
@@ -170,6 +171,8 @@ export default function WagonEditModal({
   partners,
   onSuccess,
 }: WagonEditModalProps) {
+  const { confirm: confirmDelete, dialog: deleteDialog } = useDeleteConfirm();
+
   // ── Tahrirlash statelari (faqat in_transit da ishlaydi) ──
   const [number, setNumber] = useState("");
   const [sentAt, setSentAt] = useState("");
@@ -452,9 +455,11 @@ export default function WagonEditModal({
     setNewTimber({ thicknessMm: "", widthMm: "", lengthM: "", russiaCount: "" });
   }
 
-  async function handleDeleteTimber(id: number) {
-    await deleteTimber(id);
-    setTimberList((prev) => prev.filter((item) => item.id !== id));
+  function handleDeleteTimber(id: number) {
+    confirmDelete(async () => {
+      await deleteTimber(id);
+      setTimberList((prev) => prev.filter((item) => item.id !== id));
+    });
   }
 
   async function handleAddExpense() {
@@ -470,9 +475,11 @@ export default function WagonEditModal({
     setNewExpensePartnerId("");
   }
 
-  async function handleDeleteExpense(id: number) {
-    await deleteTransportExpense(id);
-    setExpenses((prev) => prev.filter((e) => e.id !== id));
+  function handleDeleteExpense(id: number) {
+    confirmDelete(async () => {
+      await deleteTransportExpense(id);
+      setExpenses((prev) => prev.filter((e) => e.id !== id));
+    });
   }
 
   async function handleSave() {
@@ -1425,6 +1432,7 @@ export default function WagonEditModal({
           </div>
         </div>
       )}
+      {deleteDialog}
     </>
   );
 }
