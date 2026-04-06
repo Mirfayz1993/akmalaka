@@ -1,16 +1,41 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import Modal from "@/components/ui/Modal";
 import NumberInput from "@/components/ui/NumberInput";
 import { recordPayment } from "@/lib/actions/partners";
 
+type PartnerType =
+  | "russia_supplier"
+  | "code_supplier"
+  | "code_buyer"
+  | "wood_buyer"
+  | "service_provider"
+  | "truck_owner"
+  | "personal"
+  | "exchanger"
+  | "partner";
+
+const PAY_DEFAULT_TYPES: PartnerType[] = [
+  "russia_supplier",
+  "code_supplier",
+  "service_provider",
+  "truck_owner",
+];
+const RECEIVE_DEFAULT_TYPES: PartnerType[] = ["code_buyer", "wood_buyer"];
+
+function getDefaultDirection(type?: PartnerType): "pay" | "receive" {
+  if (type && PAY_DEFAULT_TYPES.includes(type)) return "pay";
+  if (type && RECEIVE_DEFAULT_TYPES.includes(type)) return "receive";
+  return "pay";
+}
+
 interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  partner: { id: number; name: string } | null;
+  partner: { id: number; name: string; type?: PartnerType } | null;
 }
 
 export default function PaymentModal({
@@ -19,7 +44,9 @@ export default function PaymentModal({
   onSuccess,
   partner,
 }: PaymentModalProps) {
-  const [direction, setDirection] = useState<"pay" | "receive">("pay");
+  const [direction, setDirection] = useState<"pay" | "receive">(
+    () => getDefaultDirection(partner?.type)
+  );
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState<"usd" | "rub">("usd");
   const [description, setDescription] = useState("");
@@ -27,8 +54,19 @@ export default function PaymentModal({
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    if (isOpen) {
+      setDirection(getDefaultDirection(partner?.type));
+      setAmount("");
+      setCurrency("usd");
+      setDescription("");
+      setDocNumber("");
+      setDate(new Date().toISOString().slice(0, 10));
+    }
+  }, [isOpen, partner?.type]);
+
   function handleClose() {
-    setDirection("pay");
+    setDirection(getDefaultDirection(partner?.type));
     setAmount("");
     setCurrency("usd");
     setDescription("");

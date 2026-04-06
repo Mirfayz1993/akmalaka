@@ -1,14 +1,17 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
 import { getAllPartnersWithBalances, deletePartner, deletePartnerBalance } from "@/lib/actions/partners";
 import type { Partner } from "@/lib/actions/partners";
+import { getPartnerSoldCodes } from "@/lib/actions/codes";
+import type { PartnerSoldCode } from "@/lib/actions/codes";
 import PartnerModal from "./PartnerModal";
 import PaymentModal from "./PaymentModal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import CodeSalesTable from "./CodeSalesTable";
 
 type PartnerWithBalance = Awaited<ReturnType<typeof getAllPartnersWithBalances>>[number];
 
@@ -304,7 +307,7 @@ export default function PartnersPageClient({
         isOpen={isPaymentModalOpen}
         onClose={() => setIsPaymentModalOpen(false)}
         onSuccess={() => { setIsPaymentModalOpen(false); handleSuccess(); }}
-        partner={selectedPartner ? { id: selectedPartner.id, name: selectedPartner.name } : null}
+        partner={selectedPartner ? { id: selectedPartner.id, name: selectedPartner.name, type: selectedPartner.type } : null}
       />
     </div>
   );
