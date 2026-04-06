@@ -1,10 +1,12 @@
 "use client";
 
+import { Trash2 } from "lucide-react";
 import type { CodeHistoryItem } from "@/lib/actions/codes";
 
 interface Props {
   codes: CodeHistoryItem[];
   mode: "sold" | "used";
+  onDelete?: (codeIds: number[]) => void;
 }
 
 const typeBadgeClasses: Record<string, string> = {
@@ -41,7 +43,7 @@ type GroupedRow = {
   transport: string;
 };
 
-export default function CodeHistoryTable({ codes, mode }: Props) {
+export default function CodeHistoryTable({ codes, mode, onDelete }: Props) {
   if (codes.length === 0) {
     return (
       <div className="text-center py-10 text-slate-500 text-sm">
@@ -148,6 +150,7 @@ export default function CodeHistoryTable({ codes, mode }: Props) {
             <th className="text-left py-3 px-4 font-semibold text-slate-600">Vagon</th>
             <th className="text-right py-3 px-4 font-semibold text-slate-600">Sotilgan narx ($)</th>
             <th className="text-right py-3 px-4 font-semibold text-slate-600">Foyda ($)</th>
+            {onDelete && <th className="py-3 px-4" />}
           </tr>
         </thead>
         <tbody>
@@ -180,6 +183,17 @@ export default function CodeHistoryTable({ codes, mode }: Props) {
                   );
                 })()}
               </td>
+              {onDelete && (
+                <td className="py-3 px-4 text-center">
+                  <button
+                    onClick={() => onDelete(group.codes.map((c) => c.id))}
+                    className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                    title="O'chirish"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>

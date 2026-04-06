@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   deleteCode,
+  deleteSoldCodesBatch,
   type CodeWithSupplier,
   type CodeHistoryItem,
 } from "@/lib/actions/codes";
@@ -43,6 +44,17 @@ export default function CodesPageClient({
     try {
       await deleteCode(id);
       toast.success("Kod o'chirildi");
+      startTransition(() => { router.refresh(); });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Xatolik yuz berdi");
+    }
+  }
+
+  async function handleDeleteSoldBatch(codeIds: number[]) {
+    if (!confirm("Bu vagon sotuv yozuvini o'chirishni tasdiqlaysizmi? Hamkor balanslari avtomatik teskari yozuv bilan bekor qilinadi.")) return;
+    try {
+      await deleteSoldCodesBatch(codeIds);
+      toast.success("Sotuv o'chirildi");
       startTransition(() => { router.refresh(); });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Xatolik yuz berdi");
@@ -107,7 +119,7 @@ export default function CodesPageClient({
           </div>
           {showSold && (
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-              <CodeHistoryTable codes={soldCodes} mode="sold" />
+              <CodeHistoryTable codes={soldCodes} mode="sold" onDelete={handleDeleteSoldBatch} />
             </div>
           )}
         </section>

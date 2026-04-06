@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { codes, partnerBalances, transports, cashOperations } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 
 // ─── GET: Mavjud kodlar (status = 'available') ────────────────────────────────
 
@@ -259,6 +259,59 @@ export async function getPartnerSoldCodes(partnerId: number) {
 export type CodeWithSupplier = Awaited<ReturnType<typeof getCodeInventory>>[number];
 export type CodeHistoryItem = Awaited<ReturnType<typeof getCodeHistory>>[number];
 export type PartnerSoldCode = Awaited<ReturnType<typeof getPartnerSoldCodes>>[number];
+
+// ─── DELETE: Sotilgan kodlar guruhini o'chirish ───────────────────────────────
+
+export async function deleteSoldCodesBatch(codeIds: number[]) {
+  await db.transaction(async (tx) => {
+    const codeList = await tx.query.codes.findMany({
+      where: (t, { inArray }) => inArray(t.id, codeIds),
+    });
+
+    if (codeList.length === 0) throw new Error("Kodlar topilmadi");
+
+    const notesStr = codeList[0].notes ?? "";
+    const wagonInfo = notesStr.includes("|") ? ` — Vagon #${notesStr.split("|")[1]}` : "";
+
+    // Supplier bo'yicha xarajatlarni yig'
+    const supplierTotals: Record<number, number> = {};
+    let totalSellPrice = 0;
+    let customerId: number | null = null;
+
+    for (const code of codeList) {
+      const cost = parseFloat(code.buyCostUsd ?? "0");
+      supplierTotals[code.supplierId] = (supplierTotals[code.supplierId] ?? 0) + cost;
+      totalSellPrice += parseFloat(code.sellPriceUsd ?? "0");
+      customerId = code.soldToPartnerId ?? customerId;
+    }
+
+    // Supplierlar uchun teskari yozuv (bekor qilish)
+    for (const [supplierId, total] of Object.entries(supplierTotals)) {
+      await tx.insert(partnerBalances).values({
+        partnerId: Number(supplierId),
+        amount: String(total),
+        currency: "usd",
+        description: `Kod o'chirildi${wagonInfo}`,
+      });
+    }
+
+    // Mijoz uchun teskari yozuv
+    if (customerId) {
+      await tx.insert(partnerBalances).values({
+        partnerId: customerId,
+        amount: String(-totalSellPrice),
+        currency: "usd",
+        description: `Kod o'chirildi${wagonInfo}`,
+      });
+    }
+
+    // Kodlarni o'chirish
+    await tx.delete(codes).where(inArray(codes.id, codeIds));
+  });
+
+  revalidatePath("/codes");
+  revalidatePath("/partners");
+}
 
 // ─── DELETE: Kodni o'chirish (faqat available) ────────────────────────────────
 
