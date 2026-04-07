@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import Modal from "@/components/ui/Modal";
 import NumberInput from "@/components/ui/NumberInput";
 import { createTransport } from "@/lib/actions/wagons";
+import ShortDateInput from "@/components/ui/ShortDateInput";
 import { t } from "@/i18n/uz";
 
 interface Partner {
@@ -393,20 +394,18 @@ export default function WagonModal({ isOpen, onClose, type, partners, transports
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelClass}>{t.wagons.sentAt}</label>
-                <input
-                  type="date"
-                  className={inputClass}
+                <ShortDateInput
                   value={sentAt}
-                  onChange={(e) => setSentAt(e.target.value)}
+                  onChange={setSentAt}
+                  className={inputClass}
                 />
               </div>
               <div>
                 <label className={labelClass}>{t.wagons.arrivedAt}</label>
-                <input
-                  type="date"
-                  className={inputClass}
+                <ShortDateInput
                   value={arrivedAt}
-                  onChange={(e) => setArrivedAt(e.target.value)}
+                  onChange={setArrivedAt}
+                  className={inputClass}
                 />
               </div>
             </div>

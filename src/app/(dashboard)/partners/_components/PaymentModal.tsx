@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import Modal from "@/components/ui/Modal";
+import ShortDateInput from "@/components/ui/ShortDateInput";
 import NumberInput from "@/components/ui/NumberInput";
 import { recordPayment } from "@/lib/actions/partners";
 
@@ -222,10 +223,9 @@ export default function PaymentModal({
           <label className="block text-sm font-medium text-slate-700 mb-1">
             Sana
           </label>
-          <input
-            type="date"
+          <ShortDateInput
             value={date}
-            onChange={(e) => setDate(e.target.value)}
+            onChange={setDate}
             className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
           />
         </div>

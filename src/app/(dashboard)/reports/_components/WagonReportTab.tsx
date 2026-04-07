@@ -1,5 +1,7 @@
 "use client";
 
+import ShortDateInput from "@/components/ui/ShortDateInput";
+
 type WagonReportItem = {
   wagonId: number;
   number: string | null;
@@ -75,19 +77,17 @@ export default function WagonReportTab({
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <label className="text-sm text-slate-600 font-medium">Dan:</label>
-          <input
-            type="date"
+          <ShortDateInput
             value={dateFrom}
-            onChange={(e) => onDateChange(e.target.value, dateTo)}
+            onChange={(iso) => onDateChange(iso, dateTo)}
             className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
           />
         </div>
         <div className="flex items-center gap-2">
           <label className="text-sm text-slate-600 font-medium">Gacha:</label>
-          <input
-            type="date"
+          <ShortDateInput
             value={dateTo}
-            onChange={(e) => onDateChange(dateFrom, e.target.value)}
+            onChange={(iso) => onDateChange(dateFrom, iso)}
             className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
           />
         </div>

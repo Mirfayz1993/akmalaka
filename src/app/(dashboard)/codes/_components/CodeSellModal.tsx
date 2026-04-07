@@ -6,6 +6,7 @@ import Modal from "@/components/ui/Modal";
 import NumberInput from "@/components/ui/NumberInput";
 import { sellCodesBatch, type CodeWithSupplier } from "@/lib/actions/codes";
 import type { Partner } from "@/lib/actions/partners";
+import ShortDateInput from "@/components/ui/ShortDateInput";
 
 interface CodeSellModalProps {
   isOpen: boolean;
@@ -182,10 +183,9 @@ export default function CodeSellModal({
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Sana</label>
-            <input
-              type="date"
+            <ShortDateInput
               value={date}
-              onChange={(e) => setDate(e.target.value)}
+              onChange={setDate}
               className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
             />
           </div>

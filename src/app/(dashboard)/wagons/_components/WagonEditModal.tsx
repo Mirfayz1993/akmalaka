@@ -18,6 +18,7 @@ import { createTimber, updateTimber, deleteTimber } from "@/lib/actions/timbers"
 import { getTransportFinancialSummary, type TransportSummary } from "@/lib/actions/transport-summary";
 import { t } from "@/i18n/uz";
 import { useDeleteConfirm } from "@/components/ui/DeleteConfirm";
+import ShortDateInput from "@/components/ui/ShortDateInput";
 
 // ─── Tiplar ───────────────────────────────────────────────────────────────────
 
@@ -583,11 +584,11 @@ export default function WagonEditModal({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className={labelClass}>{t.wagons.sentAt}</label>
-                    <input type="date" className={inputClass} value={sentAt} onChange={(e) => setSentAt(e.target.value)} />
+                    <ShortDateInput value={sentAt} onChange={setSentAt} className={inputClass} />
                   </div>
                   <div>
                     <label className={labelClass}>{t.wagons.arrivedAt}</label>
-                    <input type="date" className={inputClass} value={arrivedAt} onChange={(e) => setArrivedAt(e.target.value)} />
+                    <ShortDateInput value={arrivedAt} onChange={setArrivedAt} className={inputClass} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">

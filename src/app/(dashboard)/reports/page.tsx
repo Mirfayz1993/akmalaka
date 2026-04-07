@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import ShortDateInput from "@/components/ui/ShortDateInput";
 import WagonReportTab from "./_components/WagonReportTab";
 import CashReportTab from "./_components/CashReportTab";
 import {
@@ -189,19 +190,17 @@ export default function ReportsPage() {
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center gap-2">
                   <label className="text-sm text-slate-600 font-medium">Dan:</label>
-                  <input
-                    type="date"
+                  <ShortDateInput
                     value={dateFrom}
-                    onChange={(e) => handleDateChange(e.target.value, dateTo)}
+                    onChange={(iso: string) => handleDateChange(iso, dateTo)}
                     className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   />
                 </div>
                 <div className="flex items-center gap-2">
                   <label className="text-sm text-slate-600 font-medium">Gacha:</label>
-                  <input
-                    type="date"
+                  <ShortDateInput
                     value={dateTo}
-                    onChange={(e) => handleDateChange(dateFrom, e.target.value)}
+                    onChange={(iso: string) => handleDateChange(dateFrom, iso)}
                     className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   />
                 </div>
@@ -335,19 +334,17 @@ export default function ReportsPage() {
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center gap-2">
                   <label className="text-sm text-slate-600 font-medium">Dan:</label>
-                  <input
-                    type="date"
+                  <ShortDateInput
                     value={dateFrom}
-                    onChange={(e) => handleDateChange(e.target.value, dateTo)}
+                    onChange={(iso: string) => handleDateChange(iso, dateTo)}
                     className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   />
                 </div>
                 <div className="flex items-center gap-2">
                   <label className="text-sm text-slate-600 font-medium">Gacha:</label>
-                  <input
-                    type="date"
+                  <ShortDateInput
                     value={dateTo}
-                    onChange={(e) => handleDateChange(dateFrom, e.target.value)}
+                    onChange={(iso: string) => handleDateChange(dateFrom, iso)}
                     className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   />
                 </div>
