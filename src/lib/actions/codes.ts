@@ -28,7 +28,6 @@ export async function getCodeHistory() {
       soldToPartner: true,
     },
     orderBy: (t, { asc }) => [asc(t.usedAt), asc(t.id)],
-    limit: 100,
   });
 }
 
