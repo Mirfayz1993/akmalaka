@@ -68,11 +68,19 @@ export default function PartnersPageClient({
   const [deleteTarget, setDeleteTarget] = useState<PartnerWithBalance | null>(null);
   const [isDeleteLoading, setIsDeleteLoading] = useState(false);
   const [deletingBalanceId, setDeletingBalanceId] = useState<number | null>(null);
+  const [soldCodes, setSoldCodes] = useState<PartnerSoldCode[]>([]);
 
   const filteredByType = selectedType === "all" ? partners : partners.filter((p) => p.type === selectedType);
   const selectedPartner = filteredByType.find((p) => String(p.id) === selectedPartnerId) ?? null;
 
   const { confirm: confirmDelete, dialog: deleteBalanceDialog } = useDeleteConfirm();
+
+  useEffect(() => {
+    if (!selectedPartnerId) { setSoldCodes([]); return; }
+    const id = filteredByType.find((p) => String(p.id) === selectedPartnerId)?.id;
+    if (!id) return;
+    getPartnerSoldCodes(id).then(setSoldCodes);
+  }, [selectedPartnerId]);
 
   function handleSuccess() {
     setSelectedPartnerId("");
@@ -283,6 +291,16 @@ export default function PartnersPageClient({
               )}
             </div>
           </div>
+          {(selectedPartner.type === "code_buyer" || selectedPartner.type === "wood_buyer") && (
+            <div className="bg-white rounded-xl border border-slate-200">
+              <div className="px-5 py-3 border-b border-slate-200">
+                <h2 className="text-sm font-semibold text-slate-700">Sotilgan kodlar ({soldCodes.length})</h2>
+              </div>
+              <div className="p-3">
+                <CodeSalesTable codes={soldCodes} />
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="flex-1 bg-white rounded-xl border border-slate-200 flex items-center justify-center text-slate-400 text-sm">

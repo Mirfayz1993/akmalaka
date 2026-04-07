@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { codes, partnerBalances, transports, cashOperations } from "@/db/schema";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, like, and } from "drizzle-orm";
 
 // ─── GET: Mavjud kodlar (status = 'available') ────────────────────────────────
 
@@ -192,6 +192,14 @@ export async function sellCodesBatch(data: {
   const batchId = `${Date.now()}${data.wagonNumber ? `|${data.wagonNumber}` : ""}`;
 
   await db.transaction(async (tx) => {
+    if (data.wagonNumber) {
+      const existing = await tx.query.codes.findFirst({
+        where: (t, { and: a, eq: e, like: l }) =>
+          a(e(t.status, "sold"), l(t.notes, `%|${data.wagonNumber}`)),
+      });
+      if (existing) throw new Error(`Vagon #${data.wagonNumber} allaqachon kiritilgan`);
+    }
+
     // Har bir kodni alohida yangilash + supplier bo'yicha xarajatni yig'ish
     const supplierTotals: Record<number, number> = {};
     let totalSellPrice = 0;
