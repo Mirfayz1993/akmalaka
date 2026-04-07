@@ -280,36 +280,24 @@ export async function deleteSoldCodesBatch(codeIds: number[]) {
     const notesStr = codeList[0].notes ?? "";
     const wagonInfo = notesStr.includes("|") ? ` — Vagon #${notesStr.split("|")[1]}` : "";
 
-    // Supplier bo'yicha xarajatlarni yig'
-    const supplierTotals: Record<number, number> = {};
-    let totalSellPrice = 0;
-    let customerId: number | null = null;
-
-    for (const code of codeList) {
-      const cost = parseFloat(code.buyCostUsd ?? "0");
-      supplierTotals[code.supplierId] = (supplierTotals[code.supplierId] ?? 0) + cost;
-      totalSellPrice += parseFloat(code.sellPriceUsd ?? "0");
-      customerId = code.soldToPartnerId ?? customerId;
-    }
-
-    // Supplierlar uchun teskari yozuv (bekor qilish)
-    for (const [supplierId, total] of Object.entries(supplierTotals)) {
-      await tx.insert(partnerBalances).values({
-        partnerId: Number(supplierId),
-        amount: String(total),
-        currency: "usd",
-        description: `Kod o'chirildi${wagonInfo}`,
+    // Har bir supplier uchun original balance yozuvini o'chir
+    const supplierIds = [...new Set(codeList.map((c) => c.supplierId))];
+    for (const supplierId of supplierIds) {
+      const bal = await tx.query.partnerBalances.findFirst({
+        where: (t, { and: a, eq: e }) =>
+          a(e(t.partnerId, supplierId), e(t.description, `Kod xarajati${wagonInfo}`)),
       });
+      if (bal) await tx.delete(partnerBalances).where(eq(partnerBalances.id, bal.id));
     }
 
-    // Mijoz uchun teskari yozuv
+    // Mijoz uchun original balance yozuvini o'chir
+    const customerId = codeList[0].soldToPartnerId;
     if (customerId) {
-      await tx.insert(partnerBalances).values({
-        partnerId: customerId,
-        amount: String(-totalSellPrice),
-        currency: "usd",
-        description: `Kod o'chirildi${wagonInfo}`,
+      const bal = await tx.query.partnerBalances.findFirst({
+        where: (t, { and: a, eq: e }) =>
+          a(e(t.partnerId, customerId), e(t.description, `Kod sotuvi${wagonInfo}`)),
       });
+      if (bal) await tx.delete(partnerBalances).where(eq(partnerBalances.id, bal.id));
     }
 
     // Kodlarni o'chirish
