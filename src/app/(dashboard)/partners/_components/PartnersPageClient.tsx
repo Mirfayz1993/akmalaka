@@ -195,10 +195,10 @@ export default function PartnersPageClient({
           <>
             <div className="flex items-center gap-3 ml-2">
               <span className={`text-base font-bold ${usd === 0 ? "text-slate-500" : isWoodBuyer ? (usd > 0 ? "text-red-600" : "text-green-600") : (usd > 0 ? "text-green-600" : "text-red-600")}`}>
-                {usd >= 0 ? "+" : ""}${Math.abs(usd).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {isWoodBuyer ? (usd > 0 ? "−" : "+") : (usd >= 0 ? "+" : "−")}${Math.abs(usd).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
               <span className={`text-sm font-semibold ${rub === 0 ? "text-slate-500" : isWoodBuyer ? (rub > 0 ? "text-red-600" : "text-green-600") : (rub > 0 ? "text-green-600" : "text-red-600")}`}>
-                {rub >= 0 ? "+" : "−"}{Math.abs(rub).toLocaleString("ru-RU", { maximumFractionDigits: 0 })} ₽
+                {isWoodBuyer ? (rub > 0 ? "−" : "+") : (rub >= 0 ? "+" : "−")}{Math.abs(rub).toLocaleString("ru-RU", { maximumFractionDigits: 0 })} ₽
               </span>
             </div>
             <button
