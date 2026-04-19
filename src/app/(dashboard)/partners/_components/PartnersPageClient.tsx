@@ -221,14 +221,16 @@ export default function PartnersPageClient({
       {/* Two panels */}
       {selectedPartner ? (
         <div className="flex gap-4 flex-1 min-h-0">
-          {/* Daromadlar */}
+          {/* Chap panel: wood_buyer uchun Xarajatlar (savdo), boshqalar uchun Daromadlar */}
           <div className="flex-1 bg-white rounded-xl border border-slate-200 flex flex-col min-h-0">
             <div className="px-5 py-3 border-b border-slate-200">
-              <h2 className={`text-sm font-semibold ${isWoodBuyer ? "text-red-700" : "text-green-700"}`}>Daromadlar ({incomes.length})</h2>
+              <h2 className={`text-sm font-semibold ${isWoodBuyer ? "text-red-700" : "text-green-700"}`}>
+                {isWoodBuyer ? "Xarajatlar" : "Daromadlar"} ({incomes.length})
+              </h2>
             </div>
             <div className="flex-1 overflow-y-auto p-3">
               {incomes.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-8">Daromadlar yo&apos;q</p>
+                <p className="text-sm text-slate-400 text-center py-8">{isWoodBuyer ? "Xarajatlar" : "Daromadlar"} yo&apos;q</p>
               ) : (
                 <div className="flex flex-col gap-1">
                   {incomes.map((g) => (
@@ -241,7 +243,9 @@ export default function PartnersPageClient({
                         )}
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                        <span className={`font-semibold whitespace-nowrap ${isWoodBuyer ? "text-red-600" : "text-green-600"}`}>{fmtAmt(String(g.totalAmount), g.currency)}</span>
+                        <span className={`font-semibold whitespace-nowrap ${isWoodBuyer ? "text-red-600" : "text-green-600"}`}>
+                          {fmtAmt(String(isWoodBuyer ? -g.totalAmount : g.totalAmount), g.currency)}
+                        </span>
                         <button
                           onClick={() => confirmDelete(async () => { setDeletingBalanceId(g.ids[0]); try { for (const id of g.ids) await handleDeleteBalance(id); } finally { setDeletingBalanceId(null); } })}
                           disabled={g.ids.some((id) => deletingBalanceId === id)}
@@ -257,14 +261,16 @@ export default function PartnersPageClient({
             </div>
           </div>
 
-          {/* Xarajatlar */}
+          {/* O'ng panel: wood_buyer uchun Daromadlar (to'lov), boshqalar uchun Xarajatlar */}
           <div className="flex-1 bg-white rounded-xl border border-slate-200 flex flex-col min-h-0">
             <div className="px-5 py-3 border-b border-slate-200">
-              <h2 className={`text-sm font-semibold ${isWoodBuyer ? "text-green-700" : "text-red-700"}`}>Xarajatlar ({expenses.length})</h2>
+              <h2 className={`text-sm font-semibold ${isWoodBuyer ? "text-green-700" : "text-red-700"}`}>
+                {isWoodBuyer ? "Daromadlar" : "Xarajatlar"} ({expenses.length})
+              </h2>
             </div>
             <div className="flex-1 overflow-y-auto p-3">
               {expenses.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-8">Xarajatlar yo&apos;q</p>
+                <p className="text-sm text-slate-400 text-center py-8">{isWoodBuyer ? "Daromadlar" : "Xarajatlar"} yo&apos;q</p>
               ) : (
                 <div className="flex flex-col gap-1">
                   {expenses.map((g) => (
@@ -277,7 +283,9 @@ export default function PartnersPageClient({
                         )}
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                        <span className={`font-semibold whitespace-nowrap ${isWoodBuyer ? "text-green-600" : "text-red-600"}`}>{fmtAmt(String(g.totalAmount), g.currency)}</span>
+                        <span className={`font-semibold whitespace-nowrap ${isWoodBuyer ? "text-green-600" : "text-red-600"}`}>
+                          {fmtAmt(String(isWoodBuyer ? -g.totalAmount : g.totalAmount), g.currency)}
+                        </span>
                         <button
                           onClick={() => confirmDelete(async () => { setDeletingBalanceId(g.ids[0]); try { for (const id of g.ids) await handleDeleteBalance(id); } finally { setDeletingBalanceId(null); } })}
                           disabled={g.ids.some((id) => deletingBalanceId === id)}
