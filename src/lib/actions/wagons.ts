@@ -444,7 +444,7 @@ async function _closeTransport(id: number): Promise<{ ok: true }> {
     .select({ amount: cashOperations.amount, exchangeRate: cashOperations.exchangeRate })
     .from(cashOperations)
     .where(eq(cashOperations.currency, "rub"))
-    .orderBy(cashOperations.createdAt, cashOperations.id);
+    .orderBy(cashOperations.id);
 
   // Xronologik o'rtacha kurs (qoldiq × eski kurs + kirim × yangi kurs / yangi qoldiq)
   let rubCashBalance = 0;
