@@ -153,6 +153,7 @@ export default function PartnersPageClient({
   const balanceGroups = selectedPartner ? groupBalances(selectedPartner.balances) : [];
   const incomes = balanceGroups.filter((g) => g.totalAmount > 0);
   const expenses = balanceGroups.filter((g) => g.totalAmount < 0);
+  const isWoodBuyer = selectedPartner?.type === "wood_buyer";
 
   const usd = selectedPartner?.usdBalance ?? 0;
   const rub = selectedPartner?.rubBalance ?? 0;
@@ -223,7 +224,7 @@ export default function PartnersPageClient({
           {/* Daromadlar */}
           <div className="flex-1 bg-white rounded-xl border border-slate-200 flex flex-col min-h-0">
             <div className="px-5 py-3 border-b border-slate-200">
-              <h2 className="text-sm font-semibold text-green-700">Daromadlar ({incomes.length})</h2>
+              <h2 className={`text-sm font-semibold ${isWoodBuyer ? "text-red-700" : "text-green-700"}`}>Daromadlar ({incomes.length})</h2>
             </div>
             <div className="flex-1 overflow-y-auto p-3">
               {incomes.length === 0 ? (
@@ -240,7 +241,7 @@ export default function PartnersPageClient({
                         )}
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                        <span className="font-semibold text-green-600 whitespace-nowrap">{fmtAmt(String(g.totalAmount), g.currency)}</span>
+                        <span className={`font-semibold whitespace-nowrap ${isWoodBuyer ? "text-red-600" : "text-green-600"}`}>{fmtAmt(String(g.totalAmount), g.currency)}</span>
                         <button
                           onClick={() => confirmDelete(async () => { setDeletingBalanceId(g.ids[0]); try { for (const id of g.ids) await handleDeleteBalance(id); } finally { setDeletingBalanceId(null); } })}
                           disabled={g.ids.some((id) => deletingBalanceId === id)}
@@ -259,7 +260,7 @@ export default function PartnersPageClient({
           {/* Xarajatlar */}
           <div className="flex-1 bg-white rounded-xl border border-slate-200 flex flex-col min-h-0">
             <div className="px-5 py-3 border-b border-slate-200">
-              <h2 className="text-sm font-semibold text-red-700">Xarajatlar ({expenses.length})</h2>
+              <h2 className={`text-sm font-semibold ${isWoodBuyer ? "text-green-700" : "text-red-700"}`}>Xarajatlar ({expenses.length})</h2>
             </div>
             <div className="flex-1 overflow-y-auto p-3">
               {expenses.length === 0 ? (
@@ -276,7 +277,7 @@ export default function PartnersPageClient({
                         )}
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                        <span className="font-semibold text-red-600 whitespace-nowrap">{fmtAmt(String(g.totalAmount), g.currency)}</span>
+                        <span className={`font-semibold whitespace-nowrap ${isWoodBuyer ? "text-green-600" : "text-red-600"}`}>{fmtAmt(String(g.totalAmount), g.currency)}</span>
                         <button
                           onClick={() => confirmDelete(async () => { setDeletingBalanceId(g.ids[0]); try { for (const id of g.ids) await handleDeleteBalance(id); } finally { setDeletingBalanceId(null); } })}
                           disabled={g.ids.some((id) => deletingBalanceId === id)}
