@@ -446,26 +446,30 @@ async function _closeTransport(id: number): Promise<{ ok: true }> {
     .where(eq(cashOperations.currency, "rub"))
     .orderBy(cashOperations.id);
 
-  // Xronologik o'rtacha kurs (qoldiq × eski kurs + kirim × yangi kurs / yangi qoldiq)
-  let rubCashBalance = 0;
-  let runningAvgRate = 0;
+  // USD tracking: har kirim uchun aniq USD hisoblanadi, chiqimda proporsional kamaytirish
+  let rubRunning = 0;
+  let usdRunning = 0;
   for (const op of allRubOps) {
     const amount = Number(op.amount);
     if (amount > 0) {
       const rate = Number(op.exchangeRate ?? 0);
-      const newBalance = rubCashBalance + amount;
-      if (rate > 0 && newBalance > 0) {
-        runningAvgRate = (rubCashBalance * runningAvgRate + amount * rate) / newBalance;
+      if (rate > 0) {
+        usdRunning += amount / rate;
+        rubRunning += amount;
+      } else {
+        rubRunning += amount;
       }
-      rubCashBalance = newBalance;
     } else {
-      rubCashBalance += amount;
-      if (rubCashBalance <= 0) { rubCashBalance = 0; runningAvgRate = 0; }
+      if (rubRunning > 0) {
+        const fraction = (rubRunning + amount) / rubRunning;
+        usdRunning *= fraction;
+        rubRunning += amount;
+        if (rubRunning <= 0) { rubRunning = 0; usdRunning = 0; }
+      }
     }
   }
-  // Haqiqiy balans (manfiy bo'lishi mumkin)
-  rubCashBalance = allRubOps.reduce((s, op) => s + Number(op.amount), 0);
-  const avgRate = runningAvgRate > 0 ? runningAvgRate : 1;
+  let rubCashBalance = allRubOps.reduce((s, op) => s + Number(op.amount), 0);
+  const avgRate = usdRunning > 0 ? rubRunning / usdRunning : 1;
 
   // RUB balansini tekshirish
   if (totalRub > 0 && rubCashBalance < totalRub) {

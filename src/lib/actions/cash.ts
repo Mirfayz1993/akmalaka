@@ -28,30 +28,31 @@ export async function getRubState(): Promise<{
     orderBy: (t, { asc }) => [asc(t.id)],
   });
 
-  // Xronologik o'rtacha kurs: qoldiq × eski kurs + kirim × yangi kurs / yangi qoldiq
-  let runningBalance = 0;
-  let runningAvgRate = 0;
+  // USD tracking: har kirim uchun aniq USD hisoblanadi, chiqimda proporsional kamaytirish
+  let rubRunning = 0;
+  let usdRunning = 0;
 
   for (const op of allOps) {
     const amount = parseFloat(op.amount);
     if (amount > 0) {
-      // Kirim: o'rtacha kursni yangilash
       const rate = op.exchangeRate ? parseFloat(op.exchangeRate) : 0;
-      const newBalance = runningBalance + amount;
-      if (rate > 0 && newBalance > 0) {
-        runningAvgRate = (runningBalance * runningAvgRate + amount * rate) / newBalance;
+      if (rate > 0) {
+        usdRunning += amount / rate;
+        rubRunning += amount;
+      } else {
+        rubRunning += amount;
       }
-      runningBalance = newBalance;
     } else {
-      // Chiqim: qoldiqni kamaytirish, kurs o'zgarmaydi
-      runningBalance += amount; // amount manfiy
-      if (runningBalance <= 0) {
-        // Qoldiq tugagan — kursni nolga tushirish
-        runningBalance = 0;
-        runningAvgRate = 0;
+      if (rubRunning > 0) {
+        const fraction = (rubRunning + amount) / rubRunning;
+        usdRunning *= fraction;
+        rubRunning += amount;
+        if (rubRunning <= 0) { rubRunning = 0; usdRunning = 0; }
       }
     }
   }
+
+  const runningAvgRate = usdRunning > 0 ? rubRunning / usdRunning : 0;
 
   // Haqiqiy balans (manfiy bo'lishi mumkin — kassadan qarz bo'lsa)
   const rubBalance = allOps.reduce((s, op) => s + parseFloat(op.amount), 0);
