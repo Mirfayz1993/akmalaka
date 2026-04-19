@@ -327,13 +327,13 @@ export default function WagonEditModal({
     if (newStatus === "unloaded") {
       // Toshkent sonini default qilib omborga tushurish ro'yxatini to'ldirish
       const items: UnloadItem[] = timberList
-        .filter((t) => (t.tashkentCount ?? 0) > 0)
+        .filter((t) => ((t.tashkentCount ?? 0) - (t.customerCount ?? 0)) > 0)
         .map((t) => ({
           timberId: t.id,
           thicknessMm: t.thicknessMm,
           widthMm: t.widthMm,
           lengthM: String(t.lengthM),
-          quantity: t.tashkentCount ?? 0,
+          quantity: (t.tashkentCount ?? 0) - (t.customerCount ?? 0),
         }));
       setUnloadItems(items);
     }
