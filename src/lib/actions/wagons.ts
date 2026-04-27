@@ -15,6 +15,7 @@ import {
 import { eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { addToWarehouse, backfillWarehouseFromClosedWagons } from "./warehouse";
+import { calcRubAvgRate } from "@/lib/rub-rate";
 
 // ─── STATUS TIZIMI ─────────────────────────────────────────────────────────────
 // NOTE: "use server" fayldan faqat async funksiyalar export qilinadi.
@@ -439,37 +440,15 @@ async function _closeTransport(id: number): Promise<{ ok: true }> {
   const rubPricePerCubic = Number(transport.rubPricePerCubic ?? 0);
   const totalRub = totalCubSupplier * rubPricePerCubic;
 
-  // O'rtacha RUB kursi hisoblash
+  // O'rtacha RUB kursi hisoblash (umumiy yordamchi orqali)
   const allRubOps = await db
     .select({ amount: cashOperations.amount, exchangeRate: cashOperations.exchangeRate })
     .from(cashOperations)
     .where(eq(cashOperations.currency, "rub"))
     .orderBy(cashOperations.id);
 
-  // USD tracking: har kirim uchun aniq USD hisoblanadi, chiqimda proporsional kamaytirish
-  let rubRunning = 0;
-  let usdRunning = 0;
-  for (const op of allRubOps) {
-    const amount = Number(op.amount);
-    if (amount > 0) {
-      const rate = Number(op.exchangeRate ?? 0);
-      if (rate > 0) {
-        usdRunning += amount / rate;
-        rubRunning += amount;
-      } else {
-        rubRunning += amount;
-      }
-    } else {
-      if (rubRunning > 0) {
-        const fraction = (rubRunning + amount) / rubRunning;
-        usdRunning *= fraction;
-        rubRunning += amount;
-        if (rubRunning <= 0) { rubRunning = 0; usdRunning = 0; }
-      }
-    }
-  }
-  let rubCashBalance = allRubOps.reduce((s, op) => s + Number(op.amount), 0);
-  const avgRate = usdRunning > 0 ? rubRunning / usdRunning : 1;
+  const { rubBalance: rubCashBalance, avgRate: computedAvgRate } = calcRubAvgRate(allRubOps);
+  const avgRate = computedAvgRate > 0 ? computedAvgRate : 1;
 
   // RUB balansini tekshirish
   if (totalRub > 0 && rubCashBalance < totalRub) {

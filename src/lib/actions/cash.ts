@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { cashOperations, partnerBalances } from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { calcRubAvgRate } from "@/lib/rub-rate";
 
 // ─── GET: USD balance ─────────────────────────────────────────────────────────
 
@@ -21,43 +22,13 @@ export async function getRubState(): Promise<{
   rubBalance: number;
   avgRate: number;
 }> {
-  // Barcha RUB operatsiyalarni xronologik tartibda olish
   const allOps = await db.query.cashOperations.findMany({
     where: eq(cashOperations.currency, "rub"),
-    columns: { amount: true, exchangeRate: true, type: true },
+    columns: { amount: true, exchangeRate: true },
     orderBy: (t, { asc }) => [asc(t.id)],
   });
 
-  // USD tracking: har kirim uchun aniq USD hisoblanadi, chiqimda proporsional kamaytirish
-  let rubRunning = 0;
-  let usdRunning = 0;
-
-  for (const op of allOps) {
-    const amount = parseFloat(op.amount);
-    if (amount > 0) {
-      const rate = op.exchangeRate ? parseFloat(op.exchangeRate) : 0;
-      if (rate > 0) {
-        usdRunning += amount / rate;
-        rubRunning += amount;
-      } else {
-        rubRunning += amount;
-      }
-    } else {
-      if (rubRunning > 0) {
-        const fraction = (rubRunning + amount) / rubRunning;
-        usdRunning *= fraction;
-        rubRunning += amount;
-        if (rubRunning <= 0) { rubRunning = 0; usdRunning = 0; }
-      }
-    }
-  }
-
-  const runningAvgRate = usdRunning > 0 ? rubRunning / usdRunning : 0;
-
-  // Haqiqiy balans (manfiy bo'lishi mumkin — kassadan qarz bo'lsa)
-  const rubBalance = allOps.reduce((s, op) => s + parseFloat(op.amount), 0);
-
-  return { rubBalance, avgRate: runningAvgRate };
+  return calcRubAvgRate(allOps);
 }
 
 // ─── GET: USD operations list ─────────────────────────────────────────────────

@@ -3,6 +3,7 @@
 import { db } from "@/db";
 import { partnerBalances, saleItems, sales, transports, transportExpenses, timbers } from "@/db/schema";
 import { eq, and, lt, sql } from "drizzle-orm";
+import { calcRubAvgRate } from "@/lib/rub-rate";
 
 export interface TransportSummary {
   // Hamkorlarga qarzlar (biz ularga qarzamiz)
@@ -116,18 +117,21 @@ export async function getTransportFinancialSummary(transportId: number): Promise
     return sum + (t.thicknessMm / 1000) * (t.widthMm / 1000) * Number(t.lengthM) * cnt;
   }, 0);
 
-  // o'rtacha kurs hisoblash - kassadan
-  const { cashOperations } = await import("@/db/schema");
-  const rubOps = await db.query.cashOperations.findMany({
-    where: eq(cashOperations.currency, "rub"),
-  });
-  let totalRubIn = 0, totalUsdEquiv = 0;
-  for (const op of rubOps) {
-    const amt = Number(op.amount);
-    const rate = Number(op.exchangeRate ?? 0);
-    if (amt > 0 && rate > 0) { totalRubIn += amt; totalUsdEquiv += amt / rate; }
+  // o'rtacha kurs:
+  //  - yopilgan vagon uchun — yopish paytidagi muzlatilgan kurs (transport.rubExchangeRate)
+  //  - aks holda — joriy kassa bo'yicha running weighted average
+  let avgRate = 0;
+  if (transport.status === "closed" && transport.rubExchangeRate) {
+    avgRate = Number(transport.rubExchangeRate);
+  } else {
+    const { cashOperations } = await import("@/db/schema");
+    const rubOps = await db.query.cashOperations.findMany({
+      where: eq(cashOperations.currency, "rub"),
+      columns: { amount: true, exchangeRate: true },
+      orderBy: (t, { asc }) => [asc(t.id)],
+    });
+    avgRate = calcRubAvgRate(rubOps).avgRate;
   }
-  const avgRate = totalUsdEquiv > 0 ? totalRubIn / totalUsdEquiv : 0;
 
   const rubPricePerCubic = Number(transport.rubPricePerCubic ?? 0);
   const supplierPaymentRub = totalCubSupplier * rubPricePerCubic;

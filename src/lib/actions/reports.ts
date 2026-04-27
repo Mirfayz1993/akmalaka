@@ -58,22 +58,24 @@ export async function getWagonReport(dateFrom?: string, dateTo?: string) {
       parseFloat(t.codeUzPricePerTon ?? "0") * tonnage +
       parseFloat(t.codeKzPricePerTon ?? "0") * tonnage;
 
-    // RUB xarid narxi USD da
+    // RUB xarid narxi USD da — to'lov ta'minotchi soni (supplierCount) bo'yicha
+    // hisoblangan, shuning uchun hisobotda ham xuddi shu son ishlatiladi.
+    // Eski yozuvlarda supplierCount yo'q bo'lsa, tashkentCount ga qaytamiz.
     const rubPricePerCubic = parseFloat(t.rubPricePerCubic ?? "0");
     const rubExchangeRate = parseFloat(t.rubExchangeRate ?? "0");
-    const totalTashkentCub = t.timbers.reduce((sum, tb) => {
-      const tashkentCount = tb.tashkentCount ?? 0;
+    const totalSupplierCub = t.timbers.reduce((sum, tb) => {
+      const supplierCount = tb.supplierCount ?? tb.tashkentCount ?? 0;
       return (
         sum +
         (tb.thicknessMm / 1000) *
           (tb.widthMm / 1000) *
           parseFloat(tb.lengthM) *
-          tashkentCount
+          supplierCount
       );
     }, 0);
     const rubCostUsd =
       rubExchangeRate > 0
-        ? (rubPricePerCubic * totalTashkentCub) / rubExchangeRate
+        ? (rubPricePerCubic * totalSupplierCub) / rubExchangeRate
         : 0;
 
     // Truck to'lovi (wagon uchun 0)

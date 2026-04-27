@@ -693,13 +693,13 @@ export default function WagonEditModal({
                     <div>
                       <p className="text-xs text-slate-500 mb-0.5">{t.wagons.codeUz}</p>
                       <p className="text-sm bg-slate-50 rounded-lg px-3 py-2 border border-slate-200">
-                        {transport.codeUzPricePerTon ? `${transport.codeUzPricePerTon} $/t → $${(Number(transport.tonnage || 0) * Number(transport.codeUzPricePerTon)).toFixed(0)}` : "—"}
+                        {transport.codeUzPricePerTon ? `${transport.codeUzPricePerTon} $/t → $${(Number(transport.tonnage || 0) * Number(transport.codeUzPricePerTon)).toFixed(2)}` : "—"}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs text-slate-500 mb-0.5">{t.wagons.codeKz}</p>
                       <p className="text-sm bg-slate-50 rounded-lg px-3 py-2 border border-slate-200">
-                        {transport.codeKzPricePerTon ? `${transport.codeKzPricePerTon} $/t → $${(Number(transport.tonnage || 0) * Number(transport.codeKzPricePerTon)).toFixed(0)}` : "—"}
+                        {transport.codeKzPricePerTon ? `${transport.codeKzPricePerTon} $/t → $${(Number(transport.tonnage || 0) * Number(transport.codeKzPricePerTon)).toFixed(2)}` : "—"}
                       </p>
                     </div>
                   </div>
@@ -964,7 +964,7 @@ export default function WagonEditModal({
                   <p className="text-sm text-slate-600">Jami RUB: <span className="font-semibold text-purple-700">{totalRub.toLocaleString("ru-RU", { maximumFractionDigits: 0 })} ₽</span></p>
                   {avgRate > 0 && (
                     <p className="text-sm text-slate-600">
-                      O'rtacha kurs {avgRate.toFixed(0)} ₽/$ → <span className="font-semibold text-green-700">${totalUsd.toFixed(2)}</span>
+                      O'rtacha kurs {avgRate.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽/$ → <span className="font-semibold text-green-700">${totalUsd.toFixed(2)}</span>
                     </p>
                   )}
                 </div>

@@ -139,25 +139,28 @@ describe("getAllPartnersWithBalances action", () => {
         id: 1,
         name: "Hamkor A",
         balances: [
-          { amount: "5000", transport: null },
-          { amount: "-1000", transport: null },
+          { amount: "5000", currency: "usd", transport: null },
+          { amount: "-1000", currency: "usd", transport: null },
+          { amount: "200000", currency: "rub", transport: null },
         ],
       },
     ];
     mockFindMany.mockResolvedValue(fakeData);
 
     const result = await getAllPartnersWithBalances();
-    expect(result[0].currentBalance).toBe(4000); // 5000 - 1000
+    expect(result[0].usdBalance).toBe(4000); // 5000 - 1000
+    expect(result[0].rubBalance).toBe(200000);
     expect(result[0].name).toBe("Hamkor A");
   });
 
-  it("balanslar bo'sh bo'lsa currentBalance = 0", async () => {
+  it("balanslar bo'sh bo'lsa usdBalance/rubBalance = 0", async () => {
     mockFindMany.mockResolvedValue([
       { id: 2, name: "Yangi hamkor", balances: [] },
     ]);
 
     const result = await getAllPartnersWithBalances();
-    expect(result[0].currentBalance).toBe(0);
+    expect(result[0].usdBalance).toBe(0);
+    expect(result[0].rubBalance).toBe(0);
   });
 });
 

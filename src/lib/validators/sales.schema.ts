@@ -8,6 +8,7 @@ export const SaleItemSchema = z.object({
 
 export const CreateSaleSchema = z.object({
   customerId: z.coerce.number().int().positive("Mijoz tanlanishi shart"),
+  paymentType: z.enum(["cash", "debt", "mixed"]).optional(),
   items: z.array(SaleItemSchema).min(1, "Kamida bitta mahsulot tanlash kerak"),
   notes: z.string().optional(),
 });
