@@ -1232,6 +1232,18 @@ export default function WagonEditModal({
                             <span className="text-sm font-semibold text-red-600">${exp.amountUsd.toFixed(2)}</span>
                           </div>
                         ))}
+                        {(() => {
+                          const otherTotal = summary.expenseBreakdown
+                            .filter((e) => !e.name.startsWith("Yog'och to'lovi"))
+                            .reduce((s, e) => s + e.amountUsd, 0);
+                          if (otherTotal === 0) return null;
+                          return (
+                            <div className="flex items-center justify-between bg-red-100 rounded-lg px-3 py-1.5 border border-red-200 mt-2">
+                              <span className="text-sm font-semibold text-slate-700">Boshqa xarajatlar jami</span>
+                              <span className="text-sm font-bold text-red-700">${otherTotal.toFixed(2)}</span>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   )}
