@@ -21,12 +21,6 @@ jobs:
       - name: Testlarni ishlatish
         run: npm run test
 
-      - name: Build qilish (GitHub serverida, VPS ga tegmaydi)
-        run: npm run build
-        env:
-          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
-          DATABASE_URL: postgresql://postgres:dummy@localhost:5432/wood_erp
-
       - name: SSH kalitni sozlash
         run: |
           mkdir -p ~/.ssh
@@ -34,22 +28,7 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H 194.163.157.44 >> ~/.ssh/known_hosts
 
-      - name: Tayyor build ni VPS ga yuborish (rsync)
-        run: rsync -az --delete -e "ssh -i ~/.ssh/deploy_key" .next/ root@194.163.157.44:/var/www/wood-erp/.next/
-
-      - name: VPS da restart (build yo'q, faqat 30 soniya)
+      - name: VPS da deploy (git pull + deploy.sh)
         run: |
-          ssh -i ~/.ssh/deploy_key root@194.163.157.44 << 'EOF'
-            cd /var/www/wood-erp
-            LOCK_BEFORE=$(md5sum package-lock.json | cut -d' ' -f1)
-            git pull origin master
-            LOCK_AFTER=$(md5sum package-lock.json | cut -d' ' -f1)
-            if [ "$LOCK_BEFORE" != "$LOCK_AFTER" ]; then
-              echo "Yangi paketlar bor, o'rnatilmoqda..."
-              npm install
-            else
-              echo "Paketlar o'zgarmagan, o'tkazib yuborildi."
-            fi
-            npx drizzle-kit migrate
-            pm2 reload ecosystem.config.js --update-env
-          EOF
+          ssh -i ~/.ssh/deploy_key root@194.163.157.44 \
+            "cd /var/www/wood-erp && git pull origin master && bash deploy.sh"
