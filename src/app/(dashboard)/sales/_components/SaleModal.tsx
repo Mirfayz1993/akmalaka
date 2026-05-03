@@ -70,10 +70,6 @@ export default function SaleModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Ombor qo'shish
-  const [selectedWarehouseId, setSelectedWarehouseId] = useState<number | "">("");
-  const [warehouseSentCount, setWarehouseSentCount] = useState(1);
-
   const woodBuyers = partners.filter((p) => p.type === "wood_buyer");
 
   // Yetib kelgan (arrived) va tushurilgan (unloaded) vagonlar — yopilgungacha sotish mumkin
@@ -133,26 +129,6 @@ export default function SaleModal({
     );
   }
 
-  function handleAddFromWarehouse() {
-    const wItem = warehouseItems.find((w) => w.id === selectedWarehouseId);
-    if (!wItem || warehouseSentCount < 1 || warehouseSentCount > wItem.quantity)
-      return;
-    setCart((prev) => [
-      ...prev,
-      {
-        timberId: 0,
-        thicknessMm: wItem.thicknessMm,
-        widthMm: wItem.widthMm,
-        lengthM: wItem.lengthM,
-        availableCount: wItem.quantity,
-        sentCount: String(warehouseSentCount),
-        warehouseId: wItem.id,
-      },
-    ]);
-    setSelectedWarehouseId("");
-    setWarehouseSentCount(1);
-  }
-
   function handleRemoveRow(idx: number) {
     setCart((prev) => prev.filter((_, i) => i !== idx));
   }
@@ -199,8 +175,6 @@ export default function SaleModal({
     setCart([]);
     setPricePerCubicUsd("");
     setError(null);
-    setSelectedWarehouseId("");
-    setWarehouseSentCount(1);
     onClose();
   }
 
@@ -364,60 +338,7 @@ export default function SaleModal({
           )}
         </div>
 
-        {/* Ombordan qo'shish — vagon tanlanganda har doim ko'rinadi */}
-        {transportId && (
-          <div className="pt-3 border-t border-slate-200">
-            <p className="text-sm font-medium text-slate-700 mb-2">
-              Ombordan qo&apos;shish
-            </p>
-            <div className="flex items-center gap-2 flex-wrap">
-              <select
-                value={selectedWarehouseId}
-                onChange={(e) => {
-                  setSelectedWarehouseId(e.target.value ? Number(e.target.value) : "");
-                  setWarehouseSentCount(1);
-                }}
-                className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">— O&apos;lcham tanlang —</option>
-                {warehouseItems
-                  .filter((w) => {
-                    if (w.quantity <= 0) return false;
-                    // Cartda turganlarni chiqarib tashlash — takrorlanmasligi uchun
-                    if (cart.some((c) => c.warehouseId === w.id)) return false;
-                    // Tushurilgan vagon uchun faqat o'sha vagonning ombor itemlari
-                    if (selectedTransport?.status === "unloaded") {
-                      return w.transportId === Number(transportId);
-                    }
-                    return true;
-                  })
-                  .map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.thicknessMm}×{w.widthMm}×{w.lengthM}m ({w.quantity} dona)
-                    </option>
-                  ))}
-              </select>
-              <NumberInput
-                placeholder="Miqdor"
-                min={1}
-                max={warehouseItems.find((w) => w.id === selectedWarehouseId)?.quantity ?? 1}
-                value={warehouseSentCount}
-                onChange={(e) => setWarehouseSentCount(Number(e.target.value))}
-                className="w-20 border border-slate-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <button
-                type="button"
-                onClick={handleAddFromWarehouse}
-                disabled={!selectedWarehouseId || warehouseSentCount < 1}
-                className="px-3 py-1.5 bg-green-700 text-white text-sm rounded-lg hover:bg-green-800 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                + Ombor
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Xato */}
+{/* Xato */}
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-700">
             {error}
