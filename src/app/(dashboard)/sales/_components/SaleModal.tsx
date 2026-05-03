@@ -83,17 +83,29 @@ export default function SaleModal({
 
   const selectedTransport = saleableTransports.find((t) => t.id === transportId);
 
-  // Vagon o'zgarganda timberlar avtomatik chiqadi (faqat "arrived" uchun)
+  // Vagon o'zgarganda timberlar avtomatik chiqadi
   useEffect(() => {
     if (!selectedTransport) {
       setCart([]);
       return;
     }
-    // Tushurilgan vagon — taxtalar omborda, cart bo'sh qoladi (ombordan qo'shiladi)
+    // Tushurilgan vagon — shu vagonning omborda turgan barcha taxtalari avtomatik chiqadi
     if (selectedTransport.status === "unloaded") {
-      setCart([]);
+      const rows: CartRow[] = warehouseItems
+        .filter((w) => w.transportId === selectedTransport.id && w.quantity > 0)
+        .map((w) => ({
+          timberId: 0,
+          thicknessMm: w.thicknessMm,
+          widthMm: w.widthMm,
+          lengthM: w.lengthM,
+          availableCount: w.quantity,
+          sentCount: "",
+          warehouseId: w.id,
+        }));
+      setCart(rows);
       return;
     }
+    // Yetib kelgan vagon — vagondagi timberlar (tashkent count bo'yicha)
     const rows: CartRow[] = selectedTransport.timbers
       .filter((timber) => (timber.tashkentCount ?? 0) > 0)
       .map((timber) => ({
@@ -371,6 +383,8 @@ export default function SaleModal({
                 {warehouseItems
                   .filter((w) => {
                     if (w.quantity <= 0) return false;
+                    // Cartda turganlarni chiqarib tashlash — takrorlanmasligi uchun
+                    if (cart.some((c) => c.warehouseId === w.id)) return false;
                     // Tushurilgan vagon uchun faqat o'sha vagonning ombor itemlari
                     if (selectedTransport?.status === "unloaded") {
                       return w.transportId === Number(transportId);
