@@ -16,6 +16,11 @@ import {
 } from "@/lib/actions/wagons";
 import { createTimber, updateTimber, deleteTimber } from "@/lib/actions/timbers";
 import { getTransportFinancialSummary, type TransportSummary } from "@/lib/actions/transport-summary";
+import {
+  getProfitDistribution,
+  setProfitDistribution,
+  type ProfitDistributionRow,
+} from "@/lib/actions/profit-distribution";
 import { t } from "@/i18n/uz";
 import { useDeleteConfirm } from "@/components/ui/DeleteConfirm";
 import ShortDateInput from "@/components/ui/ShortDateInput";
@@ -231,6 +236,13 @@ export default function WagonEditModal({
   const [wagonSales, setWagonSales] = useState<TransportSaleItem[]>([]);
   const [isWagonSalesLoading, setIsWagonSalesLoading] = useState(false);
 
+  // Foyda taqsimoti (faqat closed)
+  type DistributionRow = { partnerId: number | ""; percentage: string };
+  const [distRows, setDistRows] = useState<DistributionRow[]>([]);
+  const [savedDistribution, setSavedDistribution] = useState<ProfitDistributionRow[]>([]);
+  const [isDistSaving, setIsDistSaving] = useState(false);
+  const [distError, setDistError] = useState<string | null>(null);
+
   // Transport o'zgarganda state larni to'ldirish
   useEffect(() => {
     if (!transport) return;
@@ -274,6 +286,28 @@ export default function WagonEditModal({
       .finally(() => setIsSummaryLoading(false));
   }, [transport]);
 
+  // Closed statusda foyda taqsimotini yuklash
+  useEffect(() => {
+    if (!transport || transport.status !== "closed") {
+      setDistRows([]);
+      setSavedDistribution([]);
+      return;
+    }
+    getProfitDistribution(transport.id)
+      .then((rows) => {
+        setSavedDistribution(rows);
+        setDistRows(
+          rows.length > 0
+            ? rows.map((r) => ({ partnerId: r.partnerId, percentage: String(r.percentage) }))
+            : [{ partnerId: "", percentage: "" }]
+        );
+      })
+      .catch(() => {
+        setSavedDistribution([]);
+        setDistRows([{ partnerId: "", percentage: "" }]);
+      });
+  }, [transport]);
+
   // Arrived/unloaded/closed da savdolarni yuklash
   useEffect(() => {
     const activeStatuses = ["arrived", "unloaded", "closed"];
@@ -290,6 +324,7 @@ export default function WagonEditModal({
   const codeSuppliers = partners.filter((p) => p.type === "code_supplier");
   const serviceProviders = partners.filter((p) => p.type === "service_provider");
   const truckOwners = partners.filter((p) => p.type === "truck_owner");
+  const profitPartners = partners.filter((p) => p.type === "partner");
 
   const status = transport?.status ?? "in_transit";
   const isInTransit = status === "in_transit" || status === "at_border";
@@ -540,6 +575,54 @@ export default function WagonEditModal({
 
   const partnerName = (id: string, list: Partner[]) =>
     list.find((p) => p.id === parseInt(id))?.name ?? "—";
+
+  // ── Foyda taqsimoti handler'lari ──
+  function handleDistChange(idx: number, patch: Partial<DistributionRow>) {
+    setDistRows((prev) => prev.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
+  }
+  function handleDistAdd() {
+    setDistRows((prev) => [...prev, { partnerId: "", percentage: "" }]);
+  }
+  function handleDistRemove(idx: number) {
+    setDistRows((prev) => prev.filter((_, i) => i !== idx));
+  }
+  const distTotalPct = distRows.reduce((s, r) => s + (parseFloat(r.percentage) || 0), 0);
+  async function handleSaveDistribution() {
+    if (!transport) return;
+    setDistError(null);
+    const valid = distRows
+      .filter((r) => r.partnerId !== "" && parseFloat(r.percentage) > 0)
+      .map((r) => ({
+        partnerId: Number(r.partnerId),
+        percentage: parseFloat(r.percentage),
+      }));
+    // Bir hamkor takrorlanmasligi
+    const ids = new Set<number>();
+    for (const v of valid) {
+      if (ids.has(v.partnerId)) {
+        setDistError("Bir hamkor faqat bir marta tanlanishi mumkin");
+        return;
+      }
+      ids.add(v.partnerId);
+    }
+    setIsDistSaving(true);
+    const res = await setProfitDistribution(transport.id, valid);
+    setIsDistSaving(false);
+    if (!res.ok) {
+      setDistError(res.error);
+      toast.error(res.error);
+      return;
+    }
+    toast.success("Foyda taqsimoti saqlandi");
+    // Yangilash
+    const fresh = await getProfitDistribution(transport.id);
+    setSavedDistribution(fresh);
+    setDistRows(
+      fresh.length > 0
+        ? fresh.map((r) => ({ partnerId: r.partnerId, percentage: String(r.percentage) }))
+        : [{ partnerId: "", percentage: "" }]
+    );
+  }
 
   if (!transport) return null;
 
@@ -1295,6 +1378,114 @@ export default function WagonEditModal({
                   )}
                 </div>
               ) : null}
+            </section>
+          )}
+
+          {/* ── FOYDA TAQSIMLASH (faqat closed) ── */}
+          {isClosed && (
+            <section className="mt-6">
+              <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-2 border-b border-slate-200 flex items-center gap-2">
+                <DollarSign size={15} className="text-purple-600" />
+                Foyda taqsimlash
+              </h3>
+
+              {summary && summary.netProfitUsd <= 0 ? (
+                <p className="text-sm text-orange-600 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
+                  Sof foyda manfiy yoki nol — taqsimot mumkin emas.
+                </p>
+              ) : profitPartners.length === 0 ? (
+                <p className="text-sm text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                  Hamkorlar (partner turida) ro&apos;yxati bo&apos;sh — avval hamkorlar bo&apos;limidan qo&apos;shing.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {distRows.map((row, idx) => {
+                    const pct = parseFloat(row.percentage) || 0;
+                    const amount = summary ? (summary.netProfitUsd * pct) / 100 : 0;
+                    return (
+                      <div key={idx} className="flex items-center gap-2">
+                        <select
+                          value={row.partnerId}
+                          onChange={(e) =>
+                            handleDistChange(idx, {
+                              partnerId: e.target.value ? Number(e.target.value) : "",
+                            })
+                          }
+                          className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                        >
+                          <option value="">— Hamkor tanlang —</option>
+                          {profitPartners.map((p) => (
+                            <option key={p.id} value={p.id}>{p.name}</option>
+                          ))}
+                        </select>
+                        <NumberInput
+                          value={row.percentage}
+                          placeholder="%"
+                          min={0}
+                          max={100}
+                          onChange={(e) => handleDistChange(idx, { percentage: e.target.value })}
+                          className="w-20 border border-slate-300 rounded-lg px-2 py-2 text-sm text-center focus:ring-2 focus:ring-purple-500 outline-none"
+                        />
+                        <span className="text-sm text-slate-400 w-10 text-center">%</span>
+                        <span className="text-sm font-semibold text-purple-700 w-28 text-right">
+                          ${amount.toFixed(2)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleDistRemove(idx)}
+                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                          title="O'chirish"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    );
+                  })}
+
+                  <div className="flex items-center justify-between pt-2 mt-2 border-t border-slate-200">
+                    <button
+                      type="button"
+                      onClick={handleDistAdd}
+                      className="flex items-center gap-1 px-3 py-1.5 text-sm text-purple-600 border border-purple-200 hover:bg-purple-50 rounded-lg"
+                    >
+                      <Plus size={14} /> Hamkor qo&apos;shish
+                    </button>
+                    <div className="text-sm">
+                      <span className="text-slate-500">Jami: </span>
+                      <span className={`font-semibold ${distTotalPct > 100 ? "text-red-600" : "text-slate-700"}`}>
+                        {distTotalPct.toFixed(2)}%
+                      </span>
+                      <span className="text-slate-400 mx-2">·</span>
+                      <span className="font-semibold text-purple-700">
+                        ${summary ? ((summary.netProfitUsd * distTotalPct) / 100).toFixed(2) : "0.00"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {distError && (
+                    <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                      {distError}
+                    </p>
+                  )}
+
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={handleSaveDistribution}
+                      disabled={isDistSaving || distTotalPct > 100}
+                      className="px-4 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isDistSaving ? "Saqlanmoqda..." : "Taqsimotni saqlash"}
+                    </button>
+                  </div>
+
+                  {savedDistribution.length > 0 && (
+                    <p className="text-xs text-slate-400 mt-2">
+                      Hozirgi taqsimot saqlangan ({savedDistribution.length} ta hamkor) — har bir hamkor uchun balansga qarz qo&apos;shilgan
+                    </p>
+                  )}
+                </div>
+              )}
             </section>
           )}
 
